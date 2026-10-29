@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.1.7</title>
+<title>鲸步 WHALE WALK · v0.1.8</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -28,6 +28,28 @@
   #hudQian{bottom:14px;right:18px;font-size:12px;font-weight:700;letter-spacing:3px;color:#BFE4FF;}
   #hudMode{top:52px;left:18px;font-size:11px;opacity:.75;letter-spacing:1px;}
   .badge{display:inline-block;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:2px 10px;}
+  /* ---------- 雨声大小滑块 ---------- */
+  #rainCtrl{position:fixed;left:18px;bottom:18px;z-index:11;display:flex;align-items:center;gap:8px;
+    background:rgba(14,20,48,.5);padding:7px 12px;border-radius:999px;backdrop-filter:blur(4px);
+    border:1px solid rgba(127,212,255,.3);pointer-events:auto;}
+  #rainCtrl .rc-label{font-size:11px;color:#BFE4FF;letter-spacing:1px;}
+  #rainRange{-webkit-appearance:none;appearance:none;width:90px;height:4px;border-radius:2px;
+    background:linear-gradient(90deg,#35E0FF,#FF4FD8);outline:none;cursor:pointer;}
+  #rainRange::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+    background:#fff;border:2px solid #35E0FF;box-shadow:0 0 8px rgba(53,224,255,.8);cursor:pointer;}
+  #rainRange::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;
+    border:2px solid #35E0FF;box-shadow:0 0 8px rgba(53,224,255,.8);cursor:pointer;}
+  /* ---------- 全收集庆祝横幅 ---------- */
+  #celebrate{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);z-index:20;
+    text-align:center;pointer-events:none;display:none;}
+  #celebrate.show{display:block;animation:cbPop .6s cubic-bezier(.2,1.6,.4,1) forwards;}
+  #celebrate.fade{opacity:0;transition:opacity .5s;}
+  .cb-t{font-size:46px;font-weight:900;color:#FFD25A;letter-spacing:6px;
+    text-shadow:0 0 26px rgba(255,210,90,.95),0 2px 12px rgba(10,20,60,.85);}
+  .cb-s{font-size:16px;color:#BFE4FF;margin-top:8px;letter-spacing:3px;text-shadow:0 1px 8px rgba(10,20,60,.85);}
+  @keyframes cbPop{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}
+    60%{transform:translate(-50%,-50%) scale(1.12);opacity:1}
+    100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
   /* ---------- toast ---------- */
   #toast{position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-8px);z-index:20;
     background:rgba(0,47,167,.88);color:#fff;font-size:14px;font-weight:600;padding:10px 22px;border-radius:999px;
@@ -74,6 +96,9 @@
 <canvas id="minimap" width="320" height="320"></canvas>
 <div class="hud" id="hudHint">拖动旋转 · 滚轮缩放</div>
 <div class="hud" id="hudQian">QIAN</div>
+<div id="rainCtrl"><span class="rc-label">雨声</span>
+  <input type="range" id="rainRange" min="0" max="100" value="33"></div>
+<div id="celebrate"><div class="cb-t">★ 全收集 ★</div><div class="cb-s">鲸步大成功 · QIAN</div></div>
 <div id="toast"></div>
 <button id="btnPlay">开始散步</button>
 <div id="joy"><div id="joyKnob"></div></div>
@@ -1165,7 +1190,7 @@ const AudioFX=(()=>{
   }
   /* ---- 雨声底噪：粉噪 + 低通双层，持续环境音（跟随 M 静音） ---- */
   let rainGain=null, rainLFO=null;
-  const RAIN_LEVEL=0.05;
+  let rainLevel=0.05;
   function startRain(){
     if(rainGain||!ctx)return;
     rainGain=ctx.createGain(); rainGain.gain.value=0;
@@ -1186,7 +1211,7 @@ const AudioFX=(()=>{
     rainLFO=ctx.createOscillator(); rainLFO.frequency.value=0.13;
     const lg=ctx.createGain(); lg.gain.value=0.016;
     rainLFO.connect(lg); lg.connect(rainGain.gain); rainLFO.start();
-    rainGain.gain.setTargetAtTime(muted?0:RAIN_LEVEL, ctx.currentTime, 1.5);
+    rainGain.gain.setTargetAtTime(muted?0:rainLevel, ctx.currentTime, 1.5);
   }
   function setRain(v){ if(rainGain) rainGain.gain.setTargetAtTime(v, ctx.currentTime, 0.3); }
   return {
@@ -1197,7 +1222,17 @@ const AudioFX=(()=>{
     pickup(){ nPick++; tone(660,660,0.12,0.14,'sine');
               tone(880,880,0.14,0.15,'sine',0.08);
               tone(1320,1320,0.20,0.13,'sine',0.16); },
-    toggle(){ muted=!muted; if(!muted)ac(); setRain(muted?0:RAIN_LEVEL); return muted; },
+    /* 全收集庆祝：上行琶音 + 亮和弦 */
+    celebrate(){ if(muted||!ac())return;
+      const seq=[523,659,784,1047,1319];
+      seq.forEach((f,i)=>tone(f,f,0.22,0.16,'triangle',i*0.09));
+      tone(1568,1568,0.55,0.13,'sine',seq.length*0.09);
+      tone(2093,2093,0.65,0.10,'sine',seq.length*0.09+0.06);
+      tone(262,262,0.95,0.12,'sine',0.02);
+      tone(392,392,0.95,0.10,'sine',0.02); },
+    setRainLevel(v){ rainLevel=Math.max(0,Math.min(0.15,v)); setRain(muted?0:rainLevel); return rainLevel; },
+    get rainLevel(){return rainLevel;},
+    toggle(){ muted=!muted; if(!muted)ac(); setRain(muted?0:rainLevel); return muted; },
     get muted(){return muted;},
     get running(){return !!(ctx&&ctx.state==='running');},
     get rainOn(){return !!rainGain;},
@@ -1445,7 +1480,8 @@ function update(dt){
         score++; scoreEl.textContent=`${score} / ${TOTAL}`;
         burst(o.position);
         AudioFX.pickup();
-        if(score===TOTAL){ toast('全部光点收集完成！鲸鱼尾为你摆动 🐳'); P.tailJ.rotation.y=0.5; }
+        if(score===TOTAL){ toast('全部光点收集完成！鲸鱼尾为你摆动 🐳'); P.tailJ.rotation.y=0.5;
+          if(!celebrated){ celebrated=true; spawnCelebrate(); AudioFX.celebrate(); showCelebrateBanner(); } }
         else if(score%6===0) toast(`已收集 ${score} 个光点`);
       }
     }
@@ -1487,6 +1523,19 @@ function update(dt){
     mp[i*3+1]+=Math.sin(t*0.8+i)*0.0012;
   }
   mistGeo.attributes.position.needsUpdate=true;
+  /* 庆祝特效粒子（爆开 → 上浮 → 淡出 → 回收） */
+  if(celebrateFx){
+    const F=celebrateFx; F.t+=dt;
+    const a=F.m.geometry.attributes.position.array;
+    for(let i=0;i<F.vel.length;i++){
+      const v=F.vel[i];
+      a[i*3]+=v[0]*dt; a[i*3+1]+=v[1]*dt; a[i*3+2]+=v[2]*dt;
+      v[1]-=dt*1.7;
+    }
+    F.m.geometry.attributes.position.needsUpdate=true;
+    F.m.material.opacity=Math.max(0,1-F.t/2.4);
+    if(F.t>2.5){ scene.remove(F.m); F.m.geometry.dispose(); F.m.material.dispose(); celebrateFx=null; }
+  }
 }
 
 /* =====================================================================
@@ -1553,6 +1602,42 @@ function drawMinimap(){
   g.strokeStyle='rgba(127,212,255,0.5)'; g.lineWidth=2; g.stroke();
   g.fillStyle='rgba(191,228,255,0.85)'; g.font='700 18px sans-serif'; g.textAlign='center';
   g.fillText('N', MM_C, 24);
+}
+
+/* =====================================================================
+ *  雨声滑块 + 全收集庆祝特效
+ * ===================================================================== */
+/* 雨声大小滑块 */
+{
+  const rr=document.getElementById('rainRange');
+  rr.addEventListener('input',()=>AudioFX.setRainLevel(rr.value/100*0.15));
+}
+/* 全收集庆祝：3D 彩色粒子爆开 + 横幅 */
+let celebrateFx=null, celebrated=false;
+function spawnCelebrate(){
+  const N=64;
+  const pos=new Float32Array(N*3), col=new Float32Array(N*3), vel=[];
+  const palette=[[1,0.42,0.85],[0.36,0.92,1],[1,0.76,0.32],[0.5,1,0.62],[1,0.52,0.4],[0.72,0.62,1]];
+  for(let i=0;i<N;i++){
+    pos[i*3]=girl.position.x; pos[i*3+1]=girl.position.y+0.95; pos[i*3+2]=girl.position.z;
+    const a=Math.random()*Math.PI*2, b=(Math.random()*Math.PI)-Math.PI/2, sp=2.2+Math.random()*2.8;
+    vel.push([Math.cos(a)*Math.cos(b)*sp, Math.sin(b)*sp+2.4, Math.sin(a)*Math.cos(b)*sp]);
+    const c=palette[(Math.random()*palette.length)|0];
+    col[i*3]=c[0]; col[i*3+1]=c[1]; col[i*3+2]=c[2];
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const m=new THREE.Points(g,new THREE.PointsMaterial({size:0.17,vertexColors:true,
+    transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));
+  m.frustumCulled=false; scene.add(m);
+  celebrateFx={m,vel,t:0};
+}
+function showCelebrateBanner(){
+  const el=document.getElementById('celebrate');
+  el.classList.remove('fade'); el.classList.add('show');
+  setTimeout(()=>el.classList.add('fade'),2200);
+  setTimeout(()=>el.classList.remove('show','fade'),2900);
 }
 
 /* =====================================================================
