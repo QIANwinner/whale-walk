@@ -1024,18 +1024,20 @@ const ringGeo=new THREE.RingGeometry(0.16,0.21,20);
   let tries=0;
   while(orbs.length<24 && tries<400){
     tries++;
-    const p=place(5,86);
+    /* 沿街道走廊均匀铺开：z 8→82，x 在 ±6.5 内（走街一路收集） */
+    const z=8+(orbs.length/24)*74+rnd()*3;
+    const x=(rnd()*2-1)*6.5;
     let ok=true;
-    for(const o of obstacles){ if(Math.hypot(p.x-o.x,p.z-o.z)<o.r+0.7){ok=false;break;} }
+    for(const o of obstacles){ if(Math.hypot(x-o.x,z-o.z)<o.r+0.8){ok=false;break;} }
     if(!ok) continue;
-    for(const q of orbs){ if(Math.hypot(p.x-q.x,p.z-q.z)<3.2){ok=false;break;} }
+    for(const q of orbs){ if(Math.hypot(x-q.x,z-q.z)<2.6){ok=false;break;} }
     if(!ok) continue;
     const m=new THREE.Mesh(orbGeo,orbMat);
     const halo=new THREE.Mesh(ringGeo,new THREE.MeshBasicMaterial({
       color:C.neon,transparent:true,opacity:0.5,side:THREE.DoubleSide}));
     halo.rotation.x=-Math.PI/2; m.add(halo);
-    m.position.set(p.x,terrainH(p.x,p.z)+0.55,p.z);
-    m.userData={alive:true,baseY:terrainH(p.x,p.z)+0.55,ph:rnd()*6.28,halo};
+    m.position.set(x,terrainH(x,z)+0.55,z);
+    m.userData={alive:true,baseY:terrainH(x,z)+0.55,ph:rnd()*6.28,halo};
     orbGroup.add(m); orbs.push(m.position.clone()); orbGroup.children[orbGroup.children.length-1].userData=m.userData;
   }
 }
@@ -1358,7 +1360,7 @@ function update(dt){
     o.rotation.y+=dt*2.2;
     u.halo.material.opacity=0.35+Math.sin(t*3+u.ph)*0.2;
     if(u.alive&&mode==='play'){
-      if(Math.hypot(px-o.position.x,pz-o.position.z)<0.62){
+      if(Math.hypot(px-o.position.x,pz-o.position.z)<1.4){
         u.alive=false; o.visible=false; u.halo.material.opacity=0;
         score++; scoreEl.textContent=`${score} / ${TOTAL}`;
         burst(o.position);
