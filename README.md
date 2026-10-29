@@ -1,4 +1,4 @@
-﻿# 鲸步 WHALE WALK
+﻿# 鲸步 WHALE WALK 蓝色大肥鱼(三年动画版)
 
 第三人称 3D 行走小游戏 · 单文件（Three.js via CDN，零构建/零 npm）。
 
