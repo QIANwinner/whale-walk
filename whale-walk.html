@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.1.4</title>
+<title>鲸步 WHALE WALK · v0.1.5</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -107,7 +107,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x05070F);
 scene.fog = new THREE.FogExp2(0x0A1122, 0.012);
 
-const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 400);
+const camera = new THREE.PerspectiveCamera(64, innerWidth/innerHeight, 0.1, 400);
 addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight); });
 
@@ -1003,7 +1003,7 @@ const AudioFX=(()=>{
   function ac(){
     const AC=window.AudioContext||window.webkitAudioContext;
     if(!AC)return null;
-    if(!ctx){ ctx=new AC(); bus=ctx.createGain(); bus.gain.value=0.85; bus.connect(ctx.destination); }
+    if(!ctx){ ctx=new AC(); bus=ctx.createGain(); bus.gain.value=0.85; bus.connect(ctx.destination); startRain(); }
     if(ctx.state==='suspended') ctx.resume().catch(()=>{});
     return ctx;
   }
@@ -1045,6 +1045,32 @@ const AudioFX=(()=>{
     g.gain.exponentialRampToValueAtTime(0.0008,t0+dur);
     o.connect(g); g.connect(bus); o.start(t0); o.stop(t0+dur+0.03);
   }
+  /* ---- 雨声底噪：粉噪 + 低通双层，持续环境音（跟随 M 静音） ---- */
+  let rainGain=null, rainLFO=null;
+  const RAIN_LEVEL=0.05;
+  function startRain(){
+    if(rainGain||!ctx)return;
+    rainGain=ctx.createGain(); rainGain.gain.value=0;
+    rainGain.connect(bus);
+    const layer=(freq,q,vol)=>{
+      const n=Math.max(256,(ctx.sampleRate*2)|0);
+      const buf=ctx.createBuffer(1,n,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      let last=0;
+      for(let i=0;i<n;i++){ const w=Math.random()*2-1; last=(last+0.02*w)/1.02; d[i]=last*3.5; } // 粉噪近似
+      const s=ctx.createBufferSource(); s.buffer=buf; s.loop=true;
+      const f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=freq; f.Q.value=q;
+      const g=ctx.createGain(); g.gain.value=vol;
+      s.connect(f); f.connect(g); g.connect(rainGain); s.start();
+    };
+    layer(1500,0.5,0.55);   // 沙沙雨
+    layer(320,0.8,0.55);    // 低频隆隆
+    rainLFO=ctx.createOscillator(); rainLFO.frequency.value=0.13;
+    const lg=ctx.createGain(); lg.gain.value=0.016;
+    rainLFO.connect(lg); lg.connect(rainGain.gain); rainLFO.start();
+    rainGain.gain.setTargetAtTime(muted?0:RAIN_LEVEL, ctx.currentTime, 1.5);
+  }
+  function setRain(v){ if(rainGain) rainGain.gain.setTargetAtTime(v, ctx.currentTime, 0.3); }
   return {
     foot(run){ nSteps++; thump(run?120:170,run?0.090:0.075,run?0.40:0.24,true);
                tone(run?150:210,run?70:95,0.07,run?0.14:0.10,'sine'); },
@@ -1053,9 +1079,10 @@ const AudioFX=(()=>{
     pickup(){ nPick++; tone(660,660,0.12,0.14,'sine');
               tone(880,880,0.14,0.15,'sine',0.08);
               tone(1320,1320,0.20,0.13,'sine',0.16); },
-    toggle(){ muted=!muted; if(!muted)ac(); return muted; },
+    toggle(){ muted=!muted; if(!muted)ac(); setRain(muted?0:RAIN_LEVEL); return muted; },
     get muted(){return muted;},
     get running(){return !!(ctx&&ctx.state==='running');},
+    get rainOn(){return !!rainGain;},
     get stats(){return{steps:nSteps,pick:nPick};}
   };
 })();
@@ -1172,7 +1199,7 @@ function update(dt){
   camPos.y=Math.max(camPos.y, terrainH(camPos.x,camPos.z)+0.32);
   camera.position.copy(camPos); camera.lookAt(tgt);
   const sp01=clamp(st.speed/3.4,0,1);
-  camera.fov=lerp(camera.fov, 55+sp01*5, 0.08); camera.updateProjectionMatrix();
+  camera.fov=lerp(camera.fov, 64+sp01*6, 0.08); camera.updateProjectionMatrix();
 
   /* ---- 输入 → 期望速度 ---- */
   let ix=0,iz=0;
