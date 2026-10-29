@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.1.9</title>
+<title>鲸步 WHALE WALK · v0.1.10</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -358,6 +358,11 @@ function buildCharacter(){
     buckle.scale.set(1,0.55,0.6); buckle.position.set(0,0.012,0.08); shoe.add(buckle);
     const flower=new THREE.Mesh(new THREE.SphereGeometry(0.014,8,6),toon('#E8C55A'));
     flower.scale.set(1.15,0.5,0.7); flower.position.set(0.03,0.03,0.09); shoe.add(flower);
+    /* 鞋面高光（亮面反光） */
+    const shine=new THREE.Mesh(new THREE.SphereGeometry(0.017,8,6),
+      new THREE.MeshToonMaterial({color:0xFFFFFF,gradientMap:TOON,transparent:true,opacity:0.5,
+        blending:THREE.AdditiveBlending,depthWrite:false}));
+    shine.scale.set(1,0.45,0.75); shine.position.set(0.012,0.02,0.02); shoe.add(shine);
     thigh.castShadow=calf.castShadow=body_.castShadow=true;
     outline(body_,1.08); outline(thigh,1.07);
     return {hip,knee,shoe};
@@ -370,6 +375,9 @@ function buildCharacter(){
   const skirtG=new THREE.Group(); hips.add(skirtG); T.skirtG=skirtG;
   const skirtOut=ruffleSkirt(0.165,0.290,0.170,26,C.navy,7,0.022);
   skirtOut.position.y=-0.105; skirtG.add(skirtOut); skirtOut.castShadow=true;
+  /* 裙下摆浅色内衬（层次 + 反光） */
+  const skirtIn=ruffleSkirt(0.150,0.272,0.155,26,'#3A57A8',7,0.020,THREE.DoubleSide);
+  skirtIn.position.y=-0.098; skirtG.add(skirtIn);
   const skirtTrim=ruffleSkirt(0.278,0.294,0.030,26,C.white,7,0.016,THREE.DoubleSide);
   skirtTrim.position.y=-0.185; skirtG.add(skirtTrim); skirtTrim.name='skirtTrim';
   outline(skirtOut,1.03);
@@ -403,6 +411,13 @@ function buildCharacter(){
     aprGeo.computeVertexNormals(); }
   const apron=new THREE.Mesh(aprGeo,apronMat);
   apron.position.y=-0.05; skirtG.add(apron); apron.castShadow=true; apron.name='apron';
+  /* 围裙蕾丝下缘（白色珠齿链） */
+  { const nL=15;
+    for(let i=0;i<nL;i++){ const a=-0.62+1.24*(i/(nL-1));
+      const b=new THREE.Mesh(new THREE.SphereGeometry(0.015,8,6),toon(C.white));
+      b.scale.set(1,0.8,1);
+      b.position.set(Math.sin(a)*0.312, -0.198, Math.cos(a)*0.312);
+      skirtG.add(b); } }
 
   /* ---- 手臂 ---- */
   const mkArm=(side)=>{
@@ -490,6 +505,15 @@ function buildCharacter(){
   const ahoge=tubeAlong([[0,0.462,0.025],[0.03,0.492,0.01],[-0.032,0.508,-0.002],[-0.01,0.522,-0.012]],0.015,0.004,20,6);
   const ahogeM=new THREE.Mesh(vcByRing(ahoge.geom,20,6,C.hairMid,C.hairMid,C.hairLight),toonVC());
   headG.add(ahogeM); T.ahoge=ahogeM;
+  /* ---- 发丝高光（头顶弧线微光，加法混合） ---- */
+  const mkHairGlint=(pts,rr)=>{
+    const tg=tubeAlong(pts,rr,rr*0.4,20,6);
+    const m=new THREE.Mesh(tg.geom,new THREE.MeshToonMaterial({color:C.hairLight,gradientMap:TOON,
+      transparent:true,opacity:0.5,blending:THREE.AdditiveBlending,depthWrite:false}));
+    headG.add(m); return m;
+  };
+  mkHairGlint([[-0.12,0.478,0.13],[-0.02,0.50,0.155],[0.09,0.482,0.135]],0.012);
+  mkHairGlint([[-0.20,0.418,0.05],[-0.10,0.458,0.085],[0.02,0.452,0.065]],0.009);
   /* 女仆头饰：白色发带弧 + 荷叶边凸起（横跨头顶前半圈） */
   const headband=new THREE.Group(); headG.add(headband);
   const hbY=0.245+0.30*Math.cos(Math.PI*0.17);
@@ -558,6 +582,13 @@ function buildCharacter(){
       m.scale.x=mirror?-1:1; m.position.set(0,0.185,-0.52);
       const mi=new THREE.Mesh(flukeGeo,flukeMatIn);
       mi.scale.set(0.70,0.62,0.5); mi.position.z=0.013; m.add(mi);
+      /* 尾鳍顶面高光 */
+      const shine=new THREE.Mesh(new THREE.PlaneGeometry(0.10,0.026),
+        new THREE.MeshBasicMaterial({color:0x9FD8FF,transparent:true,opacity:0.5,
+          blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+      shine.rotation.x=-Math.PI/2;
+      shine.position.set(mirror?-0.075:0.075,0.205,-0.50);
+      flukeG.add(shine);
       m.castShadow=true; flukeG.add(m);
     };
     mkHalf(false); mkHalf(true);
@@ -568,6 +599,11 @@ function buildCharacter(){
   const blob=new THREE.Mesh(new THREE.PlaneGeometry(0.9,0.9),
     new THREE.MeshBasicMaterial({map:blobTex,transparent:true,depthWrite:false}));
   blob.rotation.x=-Math.PI/2; blob.position.y=0.02; root.add(blob); T.blob=blob;
+
+  /* ---- 角色轮廓点光（冷蓝，跟随角色，雨夜凸显立体感） ---- */
+  const rimLight=new THREE.PointLight(0x8FC8FF, 6, 4.5, 2.0);
+  rimLight.position.set(0.5, 1.35, 0.6);
+  root.add(rimLight);
 
   /* ---- 雨滴微光：角色表面湿润反光粒子（跟随角色） ---- */
   const RN=42, rs=new Float32Array(RN*3);
