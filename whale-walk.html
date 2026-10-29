@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.1.8</title>
+<title>鲸步 WHALE WALK · v0.1.9</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -220,11 +220,18 @@ function tubeAlong(points, r0, r1, seg=48, rad=10){
 /* =====================================================================
  *  CanvasTexture 工厂：脸 / 围裙刺绣 / 脚下软阴影
  * ===================================================================== */
-function faceTexture(){
+function faceTexture(closed){
   const cv=document.createElement('canvas'); cv.width=cv.height=512;
   const g=cv.getContext('2d');
   const eye=(cx,cy,s)=>{ // 一只眼（对称绘制）
     g.save(); g.translate(cx,cy); g.scale(s,1);
+    if(closed){ // 闭眼：上眼睑下弯线 + 睫毛
+      g.strokeStyle='#12224F'; g.lineWidth=18; g.lineCap='round';
+      g.beginPath(); g.arc(0,4,82,Math.PI*0.15,Math.PI*0.85); g.stroke();
+      g.strokeStyle='rgba(18,34,79,.4)'; g.lineWidth=7;
+      g.beginPath(); g.arc(0,-4,82,Math.PI*0.2,Math.PI*0.8); g.stroke();
+      g.restore(); return;
+    }
     g.fillStyle='#FFFFFF'; g.beginPath(); g.ellipse(0,0,72,100,0,0,Math.PI*2); g.fill();
     g.fillStyle='#1A3E9C'; g.beginPath(); g.ellipse(0,8,56,86,0,0,Math.PI*2); g.fill();
     g.fillStyle='#2F66C8'; g.beginPath(); g.ellipse(0,-10,50,68,0,0,Math.PI*2); g.fill();
@@ -429,9 +436,11 @@ function buildCharacter(){
   /* 脸：球面局部贴图，phi 直接覆盖前方 +z（无旋转） */
   const faceGeo=new THREE.SphereGeometry(0.2615,28,22,
     Math.PI*0.24, Math.PI*0.52, Math.PI*0.30, Math.PI*0.36);
+  const faceOpenTex=faceTexture(false);
   const face=new THREE.Mesh(faceGeo,new THREE.MeshToonMaterial({
-    map:faceTexture(),gradientMap:TOON,transparent:true,side:THREE.FrontSide}));
+    map:faceOpenTex,gradientMap:TOON,transparent:true,side:THREE.FrontSide}));
   face.position.y=0.24; headG.add(face);
+  T.face=face; T.faceOpen=faceOpenTex; T.faceClosed=faceTexture(true);
 
   /* ---- 头发：刘海壳 + 后脑壳 + 两侧长卷发 + 脑后垂丝 ---- */
   const bangGeo=new THREE.SphereGeometry(0.278,32,10,
@@ -1302,8 +1311,8 @@ function setMode(m){
     btnPlay.style.display = m==='preview'?'block':'none';
     badge.textContent = m==='preview'?'预览模式':'散步模式';
     hint.innerHTML = m==='preview'
-      ? (isTouch?'拖动旋转 · 双指缩放':'拖动旋转 · 滚轮缩放')
-      : (isTouch?'左摇杆移动 · 右侧拖动转视角':'WASD / 方向键 移动 · Shift 奔跑 · 空格 跳跃 · P 返回预览 · M 音效');
+      ? (isTouch?'拖动旋转 · 双指缩放 · 小地图双指缩放/拖动':'拖动旋转 · 滚轮缩放 · 小地图滚轮缩放/拖动')
+      : (isTouch?'左摇杆移动 · 右侧拖动转视角 · 小地图双指缩放/拖动':'WASD / 方向键 移动 · Shift 奔跑 · 空格 跳跃 · P 返回预览 · M 音效 · 小地图滚轮缩放/拖动');
     fader.classList.remove('on');
   },360);
 }
@@ -1321,6 +1330,7 @@ const scoreEl=document.getElementById('scoreNum');
 let score=0; const TOTAL=orbs.length;
 const clock=new THREE.Clock();
 let elapsed=0;
+let blinkT=0, cheerT=0;   // 眨眼计时 / 欢呼计时
 const spherePos=new THREE.Vector3();
 
 /* 拾取光环粒子池 */
@@ -1425,6 +1435,15 @@ function update(dt){
   P.armL.elbow.rotation.x=-(0.25+swing*0.35)- st.airT*0.3;
   P.armR.elbow.rotation.x=-(0.25+swing*0.35)- st.airT*0.3;
   P.armL.elbow.rotation.z=0.26; P.armR.elbow.rotation.z=-0.26;
+  /* ---- 全收集欢呼：双手举起挥动 ---- */
+  if(cheerT>0){
+    cheerT=Math.max(0,cheerT-dt*0.36);
+    const ch=Math.min(1,cheerT), wave=Math.sin(t*9)*0.35;
+    P.armL.sh.rotation.z = 0.52+swing*0.06 + ch*(2.5+wave);
+    P.armR.sh.rotation.z = -0.52-swing*0.06 - ch*(2.5+wave);
+    P.armL.sh.rotation.x = -0.2*ch; P.armR.sh.rotation.x = -0.2*ch;
+    P.armL.elbow.rotation.z = 0.26+0.45*ch; P.armR.elbow.rotation.z = -0.26-0.45*ch;
+  }
   /* 全身 bob + 前倾 */
   P.body.position.y=Math.abs(Math.sin(ph))*0.03*swing + (st.grounded?0:0.02);
   P.body.rotation.x=swing*0.05+st.airT*0.06;
@@ -1434,6 +1453,12 @@ function update(dt){
   /* 呼吸 */
   const br=1+Math.sin(t*2.3)*0.008;
   P.torsoG.scale.set(1,br,1);
+
+  /* ---- 眨眼（收集触发 + 偶尔自然眨眼） ---- */
+  if(blinkT<=0 && Math.random()<dt*0.14) blinkT=1;
+  blinkT=Math.max(0,blinkT-dt*9);
+  const faceMap=(blinkT>0.45)?P.faceClosed:P.faceOpen;
+  if(P.face.material.map!==faceMap){ P.face.material.map=faceMap; P.face.material.needsUpdate=true; }
 
   /* ---- 尾巴 ---- */
   P.tailJ.rotation.y=Math.sin(t*2.4)*0.16*(1+swing*1.4)+Math.sin(ph)*0.06*swing;
@@ -1478,10 +1503,11 @@ function update(dt){
       if(Math.hypot(px-o.position.x,pz-o.position.z)<1.4){
         u.alive=false; o.visible=false; u.halo.material.opacity=0;
         score++; scoreEl.textContent=`${score} / ${TOTAL}`;
+        blinkT=1;   // 收集时眨一下眼
         burst(o.position);
         AudioFX.pickup();
         if(score===TOTAL){ toast('全部光点收集完成！鲸鱼尾为你摆动 🐳'); P.tailJ.rotation.y=0.5;
-          if(!celebrated){ celebrated=true; spawnCelebrate(); AudioFX.celebrate(); showCelebrateBanner(); } }
+          if(!celebrated){ celebrated=true; cheerT=1; spawnCelebrate(); AudioFX.celebrate(); showCelebrateBanner(); } }
         else if(score%6===0) toast(`已收集 ${score} 个光点`);
       }
     }
@@ -1543,15 +1569,18 @@ function update(dt){
  * ===================================================================== */
 const mmCv=document.getElementById('minimap'), mmCtx=mmCv.getContext('2d');
 const MM_C=mmCv.width/2, MM_R=95, mmS=mmCv.width/(MM_R*2)*0.92;
+let mmScale=1, mmPanX=0, mmPanZ=0;   // 小地图缩放 / 平移
 function drawMinimap(){
   const g=mmCtx, R=mmCv.width/2-4;
-  const W2S=(x,z)=>({x:MM_C+x*mmS, y:MM_C-z*mmS});   // +z 朝上
+  const W2S=(x,z)=>({x:MM_C+(x-(girl.position.x+mmPanX))*mmS*mmScale,
+                     y:MM_C-(z-(girl.position.z+mmPanZ))*mmS*mmScale});   // +z 朝上，支持缩放/平移
   g.clearRect(0,0,mmCv.width,mmCv.height);
   g.save(); g.beginPath(); g.arc(MM_C,MM_C,R,0,Math.PI*2); g.clip();
-  /* 街道走廊高亮 */
+  /* 街道走廊高亮（随缩放/平移） */
   const s0=W2S(0,-6), s1=W2S(0,95);
+  const scx=MM_C-(0-(girl.position.x+mmPanX))*mmS*mmScale, sw=76*mmS*mmScale;
   g.fillStyle='rgba(47,167,232,0.07)';
-  g.fillRect(MM_C-38*mmS, s1.y, 76*mmS, s0.y-s1.y);
+  g.fillRect(scx-sw/2, s1.y, sw, s0.y-s1.y);
   /* 楼群 */
   g.fillStyle='rgba(127,212,255,0.32)';
   for(const t of towerList){
@@ -1611,6 +1640,22 @@ function drawMinimap(){
 {
   const rr=document.getElementById('rainRange');
   rr.addEventListener('input',()=>AudioFX.setRainLevel(rr.value/100*0.15));
+}
+/* 小地图：滚轮缩放 / 拖动平移 / 双击复位 */
+{
+  const mmEl=document.getElementById('minimap');
+  mmEl.style.pointerEvents='auto'; mmEl.style.cursor='grab';
+  let drag=null;
+  mmEl.addEventListener('wheel',e=>{ e.preventDefault();
+    mmScale=Math.max(0.6,Math.min(2.4,mmScale*(e.deltaY>0?0.88:1.14))); },{passive:false});
+  mmEl.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY};
+    mmEl.style.cursor='grabbing'; try{mmEl.setPointerCapture(e.pointerId);}catch(_){} });
+  mmEl.addEventListener('pointermove',e=>{ if(!drag)return;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY;
+    mmPanX-=dx/(mmS*mmScale); mmPanZ+=dy/(mmS*mmScale); });
+  const endDrag=()=>{ drag=null; mmEl.style.cursor='grab'; };
+  mmEl.addEventListener('pointerup',endDrag); mmEl.addEventListener('pointercancel',endDrag);
+  mmEl.addEventListener('dblclick',()=>{ mmScale=1; mmPanX=0; mmPanZ=0; });
 }
 /* 全收集庆祝：3D 彩色粒子爆开 + 横幅 */
 let celebrateFx=null, celebrated=false;
