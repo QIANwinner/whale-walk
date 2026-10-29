@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.1.5</title>
+<title>鲸步 WHALE WALK · v0.1.6</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -15,9 +15,14 @@
   #hudTitle .t1{font-size:20px;font-weight:800;letter-spacing:2px;color:#fff;}
   #hudTitle .t1 b{color:#7FD4FF;}
   #hudTitle .t2{font-size:11px;opacity:.85;margin-top:2px;letter-spacing:1px;}
-  #hudScore{top:14px;right:18px;text-align:right;}
+  #hudScore{top:188px;right:18px;text-align:right;}
   #hudScore .n{font-size:20px;font-weight:800;color:#7FD4FF;}
   #hudScore .l{font-size:11px;opacity:.85;}
+  /* ---------- 小地图 ---------- */
+  #minimap{position:fixed;top:14px;right:14px;width:160px;height:160px;z-index:11;
+    border:1px solid rgba(127,212,255,.5);border-radius:14px;
+    background:rgba(10,16,34,.55);backdrop-filter:blur(3px);pointer-events:none;
+    box-shadow:0 0 18px rgba(47,167,232,.28);}
   #hudHint{bottom:16px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.9;
     background:rgba(14,20,48,.45);padding:8px 16px;border-radius:999px;backdrop-filter:blur(4px);white-space:nowrap;}
   #hudQian{bottom:14px;right:18px;font-size:12px;font-weight:700;letter-spacing:3px;color:#BFE4FF;}
@@ -66,6 +71,7 @@
 </div>
 <div class="hud" id="hudMode"><span class="badge" id="modeBadge">预览模式</span></div>
 <div class="hud" id="hudScore"><div class="n" id="scoreNum">0 / 24</div><div class="l">光点收集</div></div>
+<canvas id="minimap" width="320" height="320"></canvas>
 <div class="hud" id="hudHint">拖动旋转 · 滚轮缩放</div>
 <div class="hud" id="hudQian">QIAN</div>
 <div id="toast"></div>
@@ -916,8 +922,48 @@ streetLamp(-8,24); streetLamp(8,36); streetLamp(-8,52); streetLamp(8,66);
 /* 广场霓虹光柱（沿街） */
 for(let i=0;i<6;i++){ const p=place(6,70);
   makePylon(p.x,p.z,[0x35E0FF,0xFF4FD8,0xFFB04A][i%3]); pylonPts.push(p); }
+/* ---- 精致化：底层店招光带 + 楼身竖条霓虹 ---- */
+for(const side of[-1,1]){
+  for(let i=0;i<7;i++){
+    const z=12+i*11, col=[0xFFB04A,0x35E0FF,0xFF4FD8][i%3];
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(4,0.5),
+      new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.7,
+        blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+    m.rotation.y=side>0?-Math.PI/2:Math.PI/2;
+    m.position.set(side*10.6, terrainH(side*10.6,z)+2.0, z);
+    scene.add(m);
+    billPts.push({x:side*10.6,z,w:4,color:col});
+  }
+}
+[[Lface,34,8,0xFF6FD8],[Rface,48,9,0x35E0FF],[Lface,62,7,0x66E8FF]].forEach(([fx,z,h,c])=>{
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(0.35,h),
+    new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0.6,
+      blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+  m.rotation.y=fx<0?Math.PI/2:-Math.PI/2;
+  m.position.set(fx, terrainH(fx,z)+7+h/2, z);
+  scene.add(m);
+});
 /* 水滩反光构建（光源拖尾 + 水洼） */
 buildWetReflections();
+/* 车流光带（沿街移动的霓虹拖尾） */
+const cars=[];
+{
+  const cols=[0xFF4FD8,0x35E0FF,0xFFB04A];
+  for(let i=0;i<3;i++){
+    const lane=(i%2?1:-1)*(2.6+i*0.9);
+    const grp=new THREE.Group();
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,6),
+      new THREE.MeshBasicMaterial({color:cols[i]}));
+    grp.add(head);
+    const trail=new THREE.Mesh(new THREE.PlaneGeometry(0.45,5),
+      new THREE.MeshBasicMaterial({map:reflTex,color:cols[i],transparent:true,opacity:0.5,
+        blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+    trail.rotation.x=-Math.PI/2; trail.position.z=-2.6; grp.add(trail);
+    grp.position.set(lane, terrainH(lane,0)+0.25, -8-i*28);
+    grp.userData={speed:13+i*5, dir:(i%2?1:-1), lane, trail};
+    scene.add(grp); cars.push(grp);
+  }
+}
 /* ---- 雨丝（相机跟随线段流） ---- */
 const RAIN_N=520;
 const rainGeo=new THREE.BufferGeometry();
@@ -1342,6 +1388,56 @@ function update(dt){
     rp.material.opacity=u.baseOp*(0.72+0.28*Math.sin(t*1.7+u.ph));
     if(u.kind==='pud') rp.scale.x=1+0.06*Math.sin(t*2.1+u.ph);
   }
+  /* 车流光带（沿街行驶） */
+  for(const c of cars){
+    const u=c.userData;
+    c.position.z+=u.speed*u.dir*dt;
+    if(u.dir>0&&c.position.z>85) c.position.z=-8;
+    if(u.dir<0&&c.position.z<-12) c.position.z=85;
+    c.position.y=terrainH(c.position.x,c.position.z)+0.25;
+    u.trail.material.opacity=0.35+0.2*Math.sin(t*8+u.lane);
+  }
+}
+
+/* =====================================================================
+ *  小地图：角色位置 / 光点 / 楼群 实时显示
+ * ===================================================================== */
+const mmCv=document.getElementById('minimap'), mmCtx=mmCv.getContext('2d');
+const MM_C=mmCv.width/2, MM_R=95, mmS=mmCv.width/(MM_R*2)*0.92;
+function drawMinimap(){
+  const g=mmCtx, R=mmCv.width/2-4;
+  const W2S=(x,z)=>({x:MM_C+x*mmS, y:MM_C-z*mmS});   // +z 朝上
+  g.clearRect(0,0,mmCv.width,mmCv.height);
+  g.save(); g.beginPath(); g.arc(MM_C,MM_C,R,0,Math.PI*2); g.clip();
+  /* 街道走廊高亮 */
+  const s0=W2S(0,-6), s1=W2S(0,95);
+  g.fillStyle='rgba(47,167,232,0.07)';
+  g.fillRect(MM_C-38*mmS, s1.y, 76*mmS, s0.y-s1.y);
+  /* 楼群 */
+  g.fillStyle='rgba(127,212,255,0.32)';
+  for(const t of towerList){
+    const p=W2S(t.x,t.z), w=Math.max(3,t.w*mmS), h=Math.max(3,t.d*mmS);
+    g.fillRect(p.x-w/2,p.y-h/2,w,h);
+  }
+  /* 光点（存活） */
+  g.fillStyle='#7FE4FF';
+  for(const o of orbGroup.children){
+    if(!o.userData.alive) continue;
+    const p=W2S(o.position.x,o.position.z);
+    g.beginPath(); g.arc(p.x,p.y,3.2,0,Math.PI*2); g.fill();
+  }
+  /* 角色箭头（按朝向） */
+  const st=girl.userData.state, pp=W2S(girl.position.x,girl.position.z);
+  g.save(); g.translate(pp.x,pp.y); g.rotate(st.yaw);
+  g.fillStyle='#fff'; g.strokeStyle='#002FA7'; g.lineWidth=2;
+  g.beginPath(); g.moveTo(0,-10); g.lineTo(6.5,8); g.lineTo(0,3.5); g.lineTo(-6.5,8); g.closePath();
+  g.fill(); g.stroke(); g.restore();
+  g.restore();
+  /* 外圈 + N */
+  g.beginPath(); g.arc(MM_C,MM_C,R,0,Math.PI*2);
+  g.strokeStyle='rgba(127,212,255,0.5)'; g.lineWidth=2; g.stroke();
+  g.fillStyle='rgba(191,228,255,0.85)'; g.font='700 18px sans-serif'; g.textAlign='center';
+  g.fillText('N', MM_C, 24);
 }
 
 /* =====================================================================
@@ -1354,14 +1450,14 @@ setMode('preview');
 
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(clock.getDelta(),0.05);
-  update(dt); renderer.render(scene,camera);
+  update(dt); renderer.render(scene,camera); drawMinimap();
 });
 /* 移除 loader（首帧渲染后） */
 requestAnimationFrame(()=>requestAnimationFrame(()=>{
   document.getElementById('loader').classList.add('off');
 }));
 /* ---- 自查调试钩子（不参与游戏逻辑） ---- */
-window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, audio:AudioFX};
+window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, audio:AudioFX, mm:drawMinimap};
 window.__T = THREE;
 window.__dbg.shots = {};
 window.__dbg.stop = ()=>renderer.setAnimationLoop(null);
