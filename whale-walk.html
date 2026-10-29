@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.1.6</title>
+<title>鲸步 WHALE WALK · v0.1.7</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -535,6 +535,21 @@ function buildCharacter(){
     new THREE.MeshBasicMaterial({map:blobTex,transparent:true,depthWrite:false}));
   blob.rotation.x=-Math.PI/2; blob.position.y=0.02; root.add(blob); T.blob=blob;
 
+  /* ---- 雨滴微光：角色表面湿润反光粒子（跟随角色） ---- */
+  const RN=42, rs=new Float32Array(RN*3);
+  for(let i=0;i<RN;i++){
+    rs[i*3]  =(Math.random()*2-1)*0.34;
+    rs[i*3+1]=0.05+Math.random()*0.86;
+    rs[i*3+2]=(Math.random()*2-1)*0.34;
+  }
+  const rgeo=new THREE.BufferGeometry();
+  rgeo.setAttribute('position',new THREE.BufferAttribute(rs,3));
+  const rmat=new THREE.PointsMaterial({color:0xBFE8FF,size:0.035,transparent:true,opacity:0.75,
+    blending:THREE.AdditiveBlending,depthWrite:false});
+  const rainSparks=new THREE.Points(rgeo,rmat);
+  rainSparks.frustumCulled=false; root.add(rainSparks);
+  T.rainSparks=rainSparks; T.rainSparksData={arr:rs,n:RN,geo:rgeo};
+
   return root;
 }
 const girl=buildCharacter();
@@ -964,6 +979,61 @@ const cars=[];
     scene.add(grp); cars.push(grp);
   }
 }
+/* ---- 精致化：楼面窗户灯（暖/冷随机点亮，湿地映光） ---- */
+{
+  const cols=[0xFFC86A,0x7FD4FF,0xFF8AC8,0x9FE8C8];
+  const geo=new THREE.PlaneGeometry(0.5,0.62);
+  const items=[];
+  for(const t of towerList){
+    if(Math.abs(t.x)<12) continue;   // 街心无楼
+    if(Math.abs(t.x)>42) continue;   // 太远略过
+    const faceX=t.x>0 ? t.x-t.w/2-0.02 : t.x+t.w/2+0.02;
+    const ry=t.x>0 ? -Math.PI/2 : Math.PI/2;
+    const colsN=Math.max(2,Math.floor(t.w/2.4)), rows=Math.max(3,Math.floor(t.h/3.4));
+    for(let r=0;r<rows;r++) for(let c=0;c<colsN;c++){
+      if(Math.random()<0.42) continue;
+      const y=terrainH(t.x,t.z)+2.4+r*3.2;
+      const zoff=(c-(colsN-1)/2)*2.2;
+      items.push({x:faceX,y,z:t.z+zoff,ry,c:cols[(Math.random()*cols.length)|0]});
+    }
+  }
+  if(items.length){
+    const inst=new THREE.InstancedMesh(geo,
+      new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.85,
+        blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),items.length);
+    const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),S=new THREE.Vector3(1,1,1),Pv=new THREE.Vector3(),E=new THREE.Euler();
+    items.forEach((it,i)=>{ E.set(0,it.ry,0); Q.setFromEuler(E); Pv.set(it.x,it.y,it.z);
+      M.compose(Pv,Q,S); inst.setMatrixAt(i,M); inst.setColorAt(i,new THREE.Color(it.c)); });
+    inst.instanceMatrix.needsUpdate=true;
+    scene.add(inst);
+  }
+}
+/* 街道分道虚线（湿地反光） */
+{
+  const dashM=new THREE.MeshBasicMaterial({color:0x8FD8FF,transparent:true,opacity:0.32,
+    blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  const dash=new THREE.InstancedMesh(new THREE.PlaneGeometry(0.16,1.7),dashM,40);
+  const M=new THREE.Matrix4(),Q=new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI/2,0,0)),S=new THREE.Vector3(1,1,1);
+  let i=0;
+  for(const lx of[-2.2,2.2]) for(let k=0;k<20;k++){
+    const z=6+k*4.1;
+    M.compose(new THREE.Vector3(lx,terrainH(lx,z)+0.06,z),Q,S); dash.setMatrixAt(i++,M);
+  }
+  dash.count=i; dash.instanceMatrix.needsUpdate=true; scene.add(dash);
+}
+/* 雨雾漂移光点（被霓虹照亮的漂浮雨雾） */
+const mistN=110, mistArr=new Float32Array(mistN*3), mistVel=new Float32Array(mistN);
+for(let i=0;i<mistN;i++){
+  mistArr[i*3]  =(Math.random()*2-1)*11;
+  mistArr[i*3+1]=0.2+Math.random()*6.5;
+  mistArr[i*3+2]=-4+Math.random()*92;
+  mistVel[i]=0.15+Math.random()*0.35;
+}
+const mistGeo=new THREE.BufferGeometry();
+mistGeo.setAttribute('position',new THREE.BufferAttribute(mistArr,3));
+const mistPts=new THREE.Points(mistGeo,new THREE.PointsMaterial({color:0x9FE0FF,size:0.14,
+  transparent:true,opacity:0.30,blending:THREE.AdditiveBlending,depthWrite:false}));
+mistPts.frustumCulled=false; scene.add(mistPts);
 /* ---- 雨丝（相机跟随线段流） ---- */
 const RAIN_N=520;
 const rainGeo=new THREE.BufferGeometry();
@@ -1351,6 +1421,16 @@ function update(dt){
   P.blob.material.opacity=clamp(1-st.y*1.3,0.25,1);
   P.blob.scale.setScalar(1+st.y*0.5);
 
+  /* ---- 角色雨滴微光粒子（缓慢滑落 + 微闪） ---- */
+  const rsD=P.rainSparksData, rsA=rsD.arr;
+  for(let i=0;i<rsD.n;i++){
+    rsA[i*3+1]-=dt*0.34;
+    if(rsA[i*3+1]<0.04) rsA[i*3+1]=0.88;
+  }
+  rsD.geo.attributes.position.needsUpdate=true;
+  P.rainSparks.material.opacity=0.5+0.28*Math.sin(t*3.2);
+  P.rainSparks.material.size=0.03+0.009*Math.sin(t*4.1);
+
   /* ---- 光点 ---- */
   let alive=0;
   for(const o of orbGroup.children){
@@ -1399,6 +1479,14 @@ function update(dt){
     c.position.y=terrainH(c.position.x,c.position.z)+0.25;
     u.trail.material.opacity=0.35+0.2*Math.sin(t*8+u.lane);
   }
+  /* 雨雾漂移光点（缓慢 +z 漂 + 上下浮动） */
+  const mp=mistGeo.attributes.position.array;
+  for(let i=0;i<mistN;i++){
+    mp[i*3+2]+=mistVel[i]*dt;
+    if(mp[i*3+2]>92) mp[i*3+2]=-4;
+    mp[i*3+1]+=Math.sin(t*0.8+i)*0.0012;
+  }
+  mistGeo.attributes.position.needsUpdate=true;
 }
 
 /* =====================================================================
@@ -1421,12 +1509,37 @@ function drawMinimap(){
     const p=W2S(t.x,t.z), w=Math.max(3,t.w*mmS), h=Math.max(3,t.d*mmS);
     g.fillRect(p.x-w/2,p.y-h/2,w,h);
   }
-  /* 光点（存活） */
+  /* 光点（存活）+ 最近光点导航 */
   g.fillStyle='#7FE4FF';
+  let nearest=null, nd=1e9;
+  const gx=girl.position.x, gz=girl.position.z;
   for(const o of orbGroup.children){
     if(!o.userData.alive) continue;
     const p=W2S(o.position.x,o.position.z);
     g.beginPath(); g.arc(p.x,p.y,3.2,0,Math.PI*2); g.fill();
+    const d=(o.position.x-gx)**2+(o.position.z-gz)**2;
+    if(d<nd){nd=d; nearest=o;}
+  }
+  /* 最近光点导航：金色脉冲环 + 虚线引导 + 指向箭头 */
+  if(nearest){
+    const p=W2S(nearest.position.x,nearest.position.z);
+    const pulse=(Math.sin(elapsed*5)+1)/2;
+    g.strokeStyle='rgba(255,210,90,0.9)'; g.lineWidth=2.5;
+    g.beginPath(); g.arc(p.x,p.y,6+pulse*5,0,Math.PI*2); g.stroke();
+    g.strokeStyle='rgba(255,210,90,0.30)'; g.lineWidth=1.5;
+    g.beginPath(); g.arc(p.x,p.y,12+pulse*4,0,Math.PI*2); g.stroke();
+    const pp=W2S(gx,gz), dx=p.x-pp.x, dy=p.y-pp.y;
+    const ang=Math.atan2(dy,dx), len=Math.hypot(dx,dy);
+    if(len>26){
+      const sx=pp.x+Math.cos(ang)*26, sy=pp.y+Math.sin(ang)*26;
+      g.strokeStyle='rgba(255,210,90,0.5)'; g.lineWidth=2;
+      g.setLineDash([6,5]);
+      g.beginPath(); g.moveTo(sx,sy); g.lineTo(p.x-Math.cos(ang)*10,p.y-Math.sin(ang)*10); g.stroke();
+      g.setLineDash([]);
+      g.fillStyle='rgba(255,210,90,0.95)';
+      g.save(); g.translate(p.x-Math.cos(ang)*10,p.y-Math.sin(ang)*10); g.rotate(ang);
+      g.beginPath(); g.moveTo(7,0); g.lineTo(-3,5); g.lineTo(-3,-5); g.closePath(); g.fill(); g.restore();
+    }
   }
   /* 角色箭头（按朝向） */
   const st=girl.userData.state, pp=W2S(girl.position.x,girl.position.z);
