@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.3.0</title>
+<title>鲸步 WHALE WALK · v0.3.1</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -99,6 +99,15 @@
     background:rgba(255,255,255,.85);transform:translate(-50%,-50%);box-shadow:0 2px 10px rgba(0,0,0,.35);}
   body.touch #joy{display:block;}
   body.touch #hudHint{font-size:11px;}
+  /* ---------- 移动端跳跃按钮（微信直开必需） ---------- */
+  #btnJump{position:fixed;right:26px;bottom:92px;width:78px;height:78px;border-radius:50%;z-index:14;
+    display:none;align-items:center;justify-content:center;cursor:pointer;border:none;
+    background:linear-gradient(145deg,#35E0FF,#1E5FD8);color:#fff;font-size:24px;font-weight:900;
+    box-shadow:0 6px 22px rgba(53,224,255,.5),inset 0 1px 0 rgba(255,255,255,.35);
+    -webkit-tap-highlight-color:transparent;user-select:none;font-family:inherit;
+    transition:transform .08s;}
+  #btnJump:active{transform:scale(.9);}
+  body.touch.playing #btnJump{display:flex;}
   /* ---------- 载入 ---------- */
   #loader{position:fixed;inset:0;z-index:40;background:#0E1430;display:flex;align-items:center;justify-content:center;
     flex-direction:column;gap:14px;color:#BFE4FF;transition:opacity .5s;}
@@ -203,6 +212,7 @@
 </div>
 <button id="btnPlay">开始散步</button>
 <div id="joy"><div id="joyKnob"></div></div>
+<button id="btnJump" aria-label="跳跃">⤒</button>
 
 <script type="module">
 import * as THREE from 'three';
@@ -228,7 +238,7 @@ function lerpAngle(a,b,t){ let d=(b-a)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; i
 /* =====================================================================
  *  渲染器 / 场景 / 相机
  * ===================================================================== */
-const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance', preserveDrawingBuffer:true});
+const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
 renderer.shadowMap.enabled = true;
@@ -1587,7 +1597,9 @@ const AudioFX=(()=>{
     get muted(){return muted;},
     get running(){return !!(ctx&&ctx.state==='running');},
     get rainOn(){return !!rainGain;},
-    get stats(){return{steps:nSteps,pick:nPick};}
+    get stats(){return{steps:nSteps,pick:nPick};},
+    suspend(){ if(ctx&&ctx.state==='running') ctx.suspend().catch(()=>{}); },
+    resume(){ if(ctx&&ctx.state==='suspended') ctx.resume().catch(()=>{}); }
   };
 })();
 
@@ -1616,6 +1628,16 @@ joyEl.addEventListener('touchmove',e=>{ for(const t of e.changedTouches) if(t.id
   e.preventDefault(); },{passive:false});
 joyEl.addEventListener('touchend',e=>{ joyState.active=false; joyState.x=joyState.y=0;
   knob.style.transform='translate(-50%,-50%)'; });
+
+/* v0.3.1 移动端跳跃：提取 doJump 供键盘/触摸按钮共用 */
+function doJump(){ const st=girl.userData.state;
+  if(mode==='play'&&st.grounded){ st.vy=4.9; st.grounded=false; AudioFX.jump(); } }
+const btnJump=document.getElementById('btnJump');
+btnJump.addEventListener('touchstart',e=>{ doJump(); e.preventDefault(); },{passive:false});
+/* v0.3.1 标签页隐藏时暂停音频，节省电量 */
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) AudioFX.suspend(); else AudioFX.resume();
+});
 
 /* 相机轨道输入（拖拽 / 滚轮 / 双指） */
 const camS={yaw:Math.PI, pitch:0.30, dist:3.0, tYaw:Math.PI, tPitch:0.30, tDist:3.0};
@@ -1653,6 +1675,7 @@ function setMode(m){
     else { camS.tYaw=Math.PI*0.85; camS.tPitch=0.14; camS.tDist=2.2;
       challenge.active=false; stopChallengeUI(); }
     btnPlay.style.display = m==='preview'?'block':'none';
+    document.body.classList.toggle('playing', m==='play');
     badge.textContent = m==='preview'?'预览模式':'挑战模式';
     hint.innerHTML = m==='preview'
       ? (isTouch?'拖动旋转 · 双指缩放 · 小地图双指缩放/拖动':'拖动旋转 · 滚轮缩放 · 小地图滚轮缩放/拖动')
@@ -1886,6 +1909,10 @@ function update(dt){
   camera.position.copy(camPos); camera.lookAt(tgt);
   const sp01=clamp(st.speed/3.4,0,1);
   camera.fov=lerp(camera.fov, 64+sp01*6, 0.08); camera.updateProjectionMatrix();
+  /* v0.3.1 阴影相机跟随玩家：保证远离出生点后阴影不裁剪丢失 */
+  sun.position.set(girl.position.x+24, girl.position.y+40, girl.position.z+18);
+  sun.target.position.set(girl.position.x, girl.position.y, girl.position.z);
+  sun.target.updateMatrixWorld();
 
   /* ---- 输入 → 期望速度 ---- */
   let ix=0,iz=0;
@@ -1929,7 +1956,7 @@ function update(dt){
   /* ---- 跳跃 + 平台碰撞 ---- */
   const gy=terrainH(px,pz);
   const supY=supportAt(px,pz,girl.position.y);   // 当前可支撑面绝对高度
-  if((keys.Space)&&st.grounded&&mode==='play'){ st.vy=4.9; st.grounded=false; AudioFX.jump(); }
+  if(keys.Space) doJump();
   if(!st.grounded){
     /* 重设相对支撑面的偏移，避免支撑面切换(如越过平台)时 absY 跳变 */
     st.y = girl.position.y - supY;
