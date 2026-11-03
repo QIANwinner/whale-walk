@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.3.1</title>
+<title>鲸步 WHALE WALK · v0.3.2</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -108,6 +108,14 @@
     transition:transform .08s;}
   #btnJump:active{transform:scale(.9);}
   body.touch.playing #btnJump{display:flex;}
+  /* ---------- 移动端暂停/退出按钮（等同键盘 P） ---------- */
+  #btnPause{position:fixed;top:14px;right:18px;width:44px;height:44px;border-radius:12px;z-index:14;
+    display:none;align-items:center;justify-content:center;cursor:pointer;
+    border:1px solid rgba(127,212,255,.35);background:rgba(10,16,38,.55);color:#BFE4FF;font-size:20px;
+    backdrop-filter:blur(4px);-webkit-tap-highlight-color:transparent;user-select:none;font-family:inherit;
+    transition:transform .08s;}
+  #btnPause:active{transform:scale(.92);}
+  body.touch.playing #btnPause{display:flex;}
   /* ---------- 载入 ---------- */
   #loader{position:fixed;inset:0;z-index:40;background:#0E1430;display:flex;align-items:center;justify-content:center;
     flex-direction:column;gap:14px;color:#BFE4FF;transition:opacity .5s;}
@@ -213,6 +221,7 @@
 <button id="btnPlay">开始散步</button>
 <div id="joy"><div id="joyKnob"></div></div>
 <button id="btnJump" aria-label="跳跃">⤒</button>
+<button id="btnPause" aria-label="暂停/退出">⏸</button>
 
 <script type="module">
 import * as THREE from 'three';
@@ -238,11 +247,13 @@ function lerpAngle(a,b,t){ let d=(b-a)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; i
 /* =====================================================================
  *  渲染器 / 场景 / 相机
  * ===================================================================== */
-const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+/* v0.3.2 移动端性能档：触屏设备降质保帧率（关闭抗锯齿 + 简化阴影 + 降低像素比） */
+const IS_TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints>0;
+const renderer = new THREE.WebGLRenderer({antialias:!IS_TOUCH, powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio, IS_TOUCH?1.5:2));
 renderer.setSize(innerWidth,innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = IS_TOUCH ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 document.getElementById('app').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -251,13 +262,14 @@ scene.fog = new THREE.FogExp2(0x0A1122, 0.012);
 
 const camera = new THREE.PerspectiveCamera(64, innerWidth/innerHeight, 0.1, 400);
 addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(devicePixelRatio, IS_TOUCH?1.5:2));
   renderer.setSize(innerWidth,innerHeight); });
 
 /* 光照：冷调月光（阴影）+ 霓虹点光（青/品红/琥珀 局部辉光） */
 const sun = new THREE.DirectionalLight(0x9FB8FF, 0.5);
 sun.position.set(24, 40, 18);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048,2048);
+sun.shadow.mapSize.set(IS_TOUCH?1024:2048, IS_TOUCH?1024:2048);
 sun.shadow.camera.left=-40; sun.shadow.camera.right=40;
 sun.shadow.camera.top=40; sun.shadow.camera.bottom=-40;
 sun.shadow.camera.far=90; sun.shadow.bias=-0.0006;
@@ -1634,9 +1646,13 @@ function doJump(){ const st=girl.userData.state;
   if(mode==='play'&&st.grounded){ st.vy=4.9; st.grounded=false; AudioFX.jump(); } }
 const btnJump=document.getElementById('btnJump');
 btnJump.addEventListener('touchstart',e=>{ doJump(); e.preventDefault(); },{passive:false});
-/* v0.3.1 标签页隐藏时暂停音频，节省电量 */
+/* v0.3.2 移动端暂停/退出：触屏点按回预览（等同键盘 P） */
+const btnPause=document.getElementById('btnPause');
+btnPause.addEventListener('touchstart',e=>{ setMode('preview'); e.preventDefault(); },{passive:false});
+/* v0.3.1 标签页隐藏时暂停音频 + v0.3.2 暂停渲染循环，节省电量 */
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden) AudioFX.suspend(); else AudioFX.resume();
+  if(document.hidden){ AudioFX.suspend(); renderer.setAnimationLoop(null); }
+  else { AudioFX.resume(); clock.getDelta(); renderer.setAnimationLoop(renderLoop); }
 });
 
 /* 相机轨道输入（拖拽 / 滚轮 / 双指） */
@@ -1908,7 +1924,9 @@ function update(dt){
   camPos.y=Math.max(camPos.y, terrainH(camPos.x,camPos.z)+0.32);
   camera.position.copy(camPos); camera.lookAt(tgt);
   const sp01=clamp(st.speed/3.4,0,1);
-  camera.fov=lerp(camera.fov, 64+sp01*6, 0.08); camera.updateProjectionMatrix();
+  /* v0.3.2 FOV 阈值更新：仅在变化明显时重算投影矩阵，避免每帧开销 */
+  const tgtFov=64+sp01*6;
+  if(Math.abs(camera.fov-tgtFov)>0.01){ camera.fov=lerp(camera.fov,tgtFov,0.08); camera.updateProjectionMatrix(); }
   /* v0.3.1 阴影相机跟随玩家：保证远离出生点后阴影不裁剪丢失 */
   sun.position.set(girl.position.x+24, girl.position.y+40, girl.position.z+18);
   sun.target.position.set(girl.position.x, girl.position.y, girl.position.z);
@@ -2214,7 +2232,7 @@ function update(dt){
     challenge.timeLeft-=dt;
     if(challenge.timeLeft<=0){ challenge.timeLeft=0; finishChallenge(false); }
     const tl=Math.ceil(challenge.timeLeft);
-    timerNum.textContent=tl;
+    if(tl!==timerNum._last){ timerNum.textContent=tl; timerNum._last=tl; }
     timerEl.classList.toggle('danger', tl<=15);
     /* combo 显示 */
     if(challenge.combo>=2 && elapsed-challenge.lastPick<COMBO_WINDOW){
@@ -2383,10 +2401,14 @@ girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0}
 scoreEl.textContent=`0 / ${TOTAL}`;
 setMode('preview');
 
-renderer.setAnimationLoop(()=>{
+/* v0.3.2 小地图降频：每 3 帧重绘一次（约 20Hz），砍掉每帧 2D 画布开销 */
+let mmFrame=0;
+function renderLoop(){
   const dt=Math.min(clock.getDelta(),0.05);
-  update(dt); renderer.render(scene,camera); drawMinimap();
-});
+  update(dt); renderer.render(scene,camera);
+  if(++mmFrame%3===0) drawMinimap();
+}
+renderer.setAnimationLoop(renderLoop);
 /* 移除 loader（首帧渲染后） */
 requestAnimationFrame(()=>requestAnimationFrame(()=>{
   document.getElementById('loader').classList.add('off');
@@ -2400,8 +2422,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
 window.__T = THREE;
 window.__dbg.shots = {};
 window.__dbg.stop = ()=>renderer.setAnimationLoop(null);
-window.__dbg.start = ()=>{ clock.getDelta(); renderer.setAnimationLoop(()=>{
-  const dt=Math.min(clock.getDelta(),0.05); update(dt); renderer.render(scene,camera); }); };
+window.__dbg.start = ()=>{ clock.getDelta(); renderer.setAnimationLoop(renderLoop); };
 window.__save = (name, angle, fn)=>{
   window.__dbg.stop();
   if(typeof fn==='function') fn();
