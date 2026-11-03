@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.15</title>
+<title>鲸步 WHALE WALK · v0.3.16</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -19,6 +19,9 @@
   #hudScore{top:188px;right:18px;text-align:right;}
   #hudScore .n{font-size:20px;font-weight:800;color:#7FD4FF;}
   #hudScore .l{font-size:11px;opacity:.85;}
+  /* v0.3.16 收集弹跳 */
+  #scoreNum.pop{animation:scorePop .28s cubic-bezier(.2,1.6,.4,1);}
+  @keyframes scorePop{50%{transform:scale(1.35);color:#FFD25A;}}
   /* ---------- 小地图 ---------- */
   #minimap{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));width:160px;height:160px;z-index:11;
     border:1px solid rgba(127,212,255,.5);border-radius:14px;
@@ -2147,6 +2150,7 @@ function hitCar(){
   if(challenge.invuln>0) return;
   if(powerState.shield){ consumeShield(); return; }
   challenge.invuln=INVULN; challenge.flashT=0.4;
+  shakeT=0.35; hitStop=0.12;   // v0.3.16 打击感：相机震动 + 受击慢动作
   challenge.timeLeft=Math.max(0,challenge.timeLeft-HIT_PENALTY);
   redEl.classList.add('on');
   girl.userData.state.speed*=0.4;
@@ -2158,6 +2162,7 @@ function hitDrone(d){
   if(challenge.invuln>0) return;
   if(powerState.shield){ consumeShield(); return; }
   challenge.invuln=INVULN; challenge.flashT=0.4;
+  shakeT=0.35; hitStop=0.12;   // v0.3.16 打击感
   challenge.timeLeft=Math.max(0,challenge.timeLeft-DRONE_PENALTY);
   redEl.classList.add('on');
   /* 击退：把角色推离无人机 */
@@ -2265,7 +2270,10 @@ function burst(pos){
 
 /* v0.3.3 相机临时向量：复用避免每帧 new Vector3（GC 压力） */
 const _vTgt=new THREE.Vector3(), _vCam=new THREE.Vector3();
+/* v0.3.16 打击感：相机震动 + 受击慢动作 */
+let shakeT=0, hitStop=0;
 function update(dt){
+  if(hitStop>0){ hitStop-=dt; dt*=0.25; }   // 受击瞬间时间放慢到 1/4
   elapsed+=dt;
   const st=girl.userData.state;
   const t=elapsed;
@@ -2280,7 +2288,13 @@ function update(dt){
   const ch=Math.cos(camS.pitch)*camS.dist, vv=Math.sin(camS.pitch)*camS.dist;
   _vCam.set(_vTgt.x+Math.sin(camS.yaw)*ch, _vTgt.y+vv, _vTgt.z+Math.cos(camS.yaw)*ch);
   _vCam.y=Math.max(_vCam.y, terrainH(_vCam.x,_vCam.z)+0.32);
-  camera.position.copy(_vCam); camera.lookAt(_vTgt);
+  camera.position.copy(_vCam);
+  /* v0.3.16 相机震动（受击 0.35s 内随机偏移） */
+  if(shakeT>0){ shakeT-=dt;
+    camera.position.x+=(Math.random()-0.5)*0.14;
+    camera.position.y+=(Math.random()-0.5)*0.10;
+    camera.position.z+=(Math.random()-0.5)*0.14; }
+  camera.lookAt(_vTgt);
   const sp01=clamp(st.speed/3.4,0,1);
   /* v0.3.2 FOV 阈值更新：仅在变化明显时重算投影矩阵，避免每帧开销 */
   const tgtFov=64+sp01*6;
@@ -2476,6 +2490,7 @@ function update(dt){
       if(dd<1.4 && Math.abs(girl.position.y+0.9-o.position.y)<1.05){
         u.alive=false; o.visible=false; u.halo.material.opacity=0;
         score++; scoreEl.textContent=`${score} / ${TOTAL}`;
+        scoreEl.classList.remove('pop'); void scoreEl.offsetWidth; scoreEl.classList.add('pop');   // v0.3.16 收集弹跳
         blinkT=1;   // 收集时眨一下眼
         burst(o.position);
         AudioFX.pickup(challenge.combo+1);   // v0.3.8 连击音高递进
