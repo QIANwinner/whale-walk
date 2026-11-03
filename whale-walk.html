@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.22</title>
+<title>鲸步 WHALE WALK · v0.3.23</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2096,6 +2096,9 @@ function diff(){ return DIFFS[diffKey]; }
 }
 /* 关卡：每完成一关进下一关，光点更多、时间更短 */
 const MAX_LEVEL=5;
+/* v0.3.23 章节命名：每关一个名字，开局横幅与结算标题使用 */
+const LEVEL_NAMES=['霓虹初醒','雨幕疾行','霓虹深渊','雷暴中心','暴雨终章'];
+const levelName=()=>LEVEL_NAMES[Math.min(level,LEVEL_NAMES.length)-1]||('第 '+level+' 关');
 let level=1, levelTimeUsed=0, runTotalUsed=0, runCoins=0, runRings=0;
 const levelNumEl=document.getElementById('levelNum');
 const btnNext=document.getElementById('btnNext');
@@ -2226,6 +2229,7 @@ function startChallenge(){
   challenge.ready=1.2;   // v0.3.17 开局缓冲：1.2s 内不计时且免伤
   challenge.tookHit=false; challenge.comboMax=0; newAch=[];   // v0.3.8 成就判定状态
   lvDodge=0; lvDj=0;   // v0.3.12 单关操作统计
+  showLevelBanner('第 '+level+' 关 · '+levelName(), diff().label+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点');   // v0.3.23 开局章节横幅
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
   timerNum.textContent=Math.ceil(challenge.timeLeft);
   levelTimeUsed=0;
@@ -2280,13 +2284,13 @@ function finishChallenge(win){
     if(lvDj>=10) award('dj10');
     if(challenge.timeLeft>=levelCfg().time/2) award('halftime');
     if(level<MAX_LEVEL){
-      rmTitle.textContent='第 '+level+' 关完成！';
+      rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
       rmStars.textContent='★'.repeat(stars)+'☆'.repeat(3-stars);
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj
         +(stars<3?'<br>下次快 '+fmtT(levelCfg().time*0.45-challenge.timeLeft)+' 即可 3★':'')
-        +'<br>下一关：'+levelOrbs()+'+4 光点 · 时间 -8 秒'
+        +'<br>下一关：'+(level+1)+' '+LEVEL_NAMES[level]+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
       rmBest.textContent='';
       btnNext.style.display='inline-block';
