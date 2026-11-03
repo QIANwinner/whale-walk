@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.16</title>
+<title>鲸步 WHALE WALK · v0.3.17</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2038,7 +2038,7 @@ const rmEl=document.getElementById('resultModal'), rmTitle=document.getElementBy
 const rmStars=document.getElementById('rmStars'), rmInfo=document.getElementById('rmInfo');
 const rmBest=document.getElementById('rmBest');
 const challenge={active:false, timeLeft:0, combo:0, lastPick:-99,
-  invuln:0, done:false, failed:false, flashT:0, best:null, startTime:0, danger:false};
+  invuln:0, done:false, failed:false, flashT:0, best:null, startTime:0, danger:false, ready:0};
 try{ const b=JSON.parse(localStorage.getItem('ww-best-v2')||'null'); if(b&&b.time>=1) challenge.best=b; }catch(_){}
 /* =====================================================================
  *  v0.3.8 成就系统：localStorage 持久化（ww-ach-v1），本局新获在结算页展示
@@ -2100,7 +2100,8 @@ function applyPowerUp(type){
   AudioFX.pickup();
 }
 function fmtT(s){ return s.toFixed(1)+' 秒'; }
-function starsFor(tl){ return tl>=35?3:tl>=15?2:1; }
+function starsFor(tl){ const t=levelCfg().time;
+  return tl>=t*0.45?3:tl>=t*0.2?2:1; }   // v0.3.17 星级门槛按关卡时长比例（normal 80s≈36/16 与旧值兼容）
 /* 关卡横幅 */
 const lvBannerEl=document.getElementById('lvBanner'), lvBannerT=document.getElementById('lvBannerT');
 let lvBannerTO=0;
@@ -2135,6 +2136,7 @@ function startChallenge(){
   challenge.timeLeft=levelCfg().time; challenge.combo=0; challenge.lastPick=-99;
   challenge.startTime=levelCfg().time;
   challenge.invuln=0; challenge.flashT=0; challenge.danger=false; rmEl.classList.remove('show');
+  challenge.ready=1.2;   // v0.3.17 开局缓冲：1.2s 内不计时且免伤
   challenge.tookHit=false; challenge.comboMax=0; newAch=[];   // v0.3.8 成就判定状态
   lvDodge=0; lvDj=0;   // v0.3.12 单关操作统计
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
@@ -2721,6 +2723,14 @@ function update(dt){
   }
   /* ---- 挑战：计时 / 连击显示 / 飞车碰撞 / 无敌闪烁 / 红闪 ---- */
   if(mode==='play' && challenge.active){
+    /* v0.3.17 开局 3-2-1 缓冲：不计时且免伤，敌人照常运动 */
+    if(challenge.ready>0){
+      challenge.ready-=dt;
+      challenge.invuln=Math.max(challenge.invuln,challenge.ready);
+      const rn=Math.ceil(challenge.ready/0.4);
+      if(rn!==timerNum._last){ timerNum.textContent=rn; timerNum._last=rn; }
+      timerEl.classList.remove('danger');
+    } else {
     challenge.timeLeft-=dt;
     if(challenge.timeLeft<=0){ challenge.timeLeft=0; finishChallenge(false); }
     const tl=Math.ceil(challenge.timeLeft);
@@ -2728,6 +2738,7 @@ function update(dt){
     timerEl.classList.toggle('danger', tl<=15);
     /* v0.3.4 濒危引导：≤10s 提示一次 + 小地图导航增强 */
     if(tl<=10 && !challenge.danger){ challenge.danger=true; toast('⏱ 时间紧张！跟随金色导航冲刺'); }
+    }
     /* combo 显示 */
     if(challenge.combo>=2 && elapsed-challenge.lastPick<COMBO_WINDOW){
       comboEl.textContent='COMBO x'+challenge.combo;
