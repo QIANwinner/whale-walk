@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.3.2</title>
+<title>鲸步 WHALE WALK · v0.3.3</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -116,6 +116,14 @@
     transition:transform .08s;}
   #btnPause:active{transform:scale(.92);}
   body.touch.playing #btnPause{display:flex;}
+  /* ---------- 移动端静音按钮（等同键盘 M） ---------- */
+  #btnMute{position:fixed;top:14px;right:70px;width:44px;height:44px;border-radius:12px;z-index:14;
+    display:none;align-items:center;justify-content:center;cursor:pointer;
+    border:1px solid rgba(127,212,255,.35);background:rgba(10,16,38,.55);color:#BFE4FF;font-size:19px;
+    backdrop-filter:blur(4px);-webkit-tap-highlight-color:transparent;user-select:none;font-family:inherit;
+    transition:transform .08s;}
+  #btnMute:active{transform:scale(.92);}
+  body.touch #btnMute{display:flex;}
   /* ---------- 载入 ---------- */
   #loader{position:fixed;inset:0;z-index:40;background:#0E1430;display:flex;align-items:center;justify-content:center;
     flex-direction:column;gap:14px;color:#BFE4FF;transition:opacity .5s;}
@@ -222,6 +230,7 @@
 <div id="joy"><div id="joyKnob"></div></div>
 <button id="btnJump" aria-label="跳跃">⤒</button>
 <button id="btnPause" aria-label="暂停/退出">⏸</button>
+<button id="btnMute" aria-label="音效开关">🔊</button>
 
 <script type="module">
 import * as THREE from 'three';
@@ -1618,10 +1627,20 @@ const AudioFX=(()=>{
 /* =====================================================================
  *  输入
  * ===================================================================== */
+/* v0.3.3 触觉反馈：移动端振动（iOS 不支持则静默）+ 音效开关统一入口 */
+function buzz(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(_){} }
+function applyMute(){ const m=AudioFX.toggle();
+  try{ localStorage.setItem('ww-muted', m?'1':'0'); }catch(_){}
+  document.getElementById('btnMute').textContent = m?'🔇':'🔊';
+  toast(m?'音效已关闭 🔇':'音效已开启 🔊'); }
+/* v0.3.3 静音状态持久化：刷新后保持上次静音设置 */
+try{ if(localStorage.getItem('ww-muted')==='1'){ AudioFX.toggle();
+  document.getElementById('btnMute').textContent='🔇'; } }catch(_){}
+
 const keys={};
 addEventListener('keydown',e=>{ keys[e.code]=true;
   if(e.code==='KeyP'&&mode==='play') setMode('preview');
-  if(e.code==='KeyM'){ const m=AudioFX.toggle(); toast(m?'音效已关闭 🔇':'音效已开启 🔊'); }
+  if(e.code==='KeyM') applyMute();
   if(['Space','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault(); });
 addEventListener('keyup',e=>keys[e.code]=false);
 
@@ -1649,6 +1668,9 @@ btnJump.addEventListener('touchstart',e=>{ doJump(); e.preventDefault(); },{pass
 /* v0.3.2 移动端暂停/退出：触屏点按回预览（等同键盘 P） */
 const btnPause=document.getElementById('btnPause');
 btnPause.addEventListener('touchstart',e=>{ setMode('preview'); e.preventDefault(); },{passive:false});
+/* v0.3.3 移动端静音：触屏点按切换音效（等同键盘 M） */
+const btnMute=document.getElementById('btnMute');
+btnMute.addEventListener('touchstart',e=>{ applyMute(); e.preventDefault(); },{passive:false});
 /* v0.3.1 标签页隐藏时暂停音频 + v0.3.2 暂停渲染循环，节省电量 */
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){ AudioFX.suspend(); renderer.setAnimationLoop(null); }
@@ -1828,7 +1850,7 @@ function hitCar(){
   challenge.timeLeft=Math.max(0,challenge.timeLeft-HIT_PENALTY);
   redEl.classList.add('on');
   girl.userData.state.speed*=0.4;
-  AudioFX.land(0.6);
+  AudioFX.land(0.6); buzz(45);
   toast('撞到飞车！ -'+HIT_PENALTY+' 秒');
 }
 function hitDrone(d){
@@ -1843,7 +1865,7 @@ function hitDrone(d){
   const L=Math.hypot(dx,dz)||1;
   girl.position.x+=dx/L*1.6; girl.position.z+=dz/L*1.6;
   st.speed*=0.3;
-  AudioFX.land(0.7);
+  AudioFX.land(0.7); buzz(45);
   toast('被巡逻无人机击中！ -'+DRONE_PENALTY+' 秒');
 }
 function finishChallenge(win){
@@ -1907,6 +1929,8 @@ function burst(pos){
   f.m.position.copy(pos); f.life=1; f.m.visible=true;
 }
 
+/* v0.3.3 相机临时向量：复用避免每帧 new Vector3（GC 压力） */
+const _vTgt=new THREE.Vector3(), _vCam=new THREE.Vector3();
 function update(dt){
   elapsed+=dt;
   const st=girl.userData.state;
@@ -1918,11 +1942,11 @@ function update(dt){
   camS.pitch=lerp(camS.pitch,camS.tPitch,1-Math.pow(0.0001,dt));
   camS.dist=lerp(camS.dist,camS.tDist,1-Math.pow(0.0001,dt));
   const focusY = mode==='preview' ? 0.80 : 0.75;
-  const tgt=new THREE.Vector3(girl.position.x, girl.position.y+focusY, girl.position.z);
+  _vTgt.set(girl.position.x, girl.position.y+focusY, girl.position.z);
   const ch=Math.cos(camS.pitch)*camS.dist, vv=Math.sin(camS.pitch)*camS.dist;
-  const camPos=new THREE.Vector3(tgt.x+Math.sin(camS.yaw)*ch, tgt.y+vv, tgt.z+Math.cos(camS.yaw)*ch);
-  camPos.y=Math.max(camPos.y, terrainH(camPos.x,camPos.z)+0.32);
-  camera.position.copy(camPos); camera.lookAt(tgt);
+  _vCam.set(_vTgt.x+Math.sin(camS.yaw)*ch, _vTgt.y+vv, _vTgt.z+Math.cos(camS.yaw)*ch);
+  _vCam.y=Math.max(_vCam.y, terrainH(_vCam.x,_vCam.z)+0.32);
+  camera.position.copy(_vCam); camera.lookAt(_vTgt);
   const sp01=clamp(st.speed/3.4,0,1);
   /* v0.3.2 FOV 阈值更新：仅在变化明显时重算投影矩阵，避免每帧开销 */
   const tgtFov=64+sp01*6;
@@ -1941,12 +1965,13 @@ function update(dt){
   }
   const run=keys.ShiftLeft||keys.ShiftRight;
   let mx=0,mz=0;
-  const focrow={f:{x:-Math.sin(camS.yaw),z:-Math.cos(camS.yaw)}};
-  const F=focrow.f, R={x:-Math.cos(camS.yaw),z:Math.sin(camS.yaw)};
+  /* v0.3.3 移动方向内联：改为标量，消除每帧对象分配 */
+  const fX=-Math.sin(camS.yaw), fZ=-Math.cos(camS.yaw);
+  const rX=-Math.cos(camS.yaw), rZ=Math.sin(camS.yaw);
   let iLen=Math.hypot(ix,iz);
   if(iLen>0.01){
     if(iLen>1){ix/=iLen;iz/=iLen;}
-    mx=F.x*iz+R.x*ix; mz=F.z*iz+R.z*ix;
+    mx=fX*iz+rX*ix; mz=fZ*iz+rZ*ix;
   }
   const mLen=Math.hypot(mx,mz);
   const boost=(powerState.speed>0)?1.5:1;   // 加速道具
@@ -1958,10 +1983,9 @@ function update(dt){
   girl.rotation.y=st.yaw;
 
   /* ---- 移动 + 碰撞 ---- */
-  const sp=st.speed; let nx=girl.position.x+mx*sp*dt/ (mLen||1) * (mLen||1);
-  // 上面写复杂了，直接位移：
+  const sp=st.speed;
   const stepx=mx*sp*dt, stepz=mz*sp*dt;
-  nx=girl.position.x+stepx; const nz=girl.position.z+stepz;
+  const nx=girl.position.x+stepx, nz=girl.position.z+stepz;
   let px=nx,pz=nz;
   for(const o of obstacles){
     const d=Math.hypot(px-o.x,pz-o.z),min=o.r+0.30;
@@ -1984,7 +2008,7 @@ function update(dt){
       const impact=-st.vy;
       st.y=0; st.vy=0; st.grounded=true;
       girl.position.y=supY;
-      if(impact>1.2) AudioFX.land(impact);
+      if(impact>1.2){ AudioFX.land(impact); buzz(18); }
     } else {
       girl.position.y=absY;
     }
@@ -2058,7 +2082,7 @@ function update(dt){
   P.skirtG.rotation.z=Math.sin(ph)*0.045*swing;
 
   /* ---- 软阴影贴片 ---- */
-  P.blob.position.y=supY+0.03-girl.position.y+ (0.03);
+  /* v0.3.3 软阴影贴片：只 set 一次，去掉被覆盖的冗余赋值 */
   P.blob.position.set(0,supY-girl.position.y+0.035,0);
   P.blob.material.opacity=clamp(1-st.y*1.3,0.25,1);
   P.blob.scale.setScalar(1+st.y*0.5);
@@ -2096,6 +2120,7 @@ function update(dt){
         blinkT=1;   // 收集时眨一下眼
         burst(o.position);
         AudioFX.pickup();
+        buzz(12);   // v0.3.3 收集光点轻振动
         if(score===TOTAL){
           if(challenge.active) finishChallenge(true);
           else { toast('全部光点收集完成！鲸鱼尾为你摆动 🐳'); P.tailJ.rotation.y=0.5;
