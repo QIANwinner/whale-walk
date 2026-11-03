@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.11</title>
+<title>鲸步 WHALE WALK · v0.3.12</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1885,7 +1885,7 @@ let spinT=0, spaceHeld=false;
 function doJump(){ const st=girl.userData.state;
   if(mode!=='play')return;
   if(st.grounded){ st.vy=4.9; st.grounded=false; st.airJumps=1; AudioFX.jump(); }
-  else if((st.airJumps|0)>0){ st.airJumps--; st.vy=4.35; spinT=0.42;
+  else if((st.airJumps|0)>0){ st.airJumps--; st.vy=4.35; spinT=0.42; lvDj++;
     AudioFX.djump(); buzz(10); } }
 const btnJump=document.getElementById('btnJump');
 btnJump.addEventListener('touchstart',e=>{ doJump(); e.preventDefault(); },{passive:false});
@@ -2033,10 +2033,15 @@ const ACHS=[
   {id:'allclear', icon:'🏆', label:'一鼓作气 · 通关全部关卡'},
   {id:'coins',    icon:'🪙', label:'满贯鲸币 · 单关收齐全部鲸币'},
   {id:'combo8',   icon:'⚡', label:'连击大师 · 单关 COMBO x8'},
-  {id:'perfect',  icon:'🛡', label:'雨夜舞者 · 单关无伤通关'}
+  {id:'perfect',  icon:'🛡', label:'雨夜舞者 · 单关无伤通关'},
+  {id:'dodge5',   icon:'🌀', label:'雨夜游侠 · 单关躲过 5 次冲锋'},
+  {id:'dj10',     icon:'⭐', label:'空中舞者 · 单关二段跳 10 次'},
+  {id:'halftime', icon:'⏱', label:'游刃有余 · 单关剩余过半时间通关'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
+/* v0.3.12 单关操作统计（成就判定用） */
+let lvDodge=0, lvDj=0;
 function award(id){
   if(achGot.includes(id))return;
   const a=ACHS.find(x=>x.id===id); if(!a)return;
@@ -2110,6 +2115,7 @@ function startChallenge(){
   challenge.startTime=levelCfg().time;
   challenge.invuln=0; challenge.flashT=0; challenge.danger=false; rmEl.classList.remove('show');
   challenge.tookHit=false; challenge.comboMax=0; newAch=[];   // v0.3.8 成就判定状态
+  lvDodge=0; lvDj=0;   // v0.3.12 单关操作统计
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
   timerNum.textContent=Math.ceil(challenge.timeLeft);
   levelTimeUsed=0;
@@ -2158,11 +2164,15 @@ function finishChallenge(win){
     if(level===1) award('first');             // v0.3.8 成就
     if(level>=MAX_LEVEL) award('allclear');
     if(!challenge.tookHit) award('perfect');
+    if(lvDodge>=5) award('dodge5');           // v0.3.12
+    if(lvDj>=10) award('dj10');
+    if(challenge.timeLeft>=levelCfg().time/2) award('halftime');
     if(level<MAX_LEVEL){
       rmTitle.textContent='第 '+level+' 关完成！';
       rmStars.textContent='★'.repeat(stars)+'☆'.repeat(3-stars);
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
+        +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj
         +'<br>下一关：'+levelOrbs()+'+4 光点 · 时间 -8 秒'
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
       rmBest.textContent='';
@@ -2514,7 +2524,8 @@ function update(dt){
     else if(d.mode==='windup'){ d.t+=dt;
       if(d.t>0.55){ d.mode='dash'; d.t=0; AudioFX.dashWhiz();
         const L=Math.hypot(dxp,dzp)||1; d.vx=dxp/L*9.2; d.vz=dzp/L*9.2; } }
-    else if(d.mode==='dash'){ d.t+=dt; if(d.t>0.45){ d.mode='cool'; d.t=0; } }
+    else if(d.mode==='dash'){ d.t+=dt; if(d.t>0.45){ d.mode='cool'; d.t=0;
+      if(dist>3) lvDodge++; } }   // v0.3.12 冲锋结束仍距 3m 以上算成功躲避
     else if(d.mode==='cool'){ d.t+=dt;
       if(d.t>2.2) d.mode = dist<9 ? 'chase' : 'return'; }
     else if(d.mode==='return' && Math.hypot(d.home.x-g.position.x,d.home.z-g.position.z)<1.5) d.mode='patrol';
@@ -2807,10 +2818,15 @@ function drawMinimap(){
 /* =====================================================================
  *  雨声滑块 + 全收集庆祝特效
  * ===================================================================== */
-/* 雨声大小滑块 */
+/* 雨声大小滑块（v0.3.12 持久化 ww-rain） */
 {
   const rr=document.getElementById('rainRange');
-  rr.addEventListener('input',()=>AudioFX.setRainLevel(rr.value/100*0.15));
+  try{ const saved=parseFloat(localStorage.getItem('ww-rain'));
+    if(!isNaN(saved)){ rr.value=Math.round(saved/0.15*100); AudioFX.setRainLevel(saved); } }catch(_){}
+  rr.addEventListener('input',()=>{
+    const v=AudioFX.setRainLevel(rr.value/100*0.15);
+    try{ localStorage.setItem('ww-rain',String(v)); }catch(_){}
+  });
 }
 /* 小地图：滚轮缩放 / 拖动平移 / 双击复位 */
 {
@@ -2899,7 +2915,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.9 分享钩子 */
   shareText,
   /* v0.3.10 成就墙钩子 */
-  renderAch};
+  renderAch,
+  /* v0.3.12 操作统计钩子 */
+  stats:()=>({lvDodge, lvDj})};
 window.__T = THREE;
 window.__dbg.shots = {};
 window.__dbg.stop = ()=>renderer.setAnimationLoop(null);
