@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.17</title>
+<title>鲸步 WHALE WALK · v0.3.18</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1865,8 +1865,22 @@ try{ if(localStorage.getItem('ww-muted')==='1'){ AudioFX.toggle();
   document.getElementById('btnMute').textContent='🔇'; } }catch(_){}
 
 const keys={};
-addEventListener('keydown',e=>{ keys[e.code]=true;
-  if(e.code==='KeyP'&&mode==='play') togglePause();   // v0.3.4 暂停菜单
+/* v0.3.18 手柄支持：左摇杆移动 / A 跳 / Start 暂停 / A 预览开始 */
+let gpJumpLatch=false, gpStartLatch=false, gpNotified=false;
+addEventListener('gamepadconnected',()=>{ if(!gpNotified){ gpNotified=true; toast('🎮 手柄已连接'); } });
+function pollGamepad(){
+  try{
+    const gps=navigator.getGamepads?navigator.getGamepads():[];
+    for(const gp of gps){ if(!gp||!gp.connected)continue;
+      const dz=v=>Math.abs(v)>0.18?v:0;
+      return { x:dz(gp.axes[0]||0), y:dz(gp.axes[1]||0),
+        a:!!(gp.buttons[0]&&gp.buttons[0].pressed),
+        start:!!(gp.buttons[9]&&gp.buttons[9].pressed) };
+    }
+  }catch(_){}
+  return null;
+}
+addEventListener('keydown',e=>{ keys[e.code]=true;  if(e.code==='KeyP'&&mode==='play') togglePause();   // v0.3.4 暂停菜单
   if(e.code==='KeyR'&&mode==='play'&&!paused) resetChallenge();   // v0.3.9 R 键秒重开
   if(e.code==='KeyF'){ try{   // v0.3.13 F 全屏；headless/iframe 拒绝时 Promise 静默回落
     const p=document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
@@ -2129,6 +2143,8 @@ function setupLevel(){
   _tintC.setHex(LEVEL_TINTS[Math.min(level,LEVEL_TINTS.length)-1]);
   scene.fog.color.copy(_tintC);
   scene.background.copy(_tintC);
+  /* v0.3.18 雨势随关卡增强：激活雨丝段数 300+44×level（drawRange 控制顶点数=段数×2） */
+  rainMesh.geometry.setDrawRange(0, 2*Math.min(RAIN_N, 300+level*44));
 }
 function startChallenge(){
   setupLevel();
@@ -2308,10 +2324,16 @@ function update(dt){
 
   /* ---- 输入 → 期望速度 ---- */
   let ix=0,iz=0;
+  const gp=pollGamepad();   // v0.3.18 手柄轮询
+  if(gp&&gp.start&&!gpStartLatch){ gpStartLatch=true; if(mode==='play') togglePause(); else if(mode==='preview') setMode('play'); }
+  if(gp&&!gp.start) gpStartLatch=false;
+  if(gp&&gp.a&&!gpJumpLatch){ gpJumpLatch=true; if(mode==='play') doJump(); else if(mode==='preview') setMode('play'); }
+  if(gp&&!gp.a) gpJumpLatch=false;
   if(mode==='play'){
     if(keys.KeyW||keys.ArrowUp)iz+=1; if(keys.KeyS||keys.ArrowDown)iz-=1;
     if(keys.KeyA||keys.ArrowLeft)ix+=1; if(keys.KeyD||keys.ArrowRight)ix-=1;
     ix+=joyState.x; iz+=-joyState.y;
+    if(gp){ ix+=gp.x; iz+=-gp.y; }
   }
   const run=keys.ShiftLeft||keys.ShiftRight;
   let mx=0,mz=0;
@@ -2992,7 +3014,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.12 操作统计钩子 */
   stats:()=>({lvDodge, lvDj}),
   /* v0.3.15 降质与氛围钩子 */
-  autoDegrade, fogHex:()=>scene.fog.color.getHex()};
+  autoDegrade, fogHex:()=>scene.fog.color.getHex(),
+  /* v0.3.18 雨势钩子 */
+  rainMesh, gpLatch:()=>gpJumpLatch};
 window.__T = THREE;
 window.__dbg.shots = {};
 window.__dbg.stop = ()=>renderer.setAnimationLoop(null);
