@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.20</title>
+<title>鲸步 WHALE WALK · v0.3.21</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1217,6 +1217,44 @@ mount(Rface,14,52,vNeon(1.6,7,'FROI','#66E8FF'),-1);
 /* 正面大屏：QIAN · WHALE WALK（街道尽头，面向玩家） */
 const mainBill=neonSign(13,5.6,'QIAN · WHALE WALK','#35E0FF',false);
 mainBill.position.set(0, 10, 78); mainBill.rotation.y=Math.PI; scene.add(mainBill);
+/* ---- v0.3.21 鲸鱼门环：横跨街道的旋转霓虹地标（立柱可碰撞） ---- */
+const GATE_Z=70;
+const whaleGateTex=(()=>{ const c=document.createElement('canvas'); c.width=256; c.height=128;
+  const g=c.getContext('2d');
+  g.strokeStyle='#7FE4FF'; g.fillStyle='#7FE4FF'; g.shadowColor='#7FE4FF'; g.shadowBlur=18;
+  g.beginPath(); g.ellipse(110,64,62,34,0,0,Math.PI*2); g.stroke();          // 身体
+  g.beginPath(); g.moveTo(172,64); g.quadraticCurveTo(214,28,236,34);        // 尾鳍上叶
+  g.quadraticCurveTo(206,58,206,64); g.quadraticCurveTo(206,70,236,94);      // 尾鳍下叶
+  g.quadraticCurveTo(214,100,172,64); g.closePath(); g.fill();
+  g.beginPath(); g.arc(76,54,5,0,Math.PI*2); g.fill();                       // 眼
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; })();
+const whaleGate=new THREE.Group();
+{
+  const tor=new THREE.Mesh(new THREE.TorusGeometry(4.2,0.16,10,48),
+    new THREE.MeshBasicMaterial({color:0x35E0FF,transparent:true,opacity:0.75,
+      blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+  tor.position.y=6.2; whaleGate.add(tor);
+  const tor2=new THREE.Mesh(new THREE.TorusGeometry(4.55,0.07,8,48),
+    new THREE.MeshBasicMaterial({color:0xFF4FD8,transparent:true,opacity:0.5,
+      blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+  tor2.position.y=6.2; whaleGate.add(tor2);
+  const whale=new THREE.Mesh(new THREE.PlaneGeometry(2.6,1.3),
+    new THREE.MeshBasicMaterial({map:whaleGateTex,transparent:true,
+      blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+  whale.position.y=6.2; whaleGate.add(whale);
+  whaleGate.userData={tor,tor2,whale};
+  for(const s of[-1,1]){
+    const pil=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.26,6.2,10),
+      new THREE.MeshToonMaterial({color:0x0E1524,gradientMap:TOON}));
+    pil.position.set(s*4.2,3.1,0); pil.castShadow=true; whaleGate.add(pil);
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(0.26,10,8),
+      new THREE.MeshBasicMaterial({color:0x7FE4FF}));
+    cap.position.set(s*4.2,6.25,0); whaleGate.add(cap);
+    obstacles.push({x:s*4.2,z:GATE_Z,r:0.55});
+  }
+  whaleGate.position.set(0,terrainH(0,GATE_Z),GATE_Z);
+  scene.add(whaleGate);
+}
 /* 侧屏 */
 const sideBill=neonSign(7,3.4,'鲸步 · 雨夜霓虹','#FF4FD8',false);
 sideBill.position.set(-9, 6.2, 20); sideBill.rotation.y=Math.PI/2; scene.add(sideBill);
@@ -2578,6 +2616,10 @@ function update(dt){
     if(f.life<=0)f.m.visible=false; } }
   /* 云 */
   for(const c of clouds){ c.position.x+=dt*0.4; if(c.position.x>150)c.position.x=-150; }
+  /* v0.3.21 鲸鱼门环：双环反向旋转 + 鲸鱼剪影呼吸 */
+  whaleGate.userData.tor.rotation.z+=dt*0.3;
+  whaleGate.userData.tor2.rotation.z-=dt*0.2;
+  whaleGate.userData.whale.material.opacity=0.55+0.25*Math.sin(t*2.1);
   /* 雨 & 飞车 */
   updateRain(dt,camera.position);
   drone.position.x+=dt*6;
@@ -3048,7 +3090,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.15 降质与氛围钩子 */
   autoDegrade, fogHex:()=>scene.fog.color.getHex(),
   /* v0.3.18 雨势钩子 */
-  rainMesh, gpLatch:()=>gpJumpLatch};
+  rainMesh, gpLatch:()=>gpJumpLatch,
+  /* v0.3.21 鲸鱼门环钩子 */
+  whaleGate};
 window.__T = THREE;
 window.__dbg.shots = {};
 window.__dbg.stop = ()=>renderer.setAnimationLoop(null);
