@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.3.5</title>
+<title>鲸步 WHALE WALK · v0.3.6</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -218,7 +218,7 @@
   <div class="t2">鲸步 · 蓝鲸女仆散步中</div>
 </div>
 <div class="hud" id="hudMode"><span class="badge" id="modeBadge">预览模式</span></div>
-<div class="hud" id="hudLevel">第 <span class="lv" id="levelNum">1</span> / 3 关 · <span id="diffLabel">普通</span></div>
+<div class="hud" id="hudLevel">第 <span class="lv" id="levelNum">1</span> / 5 关 · <span id="diffLabel">普通</span></div>
 <div class="hud" id="hudScore"><div class="n" id="scoreNum">0 / 24</div><div class="l">光点收集</div></div>
 <canvas id="minimap" width="320" height="320"></canvas>
 <div class="hud" id="hudHint">拖动旋转 · 滚轮缩放</div>
@@ -1204,7 +1204,8 @@ const cars=[];
 const carPool=[];
 const CAR_COLS=[0xFF4FD8,0x35E0FF,0xFFB04A,0x7FE4FF,0xFF8AC8,0x9FE8C8];
 function makeCar(i){
-  const lane=(i%2?1:-1)*(2.6+(i%3)*0.9);
+  /* v0.3.6 8 车 8 车道（±2.6~±5.3），同车道永不重叠穿模 */
+  const lane=(i%2?1:-1)*(2.6+Math.floor(i/2)*0.9);
   const grp=new THREE.Group();
   const col=CAR_COLS[i%CAR_COLS.length];
   const head=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,6),
@@ -1215,10 +1216,10 @@ function makeCar(i){
       blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
   trail.rotation.x=-Math.PI/2; trail.position.z=-2.6; grp.add(trail);
   grp.position.set(lane, terrainH(lane,0)+0.25, -8-i*26);
-  grp.userData={speed:13+i*5, dir:(i%2?1:-1), lane, trail, base:13+i*5};
+  grp.userData={speed:12+i*3.2, dir:(i%2?1:-1), lane, trail, base:12+i*3.2};
   grp.visible=false; scene.add(grp); carPool.push(grp);
 }
-for(let i=0;i<6;i++) makeCar(i);
+for(let i=0;i<8;i++) makeCar(i);
 function setupCars(count, mul){
   cars.length=0;
   for(let i=0;i<count;i++){
@@ -1403,8 +1404,9 @@ function placeOrbs(count, highCount){
   while(orbGroup.children.length) orbGroup.remove(orbGroup.children[0]);
   orbs.length=0;
   let placed=0, tries=0;
+  const minD=count>32?2.1:2.4;   // v0.3.6 关卡扩展后高密度光点降距
   const highPts=[...platforms];
-  while(placed<count && tries<800){
+  while(placed<count && tries<1200){
     tries++;
     const wantHigh = placed<highCount;
     let x,z,y;
@@ -1424,7 +1426,7 @@ function placeOrbs(count, highCount){
     let ok=true;
     for(const o of obstacles){ if(Math.hypot(x-o.x,z-o.z)<o.r+0.8){ok=false;break;} }
     if(!ok) continue;
-    for(const q of orbs){ if(Math.hypot(x-q.x,z-q.z)<2.4){ok=false;break;} }
+    for(const q of orbs){ if(Math.hypot(x-q.x,z-q.z)<minD){ok=false;break;} }
     if(!ok) continue;
     const m=new THREE.Mesh(orbGeo,orbMat);
     const halo=new THREE.Mesh(ringGeo,new THREE.MeshBasicMaterial({
@@ -1531,7 +1533,7 @@ function clearPowerups(){
 const coins=[], coinGroup=new THREE.Group(); scene.add(coinGroup);
 const rings=[], ringGroup=new THREE.Group(); scene.add(ringGroup);
 const bouncePads=[], boostStrips=[];
-let coinCount=0, coinTotal=3, boostT=0;
+let coinCount=0, coinTotal=3, boostT=0, ringCount=0, ringTotal=0;
 const coinNumEl=document.getElementById('coinNum');
 const coinGeo=new THREE.CylinderGeometry(0.22,0.22,0.06,24);
 const coinMat=new THREE.MeshStandardMaterial({color:0xFFD25A,emissive:0xFFAA00,
@@ -1544,7 +1546,7 @@ function clearNewProps(){
   while(coinGroup.children.length) coinGroup.remove(coinGroup.children[0]);
   while(ringGroup.children.length) ringGroup.remove(ringGroup.children[0]);
   coins.length=0; rings.length=0; bouncePads.length=0; boostStrips.length=0;
-  coinCount=0; boostT=0;
+  coinCount=0; boostT=0; ringCount=0;
   coinNumEl.textContent='0 / '+(coinTotal||3);
 }
 function spawnNewProps(){
@@ -1602,11 +1604,13 @@ function spawnNewProps(){
       new THREE.MeshBasicMaterial({color:0x35E0FF,transparent:true,opacity:0.16,
         side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
     glow.rotation.x=Math.PI/2; g.add(glow);
-    const ry=terrainH(s.x,s.z)+1.9+i*0.25;   // 弹跳顶点(≈2.7m)下方，保证可穿过
+    const rh=(level>=2)?2.55:1.9;            // v0.3.6 第2关起需二段跳穿环（单跳顶点1.79够不着2.55）
+    const ry=terrainH(s.x,s.z)+rh+i*0.25;
     g.position.set(s.x,ry,s.z);
     g.userData={alive:true,baseY:ry,ph:rn()*6.28,tor,glow};
     ringGroup.add(g); rings.push(g);
   });
+  ringTotal=rings.length;   // v0.3.6 结算统计
   /* ---- 加速带 ×2：踏上 1.2s×2.2 冲刺 ---- */
   for(let i=0;i<2;i++){
     const bz=38+i*30+rn()*4;
@@ -1945,8 +1949,8 @@ function diff(){ return DIFFS[diffKey]; }
   sync();
 }
 /* 关卡：每完成一关进下一关，光点更多、时间更短 */
-const MAX_LEVEL=3;
-let level=1, levelTimeUsed=0, runTotalUsed=0;
+const MAX_LEVEL=5;
+let level=1, levelTimeUsed=0, runTotalUsed=0, runCoins=0, runRings=0;
 const levelNumEl=document.getElementById('levelNum');
 const btnNext=document.getElementById('btnNext');
 function levelTime(){ return Math.max(30, Math.round(diff().time-(level-1)*8)); }
@@ -1954,9 +1958,9 @@ function levelOrbs(){ return (diffKey==='easy'?22:diffKey==='hard'?28:24)+(level
 function levelCfg(){
   const d=diff();
   return { time:levelTime(), orbs:levelOrbs(), high:d.orbHigh,
-    cars:Math.min(6,3+(level-1)), carMul:d.carMul*(1+0.06*(level-1)),
-    drones:Math.min(4,d.drones+(level-1)),
-    thunderMin:d.thunderMin, thunderMax:d.thunderMax };
+    cars:Math.min(8, 3+Math.floor((level-1)*1.25)), carMul:d.carMul*(1+0.05*(level-1)),
+    drones:Math.min(diffKey==='easy'?2:5, d.drones+((level-1)>>1)),
+    thunderMin:Math.max(5,d.thunderMin-(level-1)), thunderMax:Math.max(10,d.thunderMax-(level-1)*2) };
 }
 const COMBO_WINDOW=8, COMBO_BONUS=2, HIT_PENALTY=3, DRONE_PENALTY=4, INVULN=1.5;
 const timerEl=document.getElementById('timer'), timerNum=document.getElementById('timerNum');
@@ -2057,11 +2061,12 @@ function finishChallenge(win){
   levelTimeUsed=levelCfg().time-challenge.timeLeft;
   const stars=win?starsFor(challenge.timeLeft):0;
   if(win){
-    runTotalUsed+=levelTimeUsed;
+    runTotalUsed+=levelTimeUsed; runCoins+=coinCount; runRings+=ringCount;
     if(level<MAX_LEVEL){
       rmTitle.textContent='第 '+level+' 关完成！';
       rmStars.textContent='★'.repeat(stars)+'☆'.repeat(3-stars);
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
+        +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +'<br>下一关：'+levelOrbs()+'+4 光点 · 时间 -8 秒';
       rmBest.textContent='';
       btnNext.style.display='inline-block';
@@ -2069,7 +2074,7 @@ function finishChallenge(win){
     } else {
       rmTitle.textContent='🏆 全部通关！';
       rmStars.textContent='★'.repeat(stars)+'☆'.repeat(3-stars);
-      rmInfo.innerHTML='三关总用时 <b>'+fmtT(runTotalUsed)+'</b><br>难度 '+diff().label+' · 完成 '+MAX_LEVEL+' 关';
+      rmInfo.innerHTML=MAX_LEVEL+'关总用时 <b>'+fmtT(runTotalUsed)+'</b><br>难度 '+diff().label+' · 鲸币 '+runCoins+' · 穿环 '+runRings;
       if(runTotalUsed>=1 && (!challenge.best || runTotalUsed<challenge.best.time)){
         challenge.best={time:runTotalUsed, stars};
         rmBest.textContent='新纪录！ 总用时 '+fmtT(runTotalUsed)+' · '+('★'.repeat(stars));
@@ -2092,7 +2097,7 @@ function finishChallenge(win){
 function nextLevel(){ level++; startChallenge(); }
 btnNext.addEventListener('click',nextLevel);
 function resetChallenge(){
-  level=1; runTotalUsed=0;
+  level=1; runTotalUsed=0; runCoins=0; runRings=0;
   celebrated=false;
   girl.position.set(0,terrainH(0,0),0);
   girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0,airJumps:1};
@@ -2381,7 +2386,7 @@ function update(dt){
     let tx=g.position.x, tz=g.position.z, spd=2.2;
     if(d.mode==='patrol'){
       tx=d.home.x+Math.cos(d.ph*0.7)*3.5; tz=d.home.z+Math.sin(d.ph*0.7)*3.5;
-    } else if(d.mode==='chase'){ tx=girl.position.x; tz=girl.position.z; spd=4.6; }
+    } else if(d.mode==='chase'){ tx=girl.position.x; tz=girl.position.z; spd=Math.min(5.2,4.2+0.25*(level-1)); }
     else { tx=d.home.x; tz=d.home.z; spd=3.5; }
     const ang=Math.atan2(tx-g.position.x,tz-g.position.z);
     g.position.x+=Math.sin(ang)*spd*dt;
@@ -2449,6 +2454,7 @@ function update(dt){
       const dd=Math.hypot(girl.position.x-r.position.x,girl.position.z-r.position.z);
       if(dd<0.85 && Math.abs(girl.position.y+0.9-r.position.y)<0.62 && st.vy>0.5){
         u.alive=false; ringGroup.remove(r); rings.splice(i,1);
+        ringCount++;
         challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2);
         blinkT=1; burst(r.position);
         AudioFX.ring(); buzz(18);
@@ -2728,6 +2734,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   spawnNewProps, clearNewProps,
   coins:()=>coins, rings:()=>rings, bouncePads:()=>bouncePads, boostStrips:()=>boostStrips,
   coinCount:()=>coinCount, coinTotal:()=>coinTotal, boostT:()=>boostT,
+  ringCount:()=>ringCount, ringTotal:()=>ringTotal, levelSet:(v)=>{level=v;},   // v0.3.6 测试钩子
   /* v0.3.4 暂停菜单 */
   paused:()=>paused, openPause, closePause, togglePause};
 window.__T = THREE;
