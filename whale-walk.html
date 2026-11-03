@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.13</title>
+<title>鲸步 WHALE WALK · v0.3.14</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2370,7 +2370,9 @@ function update(dt){
   /* ---- v0.1.1 脚步声：相位每过半步触发一次 ---- */
   if(st.grounded&&sp>0.5){
     const sIdx=Math.floor(st.phase/Math.PI);
-    if(sIdx>st.step){ st.step=sIdx; AudioFX.foot(run); }
+    if(sIdx>st.step){ st.step=sIdx; AudioFX.foot(run);
+      /* v0.3.14 奔跑溅水花：每两步一个涟漪环（与拾取特效共用 fxPool） */
+      if(run&&sp>2.6&&sIdx%2===0) burst(girl.position); }
   }
   const ph=st.phase, swing=sp01;
   const legA=lerp(0.5,0.78,swing);
@@ -2605,6 +2607,12 @@ function update(dt){
       c.rotation.y+=dt*2.6;
       u.halo.material.opacity=0.45+Math.sin(t*3.4+u.ph)*0.25;
       const dd=Math.hypot(girl.position.x-c.position.x,girl.position.z-c.position.z);
+      /* v0.3.14 磁铁也吸金币（保持拾取判定不变，只加吸附） */
+      if(powerState.magnet>0 && dd<4.6 && dd>1e-4){
+        const pull=7.5*dt;
+        c.position.x+=(girl.position.x-c.position.x)/dd*pull;
+        c.position.z+=(girl.position.z-c.position.z)/dd*pull;
+      }
       if(dd<1.3 && Math.abs(girl.position.y+0.9-c.position.y)<1.15){
         u.alive=false; coinGroup.remove(c); coins.splice(i,1);
         coinCount++; coinNumEl.textContent=`${coinCount} / ${coinTotal}`;
