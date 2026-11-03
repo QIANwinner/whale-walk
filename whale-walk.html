@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.3.3</title>
+<title>鲸步 WHALE WALK · v0.3.4</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -178,6 +178,29 @@
   @keyframes lvPop{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}
     60%{transform:translate(-50%,-50%) scale(1.1);opacity:1}
     100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
+  /* ---------- 金币计数 chip ---------- */
+  #coinbar{position:fixed;top:150px;left:50%;transform:translateX(-50%);z-index:11;pointer-events:none;}
+  .coin-chip{display:flex;align-items:center;gap:6px;background:rgba(38,30,8,.72);
+    border:1px solid rgba(255,210,90,.55);border-radius:999px;padding:5px 16px;
+    font-size:12px;font-weight:800;color:#FFD25A;letter-spacing:1px;
+    box-shadow:0 0 14px rgba(255,210,90,.35);backdrop-filter:blur(3px);}
+  .coin-chip .cc-n{font-size:14px;color:#FFE9A8;}
+  /* ---------- 暂停菜单 ---------- */
+  #pauseMenu{position:fixed;inset:0;z-index:38;display:none;align-items:center;justify-content:center;
+    background:rgba(6,10,26,.78);backdrop-filter:blur(6px);}
+  #pauseMenu.show{display:flex;}
+  #pauseBox{background:rgba(10,16,38,.95);border:1px solid rgba(127,212,255,.4);border-radius:22px;
+    padding:34px 44px;text-align:center;box-shadow:0 0 44px rgba(47,167,232,.35);min-width:250px;}
+  #pauseBox .pm-t{font-size:28px;font-weight:900;color:#7FD4FF;letter-spacing:4px;
+    text-shadow:0 0 18px rgba(53,224,255,.8);}
+  #pauseBox .pm-s{font-size:13px;color:#BFE4FF;opacity:.85;margin:8px 0 22px;letter-spacing:1px;}
+  .pm-btn{display:block;width:100%;margin:10px 0;padding:12px 0;border-radius:999px;cursor:pointer;
+    font-size:15px;font-weight:800;letter-spacing:2px;border:none;font-family:inherit;transition:transform .12s, box-shadow .12s;}
+  .pm-btn:hover{transform:translateY(-1px);}
+  .pm-btn:active{transform:scale(.97);}
+  #pmResume{background:linear-gradient(90deg,#002FA7,#1E5FD8);color:#fff;box-shadow:0 6px 20px rgba(0,47,167,.5);}
+  #pmRestart{background:rgba(53,224,255,.12);color:#35E0FF;border:1px solid rgba(53,224,255,.5);}
+  #pmExit{background:rgba(255,90,90,.10);color:#FF7A7A;border:1px solid rgba(255,90,90,.45);}
 </style>
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js" } }
@@ -206,6 +229,7 @@
   <div class="pw-chip" id="pwMagnet">🧲 磁铁 <span class="pw-t"></span></div>
   <div class="pw-chip" id="pwSpeed">⚡ 加速 <span class="pw-t"></span></div>
 </div>
+<div id="coinbar"><div class="coin-chip">🪙 鲸币 <span class="cc-n" id="coinNum">0 / 3</span></div></div>
 <div id="lightning"></div>
 <div id="lvBanner"><div class="lv-t" id="lvBannerT">第 2 关</div><div class="lv-s">更多光点 · 更短时间</div></div>
 <div id="combo"></div>
@@ -231,6 +255,15 @@
 <button id="btnJump" aria-label="跳跃">⤒</button>
 <button id="btnPause" aria-label="暂停/退出">⏸</button>
 <button id="btnMute" aria-label="音效开关">🔊</button>
+<div id="pauseMenu">
+  <div id="pauseBox">
+    <div class="pm-t">已暂停</div>
+    <div class="pm-s">鲸步稍作休息 · QIAN</div>
+    <button class="pm-btn" id="pmResume">继续散步</button>
+    <button class="pm-btn" id="pmRestart">重新开始</button>
+    <button class="pm-btn" id="pmExit">退出关卡</button>
+  </div>
+</div>
 
 <script type="module">
 import * as THREE from 'three';
@@ -1488,6 +1521,101 @@ function clearPowerups(){
 }
 
 /* =====================================================================
+ *  v0.3.4 新玩法物件：金色鲸币 / 空中光环 / 弹跳垫 / 加速带
+ *  鲸币：高风险区高价值收集（+3 秒），独立计数
+ *  光环：穿环 +2 秒；弹跳垫：弹起 vy=8.5；加速带：1.2s×2.2 冲刺
+ * ===================================================================== */
+const coins=[], coinGroup=new THREE.Group(); scene.add(coinGroup);
+const rings=[], ringGroup=new THREE.Group(); scene.add(ringGroup);
+const bouncePads=[], boostStrips=[];
+let coinCount=0, coinTotal=3, boostT=0;
+const coinNumEl=document.getElementById('coinNum');
+const coinGeo=new THREE.CylinderGeometry(0.22,0.22,0.06,24);
+const coinMat=new THREE.MeshStandardMaterial({color:0xFFD25A,emissive:0xFFAA00,
+  emissiveIntensity:1.5,roughness:.25,metalness:.8});
+const coinHaloGeo=new THREE.RingGeometry(0.30,0.37,20);
+const ringTorusGeo=new THREE.TorusGeometry(0.85,0.09,10,28);
+const bouncePadGeo=new THREE.CylinderGeometry(0.85,1.0,0.10,20);
+const boostGeo=new THREE.BoxGeometry(2.4,0.05,6.0);
+function clearNewProps(){
+  while(coinGroup.children.length) coinGroup.remove(coinGroup.children[0]);
+  while(ringGroup.children.length) ringGroup.remove(ringGroup.children[0]);
+  coins.length=0; rings.length=0; bouncePads.length=0; boostStrips.length=0;
+  coinCount=0; boostT=0;
+  coinNumEl.textContent='0 / '+(coinTotal||3);
+}
+function spawnNewProps(){
+  clearNewProps();
+  const rn=Math.random, rnd6=(a,b)=>a+rn()*(b-a);
+  const lane=(rn()<0.5?-1:1)*(2.6+(level%3)*0.9);
+  /* ---- 金色鲸币 ×3：飞车路中央 / 无人机巡逻圈 / 跳跃平台顶 ---- */
+  const spots=[];
+  spots.push({x:lane, z:20+rn()*8, y:null});                       // 飞车路中央（高风险）
+  if(patrolDrones.length){ const d=patrolDrones[0];
+    spots.push({x:d.home.x*0.7, z:d.home.z, y:null}); }             // 无人机巡逻圈边缘
+  else spots.push({x:(rn()*2-1)*5, z:46, y:null});
+  if(platforms.length){ const p=platforms[2];
+    spots.push({x:p.x, z:p.z, y:terrainH(p.x,p.z)+p.topY+0.6}); }   // 跳跃平台顶（需跳上）
+  else spots.push({x:(rn()*2-1)*5, z:64, y:null});
+  coinTotal=spots.length;
+  spots.forEach(s=>{
+    const g=new THREE.Group();
+    const c=new THREE.Mesh(coinGeo,coinMat); c.rotation.x=Math.PI/2; g.add(c);
+    const halo=new THREE.Mesh(coinHaloGeo,new THREE.MeshBasicMaterial({color:0xFFD25A,
+      transparent:true,opacity:0.55,side:THREE.DoubleSide,
+      blending:THREE.AdditiveBlending,depthWrite:false}));
+    halo.rotation.x=-Math.PI/2; halo.position.y=-0.03; g.add(halo);
+    const y=(s.y!=null)?s.y:terrainH(s.x,s.z)+0.7;
+    g.position.set(s.x,y,s.z);
+    g.userData={alive:true,baseY:y,ph:rn()*6.28,halo};
+    coinGroup.add(g); coins.push(g);
+  });
+  /* ---- 弹跳垫 ×1-2：落地即弹起（蹦床），抛向空中光环 ---- */
+  const padN=1+((level-1)%2);
+  const padSpots=[];
+  for(let i=0;i<padN;i++){
+    const px=(i%2?1:-1)*(3.6+rn()*1.5), pz=30+i*22+rn()*4;
+    padSpots.push({x:px,z:pz});
+    const g=new THREE.Group();
+    const pad=new THREE.Mesh(bouncePadGeo,new THREE.MeshStandardMaterial({
+      color:0x35E0FF,emissive:0x1E7FD8,emissiveIntensity:0.9,roughness:.4,metalness:.2}));
+    pad.position.y=0.05; g.add(pad);
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(0.95,0.06,8,24),
+      new THREE.MeshBasicMaterial({color:0x7FE4FF,transparent:true,opacity:0.7,
+        blending:THREE.AdditiveBlending,depthWrite:false}));
+    rim.rotation.x=-Math.PI/2; rim.position.y=0.12; g.add(rim);
+    g.position.set(px,terrainH(px,pz),pz);
+    g.userData={cool:0,rim};
+    scene.add(g); bouncePads.push(g);
+  }
+  /* ---- 空中光环（每垫一个，水平孔朝上）：弹起穿过 +2 秒 ---- */
+  padSpots.forEach((s,i)=>{
+    const g=new THREE.Group();
+    const tor=new THREE.Mesh(ringTorusGeo,new THREE.MeshBasicMaterial({color:0x35E0FF,
+      transparent:true,opacity:0.75,side:THREE.DoubleSide,
+      blending:THREE.AdditiveBlending,depthWrite:false}));
+    tor.rotation.x=Math.PI/2; g.add(tor);   // 水平环：孔朝上，沿弹跳轨迹穿过
+    const glow=new THREE.Mesh(new THREE.TorusGeometry(0.85,0.16,8,28),
+      new THREE.MeshBasicMaterial({color:0x35E0FF,transparent:true,opacity:0.16,
+        side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+    glow.rotation.x=Math.PI/2; g.add(glow);
+    const ry=terrainH(s.x,s.z)+1.9+i*0.25;   // 弹跳顶点(≈2.7m)下方，保证可穿过
+    g.position.set(s.x,ry,s.z);
+    g.userData={alive:true,baseY:ry,ph:rn()*6.28,tor,glow};
+    ringGroup.add(g); rings.push(g);
+  });
+  /* ---- 加速带 ×2：踏上 1.2s×2.2 冲刺 ---- */
+  for(let i=0;i<2;i++){
+    const bz=38+i*30+rn()*4;
+    const g=new THREE.Mesh(boostGeo,new THREE.MeshBasicMaterial({color:0x35E0FF,
+      transparent:true,opacity:0.30,blending:THREE.AdditiveBlending,depthWrite:false}));
+    g.position.set(0,terrainH(0,bz)+0.06,bz);
+    g.userData={halfW:1.2,halfL:3.0,cool:0};
+    scene.add(g); boostStrips.push(g);
+  }
+}
+
+/* =====================================================================
  *  v0.1.1 音效 · WebAudio 全合成（无采样文件）
  *  foot 脚步 / jump 起跳 / land 落地 / pickup 拾取 / M 键静音
  * ===================================================================== */
@@ -1612,6 +1740,35 @@ const AudioFX=(()=>{
       // 后续远滚回响（延迟衰减，模拟云层反射）
       tone(46,30,dur*0.9,0.10*iv,'sine',0.5);
       tone(52,36,dur*1.1,0.07*iv,'sine',1.1); },
+    /* v0.3.4 金币：明亮双音叮咚 */
+    coin(){ if(muted||!ac())return;
+      tone(988,988,0.09,0.13,'sine');
+      tone(1319,1319,0.22,0.15,'sine',0.07); },
+    /* v0.3.4 穿环：上行三连琶音 */
+    ring(){ if(muted||!ac())return;
+      tone(523,523,0.10,0.12,'triangle');
+      tone(784,784,0.10,0.13,'triangle',0.07);
+      tone(1047,1047,0.24,0.15,'triangle',0.14); },
+    /* v0.3.4 弹跳：快速上扬滑音 */
+    bounce(){ if(muted||!ac())return;
+      tone(180,620,0.16,0.18,'square',0.02); },
+    /* v0.3.4 加速：噪声呼啸 + 高频滑升 */
+    boost(){ if(muted||!ac())return;
+      const t0=ctx.currentTime;
+      const n=Math.max(8,(ctx.sampleRate*0.4)|0);
+      const buf=ctx.createBuffer(1,n,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,1.6);
+      const s=ctx.createBufferSource(); s.buffer=buf;
+      const f=ctx.createBiquadFilter(); f.type='bandpass'; f.Q.value=1.4;
+      f.frequency.setValueAtTime(600,t0);
+      f.frequency.exponentialRampToValueAtTime(2400,t0+0.4);
+      const g=ctx.createGain();
+      g.gain.setValueAtTime(0.0001,t0);
+      g.gain.exponentialRampToValueAtTime(0.22,t0+0.05);
+      g.gain.exponentialRampToValueAtTime(0.001,t0+0.42);
+      s.connect(f); f.connect(g); g.connect(bus); s.start(t0); s.stop(t0+0.45);
+      tone(320,980,0.30,0.12,'sawtooth',0.03); },
     setRainLevel(v){ rainLevel=Math.max(0,Math.min(0.15,v)); setRain(muted?0:rainLevel); return rainLevel; },
     get rainLevel(){return rainLevel;},
     toggle(){ muted=!muted; if(!muted)ac(); setRain(muted?0:rainLevel); return muted; },
@@ -1639,7 +1796,7 @@ try{ if(localStorage.getItem('ww-muted')==='1'){ AudioFX.toggle();
 
 const keys={};
 addEventListener('keydown',e=>{ keys[e.code]=true;
-  if(e.code==='KeyP'&&mode==='play') setMode('preview');
+  if(e.code==='KeyP'&&mode==='play') togglePause();   // v0.3.4 暂停菜单
   if(e.code==='KeyM') applyMute();
   if(['Space','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault(); });
 addEventListener('keyup',e=>keys[e.code]=false);
@@ -1665,9 +1822,9 @@ function doJump(){ const st=girl.userData.state;
   if(mode==='play'&&st.grounded){ st.vy=4.9; st.grounded=false; AudioFX.jump(); } }
 const btnJump=document.getElementById('btnJump');
 btnJump.addEventListener('touchstart',e=>{ doJump(); e.preventDefault(); },{passive:false});
-/* v0.3.2 移动端暂停/退出：触屏点按回预览（等同键盘 P） */
+/* v0.3.2 移动端暂停：v0.3.4 改为弹出暂停菜单（等同键盘 P） */
 const btnPause=document.getElementById('btnPause');
-btnPause.addEventListener('touchstart',e=>{ setMode('preview'); e.preventDefault(); },{passive:false});
+btnPause.addEventListener('touchstart',e=>{ togglePause(); e.preventDefault(); },{passive:false});
 /* v0.3.3 移动端静音：触屏点按切换音效（等同键盘 M） */
 const btnMute=document.getElementById('btnMute');
 btnMute.addEventListener('touchstart',e=>{ applyMute(); e.preventDefault(); },{passive:false});
@@ -1722,6 +1879,16 @@ function setMode(m){
   },360);
 }
 btnPlay.addEventListener('click',()=>setMode('play'));
+
+/* v0.3.4 暂停菜单：冻结玩法 + 继续 / 重新开始 / 退出关卡 */
+let paused=false;
+const pauseMenuEl=document.getElementById('pauseMenu');
+function openPause(){ if(mode!=='play')return; paused=true; pauseMenuEl.classList.add('show'); }
+function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); }
+function togglePause(){ if(mode!=='play')return; paused?closePause():openPause(); }
+document.getElementById('pmResume').addEventListener('click',()=>closePause());
+document.getElementById('pmRestart').addEventListener('click',()=>{ closePause(); resetChallenge(); });
+document.getElementById('pmExit').addEventListener('click',()=>{ closePause(); setMode('preview'); });
 
 /* toast */
 const toastEl=document.getElementById('toast'); let toastT=0;
@@ -1782,7 +1949,7 @@ const rmEl=document.getElementById('resultModal'), rmTitle=document.getElementBy
 const rmStars=document.getElementById('rmStars'), rmInfo=document.getElementById('rmInfo');
 const rmBest=document.getElementById('rmBest');
 const challenge={active:false, timeLeft:0, combo:0, lastPick:-99,
-  invuln:0, done:false, failed:false, flashT:0, best:null, startTime:0};
+  invuln:0, done:false, failed:false, flashT:0, best:null, startTime:0, danger:false};
 try{ const b=JSON.parse(localStorage.getItem('ww-best-v2')||'null'); if(b&&b.time>=1) challenge.best=b; }catch(_){}
 /* 雷声 + 闪电 */
 let thunderT=12;
@@ -1824,6 +1991,7 @@ function setupLevel(){
   spawnPatrolDrones(cfg.drones);
   setupCars(cfg.cars, cfg.carMul);
   clearPowerups();
+  spawnNewProps();   // v0.3.4 金色鲸币 / 空中光环 / 弹跳垫 / 加速带
   levelNumEl.textContent=level;
   thunderT=rand(cfg.thunderMin,cfg.thunderMax);
   puTimer=rand(4,7);
@@ -1833,7 +2001,7 @@ function startChallenge(){
   challenge.active=true; challenge.done=false; challenge.failed=false;
   challenge.timeLeft=levelCfg().time; challenge.combo=0; challenge.lastPick=-99;
   challenge.startTime=levelCfg().time;
-  challenge.invuln=0; challenge.flashT=0; rmEl.classList.remove('show');
+  challenge.invuln=0; challenge.flashT=0; challenge.danger=false; rmEl.classList.remove('show');
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
   timerNum.textContent=Math.ceil(challenge.timeLeft);
   levelTimeUsed=0;
@@ -1974,7 +2142,7 @@ function update(dt){
     mx=fX*iz+rX*ix; mz=fZ*iz+rZ*ix;
   }
   const mLen=Math.hypot(mx,mz);
-  const boost=(powerState.speed>0)?1.5:1;   // 加速道具
+  const boost=(powerState.speed>0)?1.5:(boostT>0?2.2:1);   // 加速道具 / v0.3.4 加速带
   const target=(mLen>0.01)?(run?3.4:1.9)*(mLen)*boost:0;
   st.speed=lerp(st.speed,target,1-Math.pow(0.002,dt));
   if(mLen>0.01){ mx/=mLen||1; mz/=mLen||1; }
@@ -2009,6 +2177,17 @@ function update(dt){
       st.y=0; st.vy=0; st.grounded=true;
       girl.position.y=supY;
       if(impact>1.2){ AudioFX.land(impact); buzz(18); }
+      /* v0.3.4 弹跳垫：落地即弹起（蹦床）抛向空中光环 */
+      let onPad=null;
+      for(const bp of bouncePads){
+        if(Math.hypot(px-bp.position.x,pz-bp.position.z)<1.0){ onPad=bp; break; }
+      }
+      if(onPad && onPad.userData.cool<=0){
+        st.grounded=false; st.vy=8.5; st.y=0.02;
+        onPad.userData.cool=0.8;
+        onPad.scale.y=0.6;                     // 压缩反馈
+        AudioFX.bounce(); buzz(22);
+      }
     } else {
       girl.position.y=absY;
     }
@@ -2222,6 +2401,62 @@ function update(dt){
   if(powerState.magnet>0){ powerState.magnet-=dt; if(powerState.magnet<=0){ powerState.magnet=0; pwMagnetEl.classList.remove('on'); } }
   if(powerState.speed>0){ powerState.speed-=dt; if(powerState.speed<=0){ powerState.speed=0; pwSpeedEl.classList.remove('on'); } }
 
+  /* ---- v0.3.4 新玩法物件：金币 / 穿环 / 加速带 ---- */
+  if(mode==='play' && challenge.active){
+    /* 金色鲸币：高风险区高价值收集（+3 秒，独立计数） */
+    for(let i=coins.length-1;i>=0;i--){
+      const c=coins[i], u=c.userData;
+      if(!u.alive) continue;
+      c.position.y=u.baseY+Math.sin(t*2.4+u.ph)*0.10;
+      c.rotation.y+=dt*2.6;
+      u.halo.material.opacity=0.45+Math.sin(t*3.4+u.ph)*0.25;
+      const dd=Math.hypot(girl.position.x-c.position.x,girl.position.z-c.position.z);
+      if(dd<1.3 && Math.abs(girl.position.y+0.9-c.position.y)<1.15){
+        u.alive=false; coinGroup.remove(c); coins.splice(i,1);
+        coinCount++; coinNumEl.textContent=`${coinCount} / ${coinTotal}`;
+        challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+3);
+        blinkT=1; burst(c.position);
+        AudioFX.coin(); buzz(30);
+        toast(coinCount===coinTotal?'全部金色鲸币收集！+3 秒':'金色鲸币 +3 秒！');
+      }
+    }
+    /* 空中光环（水平环）：沿弹跳轨迹向上穿过，+2 秒 */
+    for(let i=rings.length-1;i>=0;i--){
+      const r=rings[i], u=r.userData;
+      if(!u.alive) continue;
+      u.tor.rotation.z+=dt*1.5;
+      u.glow.material.opacity=0.14+Math.sin(t*3+u.ph)*0.08;
+      const dd=Math.hypot(girl.position.x-r.position.x,girl.position.z-r.position.z);
+      if(dd<0.85 && Math.abs(girl.position.y+0.9-r.position.y)<0.62 && st.vy>0.5){
+        u.alive=false; ringGroup.remove(r); rings.splice(i,1);
+        challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2);
+        blinkT=1; burst(r.position);
+        AudioFX.ring(); buzz(18);
+        toast('穿环 +2 秒！');
+      }
+    }
+    /* 加速带：踏上 1.2s ×2.2 冲刺 */
+    for(const bs of boostStrips){
+      const u=bs.userData;
+      if(u.cool>0){ u.cool-=dt; continue; }
+      if(Math.abs(girl.position.x-bs.position.x)<u.halfW
+         && Math.abs(girl.position.z-bs.position.z)<u.halfL){
+        boostT=1.2; u.cool=1.4;
+        AudioFX.boost(); buzz(16);
+        toast('加速带！⚡');
+      }
+    }
+  }
+  /* 加速带冲刺倒计时 */
+  if(boostT>0){ boostT-=dt; if(boostT<=0) boostT=0; }
+  /* 弹跳垫冷却 + 回弹 + 光环脉冲 */
+  for(const bp of bouncePads){
+    const u=bp.userData;
+    if(u.cool>0) u.cool-=dt;
+    bp.scale.y=lerp(bp.scale.y,1,1-Math.pow(0.02,dt));
+    u.rim.material.opacity=0.45+0.3*Math.sin(t*4+bp.position.z);
+  }
+
   /* ---- 雷声远滚 + 闪电 ---- */
   if(mode==='play' && challenge.active){
     thunderT-=dt;
@@ -2259,6 +2494,8 @@ function update(dt){
     const tl=Math.ceil(challenge.timeLeft);
     if(tl!==timerNum._last){ timerNum.textContent=tl; timerNum._last=tl; }
     timerEl.classList.toggle('danger', tl<=15);
+    /* v0.3.4 濒危引导：≤10s 提示一次 + 小地图导航增强 */
+    if(tl<=10 && !challenge.danger){ challenge.danger=true; toast('⏱ 时间紧张！跟随金色导航冲刺'); }
     /* combo 显示 */
     if(challenge.combo>=2 && elapsed-challenge.lastPick<COMBO_WINDOW){
       comboEl.textContent='COMBO x'+challenge.combo;
@@ -2312,13 +2549,32 @@ function drawMinimap(){
     g.save(); g.translate(p.x,p.y); g.rotate(Math.PI/4);
     g.fillRect(-3.2,-3.2,6.4,6.4); g.restore();
   }
-  /* 巡逻无人机（红点 + 警戒圈） */
+  /* v0.3.4 金色鲸币（金币点 + 亮圈） */
+  for(const c of coins){
+    if(!c.userData.alive) continue;
+    const p=W2S(c.position.x,c.position.z);
+    g.fillStyle='#FFD25A';
+    g.beginPath(); g.arc(p.x,p.y,3.6,0,Math.PI*2); g.fill();
+    g.strokeStyle='rgba(255,210,90,0.85)'; g.lineWidth=1.5;
+    g.beginPath(); g.arc(p.x,p.y,5.6+(Math.sin(elapsed*4)+1)*1.4,0,Math.PI*2); g.stroke();
+  }
+  /* v0.3.4 空中光环（金色环，弹跳垫上方） */
+  g.strokeStyle='rgba(255,210,90,0.8)'; g.lineWidth=2;
+  for(const r of rings){
+    if(!r.userData.alive) continue;
+    const p=W2S(r.position.x,r.position.z);
+    g.beginPath(); g.arc(p.x,p.y,5.5+(Math.sin(elapsed*3.4)+1)*1.2,0,Math.PI*2); g.stroke();
+  }
+  /* 巡逻无人机（红点 + 真实警戒圈，半径 9 世界单位） */
   for(const d of patrolDrones){
     const p=W2S(d.grp.position.x,d.grp.position.z);
     g.fillStyle='#FF5A5A';
     g.beginPath(); g.arc(p.x,p.y,3.5,0,Math.PI*2); g.fill();
-    g.strokeStyle='rgba(255,90,90,0.4)'; g.lineWidth=1;
-    g.beginPath(); g.arc(p.x,p.y,7,0,Math.PI*2); g.stroke();
+    const wr=9*mmS*mmScale;
+    g.strokeStyle='rgba(255,90,90,0.35)'; g.lineWidth=1;
+    g.setLineDash([4,4]);
+    g.beginPath(); g.arc(p.x,p.y,wr,0,Math.PI*2); g.stroke();
+    g.setLineDash([]);
   }
   /* 光点（存活）+ 最近光点导航 */
   g.fillStyle='#7FE4FF';
@@ -2331,25 +2587,27 @@ function drawMinimap(){
     const d=(o.position.x-gx)**2+(o.position.z-gz)**2;
     if(d<nd){nd=d; nearest=o;}
   }
-  /* 最近光点导航：金色脉冲环 + 虚线引导 + 指向箭头 */
+  /* 最近光点导航：金色脉冲环 + 虚线引导 + 指向箭头（v0.3.4 濒危时变粗变红） */
   if(nearest){
     const p=W2S(nearest.position.x,nearest.position.z);
+    const danger=!!challenge.danger;
     const pulse=(Math.sin(elapsed*5)+1)/2;
-    g.strokeStyle='rgba(255,210,90,0.9)'; g.lineWidth=2.5;
+    const navCol=danger?'255,80,80':'255,210,90';
+    g.strokeStyle=`rgba(${navCol},0.9)`; g.lineWidth=danger?3.5:2.5;
     g.beginPath(); g.arc(p.x,p.y,6+pulse*5,0,Math.PI*2); g.stroke();
-    g.strokeStyle='rgba(255,210,90,0.30)'; g.lineWidth=1.5;
+    g.strokeStyle=`rgba(${navCol},0.30)`; g.lineWidth=1.5;
     g.beginPath(); g.arc(p.x,p.y,12+pulse*4,0,Math.PI*2); g.stroke();
     const pp=W2S(gx,gz), dx=p.x-pp.x, dy=p.y-pp.y;
     const ang=Math.atan2(dy,dx), len=Math.hypot(dx,dy);
     if(len>26){
       const sx=pp.x+Math.cos(ang)*26, sy=pp.y+Math.sin(ang)*26;
-      g.strokeStyle='rgba(255,210,90,0.5)'; g.lineWidth=2;
+      g.strokeStyle=`rgba(${navCol},0.5)`; g.lineWidth=danger?3:2;
       g.setLineDash([6,5]);
       g.beginPath(); g.moveTo(sx,sy); g.lineTo(p.x-Math.cos(ang)*10,p.y-Math.sin(ang)*10); g.stroke();
       g.setLineDash([]);
-      g.fillStyle='rgba(255,210,90,0.95)';
+      g.fillStyle=`rgba(${navCol},0.95)`;
       g.save(); g.translate(p.x-Math.cos(ang)*10,p.y-Math.sin(ang)*10); g.rotate(ang);
-      g.beginPath(); g.moveTo(7,0); g.lineTo(-3,5); g.lineTo(-3,-5); g.closePath(); g.fill(); g.restore();
+      g.beginPath(); g.moveTo(danger?9:7,0); g.lineTo(-3,5); g.lineTo(-3,-5); g.closePath(); g.fill(); g.restore();
     }
   }
   /* 角色箭头（按朝向） */
@@ -2430,7 +2688,8 @@ setMode('preview');
 let mmFrame=0;
 function renderLoop(){
   const dt=Math.min(clock.getDelta(),0.05);
-  update(dt); renderer.render(scene,camera);
+  if(!paused) update(dt);            // v0.3.4 暂停时冻结玩法
+  renderer.render(scene,camera);
   if(++mmFrame%3===0) drawMinimap();
 }
 renderer.setAnimationLoop(renderLoop);
@@ -2443,7 +2702,14 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   challenge, patrolDrones, powerUps, platforms, powerState, levelCfg,
   applyPowerUp, spawnPowerUp, spawnPatrolDrones, startChallenge, setupLevel, resetChallenge,
   diffKey:()=>diffKey, level:()=>level, TOTAL:()=>TOTAL, score:()=>score,
-  supportAt, terrainH, orbs:()=>orbs, cars:()=>cars};
+  mode:()=>mode,
+  supportAt, terrainH, orbs:()=>orbs, cars:()=>cars,
+  /* v0.3.4 新玩法 */
+  spawnNewProps, clearNewProps,
+  coins:()=>coins, rings:()=>rings, bouncePads:()=>bouncePads, boostStrips:()=>boostStrips,
+  coinCount:()=>coinCount, coinTotal:()=>coinTotal, boostT:()=>boostT,
+  /* v0.3.4 暂停菜单 */
+  paused:()=>paused, openPause, closePause, togglePause};
 window.__T = THREE;
 window.__dbg.shots = {};
 window.__dbg.stop = ()=>renderer.setAnimationLoop(null);
