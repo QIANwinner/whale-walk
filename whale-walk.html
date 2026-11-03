@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.19</title>
+<title>鲸步 WHALE WALK · v0.3.20</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -236,6 +236,19 @@
   .ach-row.lock{opacity:.45;}
   #achClose{margin-top:16px;background:rgba(53,224,255,.12);color:#35E0FF;border:1px solid rgba(53,224,255,.5);
     border-radius:999px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+  /* ---------- v0.3.20 新手引导浮层 ---------- */
+  #tut{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:36;display:none;
+    background:rgba(10,16,38,.92);border:1px solid rgba(127,212,255,.45);border-radius:20px;
+    padding:22px 30px;backdrop-filter:blur(6px);box-shadow:0 0 34px rgba(47,167,232,.3);
+    color:#EAF4FF;font-size:13px;line-height:2;letter-spacing:1px;pointer-events:auto;max-width:88vw;}
+  #tut.show{display:block;}
+  #tut .tt{font-size:16px;font-weight:800;color:#7FD4FF;letter-spacing:3px;margin-bottom:6px;}
+  #tut .tr{white-space:nowrap;}
+  #tut .tr b{color:#FFD25A;font-weight:700;}
+  #tut .ta{margin-top:10px;text-align:center;}
+  #tutOk{background:linear-gradient(90deg,#002FA7,#1E5FD8);color:#fff;border:none;border-radius:999px;
+    padding:9px 30px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:2px;
+    box-shadow:0 5px 16px rgba(0,47,167,.5);font-family:inherit;}
 </style>
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js" } }
@@ -305,6 +318,14 @@
   </div>
 </div>
 <button id="btnAch">🏆 成就 <span id="achCount">0/5</span></button>
+<div id="tut">
+  <div class="tt">散步指南</div>
+  <div class="tr" id="tutMove"></div>
+  <div class="tr"><b>跳跃</b>：空格 / 跳跃按钮，空中可二段跳（360° 旋体）</div>
+  <div class="tr"><b>躲避</b>：无人机双哔预警后会直线冲锋，横移躲开</div>
+  <div class="tr"><b>目标</b>：限时收集全部光点，金色鲸币与穿环送时间</div>
+  <div class="ta"><button id="tutOk">知道了</button></div>
+</div>
 <div id="achModal">
   <div id="achBox">
     <div class="ab-t">成就墙</div>
@@ -1966,7 +1987,8 @@ function setMode(m){
     girl.position.set(0,terrainH(0,0),0);
     girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0,airJumps:1};
     if(m==='play'){ camS.tYaw=girl.userData.state.yaw+Math.PI; camS.tPitch=0.30; camS.tDist=3.0;
-      if(challenge.done||challenge.failed) resetChallenge(); else if(!challenge.active) startChallenge(); }
+      if(challenge.done||challenge.failed) resetChallenge(); else if(!challenge.active) startChallenge();
+      setTimeout(showTutIfFirst,600); }   // v0.3.20 首次进入挑战显示引导
     else { camS.tYaw=Math.PI*0.85; camS.tPitch=0.14; camS.tDist=2.2;
       challenge.active=false; stopChallengeUI(); }
     btnPlay.style.display = m==='preview'?'block':'none';
@@ -2090,6 +2112,14 @@ function renderAch(){
 }
 document.getElementById('btnAch').addEventListener('click',()=>{ renderAch(); document.getElementById('achModal').classList.add('show'); });
 document.getElementById('achClose').addEventListener('click',()=>document.getElementById('achModal').classList.remove('show'));
+/* v0.3.20 新手引导：首次进入挑战模式显示，localStorage 标记后不再打扰 */
+function showTutIfFirst(){
+  try{ if(localStorage.getItem('ww-tut-v1')==='1') return; }catch(_){}
+  document.getElementById('tutMove').innerHTML = (isTouch?'<b>移动</b>：左摇杆，右侧拖动转视角':'<b>移动</b>：WASD / 方向键，Shift 奔跑');
+  document.getElementById('tut').classList.add('show');
+  try{ localStorage.setItem('ww-tut-v1','1'); }catch(_){}
+}
+document.getElementById('tutOk').addEventListener('click',()=>document.getElementById('tut').classList.remove('show'));
 /* 雷声 + 闪电 */
 let thunderT=12;
 const lightningEl=document.getElementById('lightning');
@@ -2215,6 +2245,7 @@ function finishChallenge(win){
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj
+        +(stars<3?'<br>下次快 '+fmtT(levelCfg().time*0.45-challenge.timeLeft)+' 即可 3★':'')
         +'<br>下一关：'+levelOrbs()+'+4 光点 · 时间 -8 秒'
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
       rmBest.textContent='';
