@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.3.6</title>
+<title>鲸步 WHALE WALK · v0.3.7</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -161,6 +161,7 @@
   #pwShield{border-color:rgba(127,212,255,.6);color:#BFE4FF;}
   #pwMagnet{border-color:rgba(255,210,90,.6);color:#FFD25A;}
   #pwSpeed{border-color:rgba(53,224,255,.6);color:#35E0FF;}
+  #pwSlow{border-color:rgba(201,168,255,.6);color:#C9A8FF;}
   /* ---------- 闪电 ---------- */
   #lightning{position:fixed;inset:0;z-index:28;pointer-events:none;background:#EAF4FF;
     opacity:0;mix-blend-mode:screen;}
@@ -231,6 +232,7 @@
   <div class="pw-chip" id="pwShield">🛡 护盾 <span class="pw-t"></span></div>
   <div class="pw-chip" id="pwMagnet">🧲 磁铁 <span class="pw-t"></span></div>
   <div class="pw-chip" id="pwSpeed">⚡ 加速 <span class="pw-t"></span></div>
+  <div class="pw-chip" id="pwSlow">🌀 子弹时间 <span class="pw-t"></span></div>
 </div>
 <div id="coinbar"><div class="coin-chip">🪙 鲸币 <span class="cc-n" id="coinNum">0 / 3</span></div></div>
 <div id="lightning"></div>
@@ -1488,11 +1490,12 @@ function spawnPatrolDrones(n){
 const powerUps=[];
 const PU_TYPES={ shield:{label:'护盾',icon:'🛡',color:0x7FD4FF,dur:0},
   magnet:{label:'磁铁',icon:'🧲',color:0xFFD25A,dur:8},
-  speed:{label:'加速',icon:'⚡',color:0x35E0FF,dur:5} };
+  speed:{label:'加速',icon:'⚡',color:0x35E0FF,dur:5},
+  slow:{label:'子弹时间',icon:'🌀',color:0xC9A8FF,dur:6} };
 const puGeo=new THREE.OctahedronGeometry(0.26,0);
-const puCols={shield:0x7FD4FF,magnet:0xFFD25A,speed:0x35E0FF};
+const puCols={shield:0x7FD4FF,magnet:0xFFD25A,speed:0x35E0FF,slow:0xC9A8FF};
 function spawnPowerUp(){
-  const types=['shield','magnet','speed'];
+  const types=['shield','magnet','speed','slow'];
   const type=types[Math.floor(Math.random()*types.length)];
   const z=girl.position.z+rand(8,26);
   const x=(Math.random()*2-1)*5.2;
@@ -1509,19 +1512,20 @@ function spawnPowerUp(){
   scene.add(g); powerUps.push(g);
 }
 /* 道具状态 + HUD */
-const powerState={shield:false,magnet:0,speed:0};
+const powerState={shield:false,magnet:0,speed:0,slow:0};
 /* 护盾气泡（附着角色） */
 const shieldBubble=new THREE.Mesh(new THREE.SphereGeometry(1.15,20,14),
   new THREE.MeshBasicMaterial({color:0x7FD4FF,transparent:true,opacity:0.16,
     blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
 shieldBubble.visible=false; girl.add(shieldBubble);
 const pwShieldEl=document.getElementById('pwShield'), pwMagnetEl=document.getElementById('pwMagnet'),
-      pwSpeedEl=document.getElementById('pwSpeed');
+      pwSpeedEl=document.getElementById('pwSpeed'), pwSlowEl=document.getElementById('pwSlow');
 function clearPowerups(){
   for(const p of powerUps) scene.remove(p);
   powerUps.length=0;
-  powerState.shield=false; powerState.magnet=0; powerState.speed=0;
+  powerState.shield=false; powerState.magnet=0; powerState.speed=0; powerState.slow=0;
   pwShieldEl.classList.remove('on'); pwMagnetEl.classList.remove('on'); pwSpeedEl.classList.remove('on');
+  pwSlowEl.classList.remove('on');
   if(shieldBubble) shieldBubble.visible=false;
 }
 
@@ -1975,7 +1979,9 @@ try{ const b=JSON.parse(localStorage.getItem('ww-best-v2')||'null'); if(b&&b.tim
 let thunderT=12;
 const lightningEl=document.getElementById('lightning');
 let lightningTO=0;
+let lightningT=0;   // v0.3.7 闪电照亮全城：>0 期间楼面窗户与月光增亮后衰减
 function lightningFlash(){
+  lightningT=1;
   lightningEl.style.transition='none'; lightningEl.style.opacity='0.9';
   clearTimeout(lightningTO);
   lightningTO=setTimeout(()=>{
@@ -1989,6 +1995,7 @@ function applyPowerUp(type){
   if(type==='shield'){ powerState.shield=true; shieldBubble.visible=true; pwShieldEl.classList.add('on'); }
   else if(type==='magnet'){ powerState.magnet=info.dur; pwMagnetEl.classList.add('on'); }
   else if(type==='speed'){ powerState.speed=info.dur; pwSpeedEl.classList.add('on'); }
+  else if(type==='slow'){ powerState.slow=info.dur; pwSlowEl.classList.add('on'); }
   toast(info.icon+' 获得'+info.label+'！');
   AudioFX.pickup();
 }
@@ -2363,10 +2370,11 @@ function update(dt){
     rp.material.opacity=u.baseOp*(0.72+0.28*Math.sin(t*1.7+u.ph));
     if(u.kind==='pud') rp.scale.x=1+0.06*Math.sin(t*2.1+u.ph);
   }
-  /* 车流光带（沿街行驶） */
+  /* 车流光带（沿街行驶）；v0.3.7 子弹时间：车与无人机以 45% 速率移动 */
+  const sdt=(powerState.slow>0)?dt*0.45:dt;
   for(const c of cars){
     const u=c.userData;
-    c.position.z+=u.speed*u.dir*dt;
+    c.position.z+=u.speed*u.dir*sdt;
     if(u.dir>0&&c.position.z>85) c.position.z=-8;
     if(u.dir<0&&c.position.z<-12) c.position.z=85;
     c.position.y=terrainH(c.position.x,c.position.z)+0.25;
@@ -2389,8 +2397,8 @@ function update(dt){
     } else if(d.mode==='chase'){ tx=girl.position.x; tz=girl.position.z; spd=Math.min(5.2,4.2+0.25*(level-1)); }
     else { tx=d.home.x; tz=d.home.z; spd=3.5; }
     const ang=Math.atan2(tx-g.position.x,tz-g.position.z);
-    g.position.x+=Math.sin(ang)*spd*dt;
-    g.position.z+=Math.cos(ang)*spd*dt;
+    g.position.x+=Math.sin(ang)*spd*sdt;
+    g.position.z+=Math.cos(ang)*spd*sdt;
     g.rotation.y=lerpAngle(g.rotation.y,ang,1-Math.pow(0.01,dt));
     g.position.y=terrainH(g.position.x,g.position.z)+2.4+Math.sin(d.ph*1.8)*0.25;
     /* 扫描环旋转 + 信标闪 */
@@ -2425,6 +2433,7 @@ function update(dt){
   /* 道具持续时间倒计时 */
   if(powerState.magnet>0){ powerState.magnet-=dt; if(powerState.magnet<=0){ powerState.magnet=0; pwMagnetEl.classList.remove('on'); } }
   if(powerState.speed>0){ powerState.speed-=dt; if(powerState.speed<=0){ powerState.speed=0; pwSpeedEl.classList.remove('on'); } }
+  if(powerState.slow>0){ powerState.slow-=dt; if(powerState.slow<=0){ powerState.slow=0; pwSlowEl.classList.remove('on'); } }
 
   /* ---- v0.3.4 新玩法物件：金币 / 穿环 / 加速带 ---- */
   if(mode==='play' && challenge.active){
@@ -2491,6 +2500,13 @@ function update(dt){
       lightningFlash();
       thunderT=rand(levelCfg().thunderMin,levelCfg().thunderMax);
     }
+  }
+  /* v0.3.7 闪电照亮全城：楼面窗户与冷月光随闪电增亮后回落 */
+  if(lightningT>0){
+    lightningT-=dt*1.8; if(lightningT<0)lightningT=0;
+    const b=lightningT;
+    towerMats.forEach(m=>m.emissiveIntensity=0.85+b*1.7);
+    sun.intensity=0.5+b*0.9;
   }
   /* 雨雾漂移光点（缓慢 +z 漂 + 上下浮动） */
   const mp=mistGeo.attributes.position.array;
@@ -2736,7 +2752,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   coinCount:()=>coinCount, coinTotal:()=>coinTotal, boostT:()=>boostT,
   ringCount:()=>ringCount, ringTotal:()=>ringTotal, levelSet:(v)=>{level=v;},   // v0.3.6 测试钩子
   /* v0.3.4 暂停菜单 */
-  paused:()=>paused, openPause, closePause, togglePause};
+  paused:()=>paused, openPause, closePause, togglePause,
+  /* v0.3.7 闪电联动与测试钩子 */
+  towerMats, lightning:lightningFlash};
 window.__T = THREE;
 window.__dbg.shots = {};
 window.__dbg.stop = ()=>renderer.setAnimationLoop(null);
