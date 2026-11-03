@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.12</title>
+<title>鲸步 WHALE WALK · v0.3.13</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -34,7 +34,9 @@
     background:rgba(14,20,48,.5);padding:7px 12px;border-radius:999px;backdrop-filter:blur(4px);
     border:1px solid rgba(127,212,255,.3);pointer-events:auto;}
   #rainCtrl .rc-label{font-size:11px;color:#BFE4FF;letter-spacing:1px;}
-  #rainRange{-webkit-appearance:none;appearance:none;width:90px;height:4px;border-radius:2px;
+  #rainRange::-moz-range-thumb,.volRange::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;
+    border:2px solid #35E0FF;box-shadow:0 0 8px rgba(53,224,255,.8);cursor:pointer;}
+  #volRange,#rainRange{-webkit-appearance:none;appearance:none;width:72px;height:4px;border-radius:2px;
     background:linear-gradient(90deg,#35E0FF,#FF4FD8);outline:none;cursor:pointer;}
   #rainRange::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
     background:#fff;border:2px solid #35E0FF;box-shadow:0 0 8px rgba(53,224,255,.8);cursor:pointer;}
@@ -251,7 +253,9 @@
 <div class="hud" id="hudHint">拖动旋转 · 滚轮缩放</div>
 <div class="hud" id="hudQian">QIAN</div>
 <div id="rainCtrl"><span class="rc-label">雨声</span>
-  <input type="range" id="rainRange" min="0" max="100" value="33"></div>
+  <input type="range" id="rainRange" min="0" max="100" value="33">
+  <span class="rc-label">音效</span>
+  <input type="range" id="volRange" min="0" max="100" value="80"></div>
 <div id="celebrate"><div class="cb-t">★ 全收集 ★</div><div class="cb-s">鲸步大成功 · QIAN</div></div>
 <div id="timer"><div class="t" id="timerNum">80</div><div class="l">挑战倒计时 · 收集全部光点</div></div>
 <div id="powerbar">
@@ -1669,11 +1673,11 @@ function spawnNewProps(){
  *  foot 脚步 / jump 起跳 / land 落地 / pickup 拾取 / M 键静音
  * ===================================================================== */
 const AudioFX=(()=>{
-  let ctx=null,bus=null,muted=false,nSteps=0,nPick=0;
+  let ctx=null,bus=null,muted=false,nSteps=0,nPick=0,vol=0.8;
   function ac(){
     const AC=window.AudioContext||window.webkitAudioContext;
     if(!AC)return null;
-    if(!ctx){ ctx=new AC(); bus=ctx.createGain(); bus.gain.value=0.85; bus.connect(ctx.destination); startRain(); }
+    if(!ctx){ ctx=new AC(); bus=ctx.createGain(); bus.gain.value=vol*0.85; bus.connect(ctx.destination); startRain(); }
     if(ctx.state==='suspended') ctx.resume().catch(()=>{});
     return ctx;
   }
@@ -1829,6 +1833,9 @@ const AudioFX=(()=>{
       g.gain.exponentialRampToValueAtTime(0.001,t0+0.42);
       s.connect(f); f.connect(g); g.connect(bus); s.start(t0); s.stop(t0+0.45);
       tone(320,980,0.30,0.12,'sawtooth',0.03); },
+    /* v0.3.13 音效总线音量（0-1，雨声独立于总线） */
+    setVolume(v){ vol=clamp(v,0,1); if(bus) bus.gain.value=vol*0.85; return vol; },
+    get volume(){return vol;},
     setRainLevel(v){ rainLevel=Math.max(0,Math.min(0.15,v)); setRain(muted?0:rainLevel); return rainLevel; },
     get rainLevel(){return rainLevel;},
     toggle(){ muted=!muted; if(!muted)ac(); setRain(muted?0:rainLevel); return muted; },
@@ -1858,6 +1865,11 @@ const keys={};
 addEventListener('keydown',e=>{ keys[e.code]=true;
   if(e.code==='KeyP'&&mode==='play') togglePause();   // v0.3.4 暂停菜单
   if(e.code==='KeyR'&&mode==='play'&&!paused) resetChallenge();   // v0.3.9 R 键秒重开
+  if(e.code==='KeyF'){ try{   // v0.3.13 F 全屏；headless/iframe 拒绝时 Promise 静默回落
+    const p=document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+    if(p&&p.catch) p.catch(()=>{});
+  }catch(_){} }
+  if(e.code==='Enter'&&mode==='preview') setMode('play');   // v0.3.13 Enter 快捷开始
   if(e.code==='KeyM') applyMute();
   if(['Space','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault(); });
 addEventListener('keyup',e=>keys[e.code]=false);
@@ -1943,7 +1955,7 @@ function setMode(m){
     document.body.classList.toggle('playing', m==='play');
     badge.textContent = m==='preview'?'预览模式':'挑战模式';
     hint.innerHTML = m==='preview'
-      ? (isTouch?'拖动旋转 · 双指缩放 · 小地图双指缩放/拖动':'拖动旋转 · 滚轮缩放 · 小地图滚轮缩放/拖动')
+      ? (isTouch?'拖动旋转 · 双指缩放 · 小地图双指缩放/拖动':'拖动旋转 · 滚轮缩放 · Enter 开始 · F 全屏')
       : (isTouch?'左摇杆移动 · 右侧拖动转视角 · 跳跃按钮空中可二段跳 · 小地图双指缩放/拖动':'WASD / 方向键 移动 · Shift 奔跑 · 空格 跳跃·空中二段跳 · P 暂停 · M 音效 · 小地图滚轮缩放/拖动');
     fader.classList.remove('on');
   },360);
@@ -2826,6 +2838,16 @@ function drawMinimap(){
   rr.addEventListener('input',()=>{
     const v=AudioFX.setRainLevel(rr.value/100*0.15);
     try{ localStorage.setItem('ww-rain',String(v)); }catch(_){}
+  });
+}
+/* v0.3.13 音效音量滑块（持久化 ww-vol） */
+{
+  const vr=document.getElementById('volRange');
+  try{ const saved=parseFloat(localStorage.getItem('ww-vol'));
+    if(!isNaN(saved)){ vr.value=Math.round(saved*100); AudioFX.setVolume(saved); } }catch(_){}
+  vr.addEventListener('input',()=>{
+    const v=AudioFX.setVolume(vr.value/100);
+    try{ localStorage.setItem('ww-vol',String(v)); }catch(_){}
   });
 }
 /* 小地图：滚轮缩放 / 拖动平移 / 双击复位 */
