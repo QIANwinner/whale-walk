@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.26</title>
+<title>鲸步 WHALE WALK · v0.3.27</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1314,8 +1314,10 @@ for(const side of[-1,1]){
   m.position.set(fx, terrainH(fx,z)+7+h/2, z);
   scene.add(m);
 });
-/* 水滩反光构建（光源拖尾 + 水洼） */
-buildWetReflections();
+  /* 水滩反光构建（光源拖尾 + 水洼）；v0.3.27 鲸鱼门环立柱倒影 */
+  buildWetReflections();
+  makeReflection(-4.2,GATE_Z,1.2,4,0x35E0FF,0.14);
+  makeReflection( 4.2,GATE_Z,1.2,4,0x35E0FF,0.14);
 /* 车流光带（沿街移动的霓虹拖尾） */
 /* 飞车池：按难度/关卡激活数量与速度 */
 const cars=[];
@@ -2628,6 +2630,7 @@ function update(dt){
           else { toast('全部光点收集完成！鲸鱼尾为你摆动 🐳'); P.tailJ.rotation.y=0.5;
             if(!celebrated){ celebrated=true; cheerT=1; spawnCelebrate(); AudioFX.celebrate(); showCelebrateBanner(); } } }
         else if(score%6===0) toast(`已收集 ${score} 个光点`);
+        if(TOTAL-score===3) toast('还剩最后 3 个光点！');   // v0.3.27 冲刺提醒
         /* 连击 + 时间奖励 */
         if(challenge.active){
           if(elapsed-challenge.lastPick<COMBO_WINDOW) challenge.combo++;
@@ -2656,6 +2659,7 @@ function update(dt){
   whaleGate.userData.whale.material.opacity=0.55+0.25*Math.sin(t*2.1);
   /* 雨 & 飞车 */
   updateRain(dt,camera.position);
+  rainMesh.material.opacity=0.26+(lightningT>0?lightningT*0.5:0);   // v0.3.27 闪电时雨丝增亮
   drone.position.x+=dt*6;
   if(drone.position.x>60) drone.position.x=-60;
   drone.position.y=26+Math.sin(t*0.5)*1.5;
