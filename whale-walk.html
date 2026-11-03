@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.14</title>
+<title>鲸步 WHALE WALK · v0.3.15</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2109,6 +2109,9 @@ function showLevelBanner(title,sub){
   lvBannerTO=setTimeout(()=>lvBannerEl.classList.remove('show'),1900);
 }
 /* 每关布置：光点 / 无人机 / 飞车 / 清道具 */
+/* v0.3.15 关卡氛围梯度：雾色/天幕随关卡由冷蓝渐入深紫 */
+const LEVEL_TINTS=[0x0A1122,0x0C0F26,0x0E0D2A,0x100C2C,0x120A24];
+const _tintC=new THREE.Color();
 function setupLevel(){
   const cfg=levelCfg();
   placeOrbs(cfg.orbs, cfg.high);
@@ -2119,6 +2122,9 @@ function setupLevel(){
   levelNumEl.textContent=level;
   thunderT=rand(cfg.thunderMin,cfg.thunderMax);
   puTimer=rand(4,7);
+  _tintC.setHex(LEVEL_TINTS[Math.min(level,LEVEL_TINTS.length)-1]);
+  scene.fog.color.copy(_tintC);
+  scene.background.copy(_tintC);
 }
 function startChallenge(){
   setupLevel();
@@ -2913,11 +2919,22 @@ renderAch();   // v0.3.10 初始成就计数
 
 /* v0.3.2 小地图降频：每 3 帧重绘一次（约 20Hz），砍掉每帧 2D 画布开销 */
 let mmFrame=0;
+/* v0.3.15 动态降质：连续低帧自动降 pixelRatio 一次，只降不升避免抖动 */
+let degraded=false, fpsAcc=0, fpsN=0;
+function autoDegrade(){
+  if(degraded) return;
+  degraded=true;
+  renderer.setPixelRatio(1);
+  renderer.setSize(innerWidth,innerHeight);
+  toast('已自动降低画质保帧率 ⚙');
+}
 function renderLoop(){
   const dt=Math.min(clock.getDelta(),0.05);
   if(!paused) update(dt);            // v0.3.4 暂停时冻结玩法
   renderer.render(scene,camera);
   if(++mmFrame%3===0) drawMinimap();
+  fpsAcc+=dt; fpsN++;
+  if(fpsN>=60){ if(fpsAcc/fpsN>1/30 && mode==='play') autoDegrade(); fpsAcc=0; fpsN=0; }
 }
 renderer.setAnimationLoop(renderLoop);
 /* 移除 loader（首帧渲染后） */
@@ -2947,7 +2964,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.10 成就墙钩子 */
   renderAch,
   /* v0.3.12 操作统计钩子 */
-  stats:()=>({lvDodge, lvDj})};
+  stats:()=>({lvDodge, lvDj}),
+  /* v0.3.15 降质与氛围钩子 */
+  autoDegrade, fogHex:()=>scene.fog.color.getHex()};
 window.__T = THREE;
 window.__dbg.shots = {};
 window.__dbg.stop = ()=>renderer.setAnimationLoop(null);
