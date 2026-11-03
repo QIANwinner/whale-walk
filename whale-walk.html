@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.3.7</title>
+<title>鲸步 WHALE WALK · v0.3.8</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1708,9 +1708,10 @@ const AudioFX=(()=>{
                tone(run?150:210,run?70:95,0.07,run?0.14:0.10,'sine'); },
     jump(){ tone(300,660,0.15,0.16); },
     land(v){ thump(Math.max(55,90-v*4),0.13,Math.min(0.5,0.22+v*0.05),true); },
-    pickup(){ nPick++; tone(660,660,0.12,0.14,'sine');
-              tone(880,880,0.14,0.15,'sine',0.08);
-              tone(1320,1320,0.20,0.13,'sine',0.16); },
+    pickup(cb){ nPick++; const m=1+Math.min(cb||0,10)*0.055;   // v0.3.8 连击音高递进
+              tone(660*m,660*m,0.12,0.14,'sine');
+              tone(880*m,880*m,0.14,0.15,'sine',0.08);
+              tone(1320*m,1320*m,0.20,0.13,'sine',0.16); },
     /* 全收集庆祝：上行琶音 + 亮和弦 */
     celebrate(){ if(muted||!ac())return;
       const seq=[523,659,784,1047,1319];
@@ -1975,6 +1976,25 @@ const rmBest=document.getElementById('rmBest');
 const challenge={active:false, timeLeft:0, combo:0, lastPick:-99,
   invuln:0, done:false, failed:false, flashT:0, best:null, startTime:0, danger:false};
 try{ const b=JSON.parse(localStorage.getItem('ww-best-v2')||'null'); if(b&&b.time>=1) challenge.best=b; }catch(_){}
+/* =====================================================================
+ *  v0.3.8 成就系统：localStorage 持久化（ww-ach-v1），本局新获在结算页展示
+ * ===================================================================== */
+const ACHS=[
+  {id:'first',    icon:'🐳', label:'初次散步 · 完成第 1 关'},
+  {id:'allclear', icon:'🏆', label:'一鼓作气 · 通关全部关卡'},
+  {id:'coins',    icon:'🪙', label:'满贯鲸币 · 单关收齐全部鲸币'},
+  {id:'combo8',   icon:'⚡', label:'连击大师 · 单关 COMBO x8'},
+  {id:'perfect',  icon:'🛡', label:'雨夜舞者 · 单关无伤通关'}
+];
+let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
+let newAch=[];
+function award(id){
+  if(achGot.includes(id))return;
+  const a=ACHS.find(x=>x.id===id); if(!a)return;
+  achGot.push(id); newAch.push(a);
+  try{ localStorage.setItem('ww-ach-v1',JSON.stringify(achGot)); }catch(_){}
+  toast('🏆 成就达成：'+a.label); AudioFX.pickup();
+}
 /* 雷声 + 闪电 */
 let thunderT=12;
 const lightningEl=document.getElementById('lightning');
@@ -2029,6 +2049,7 @@ function startChallenge(){
   challenge.timeLeft=levelCfg().time; challenge.combo=0; challenge.lastPick=-99;
   challenge.startTime=levelCfg().time;
   challenge.invuln=0; challenge.flashT=0; challenge.danger=false; rmEl.classList.remove('show');
+  challenge.tookHit=false; challenge.comboMax=0; newAch=[];   // v0.3.8 成就判定状态
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
   timerNum.textContent=Math.ceil(challenge.timeLeft);
   levelTimeUsed=0;
@@ -2045,6 +2066,7 @@ function hitCar(){
   challenge.timeLeft=Math.max(0,challenge.timeLeft-HIT_PENALTY);
   redEl.classList.add('on');
   girl.userData.state.speed*=0.4;
+  challenge.tookHit=true;   // v0.3.8 无伤成就判定（护盾抵消不算）
   AudioFX.land(0.6); buzz(45);
   toast('撞到飞车！ -'+HIT_PENALTY+' 秒');
 }
@@ -2060,6 +2082,7 @@ function hitDrone(d){
   const L=Math.hypot(dx,dz)||1;
   girl.position.x+=dx/L*1.6; girl.position.z+=dz/L*1.6;
   st.speed*=0.3;
+  challenge.tookHit=true;   // v0.3.8 无伤成就判定（护盾抵消不算）
   AudioFX.land(0.7); buzz(45);
   toast('被巡逻无人机击中！ -'+DRONE_PENALTY+' 秒');
 }
@@ -2069,19 +2092,24 @@ function finishChallenge(win){
   const stars=win?starsFor(challenge.timeLeft):0;
   if(win){
     runTotalUsed+=levelTimeUsed; runCoins+=coinCount; runRings+=ringCount;
+    if(level===1) award('first');             // v0.3.8 成就
+    if(level>=MAX_LEVEL) award('allclear');
+    if(!challenge.tookHit) award('perfect');
     if(level<MAX_LEVEL){
       rmTitle.textContent='第 '+level+' 关完成！';
       rmStars.textContent='★'.repeat(stars)+'☆'.repeat(3-stars);
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
-        +'<br>下一关：'+levelOrbs()+'+4 光点 · 时间 -8 秒';
+        +'<br>下一关：'+levelOrbs()+'+4 光点 · 时间 -8 秒'
+        +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
       rmBest.textContent='';
       btnNext.style.display='inline-block';
       showLevelBanner('第 '+(level+1)+' 关', '更多光点 · 更短时间 · '+diff().label);
     } else {
       rmTitle.textContent='🏆 全部通关！';
       rmStars.textContent='★'.repeat(stars)+'☆'.repeat(3-stars);
-      rmInfo.innerHTML=MAX_LEVEL+'关总用时 <b>'+fmtT(runTotalUsed)+'</b><br>难度 '+diff().label+' · 鲸币 '+runCoins+' · 穿环 '+runRings;
+      rmInfo.innerHTML=MAX_LEVEL+'关总用时 <b>'+fmtT(runTotalUsed)+'</b><br>难度 '+diff().label+' · 鲸币 '+runCoins+' · 穿环 '+runRings
+        +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
       if(runTotalUsed>=1 && (!challenge.best || runTotalUsed<challenge.best.time)){
         challenge.best={time:runTotalUsed, stars};
         rmBest.textContent='新纪录！ 总用时 '+fmtT(runTotalUsed)+' · '+('★'.repeat(stars));
@@ -2208,7 +2236,7 @@ function update(dt){
       const impact=-st.vy;
       st.y=0; st.vy=0; st.grounded=true; st.airJumps=1;   // v0.3.5 落地重置二段跳
       girl.position.y=supY;
-      if(impact>1.2){ AudioFX.land(impact); buzz(18); }
+      if(impact>1.2){ AudioFX.land(impact); buzz(18); burst(girl.position); }   // v0.3.8 重落地溅起涟漪
       /* v0.3.4 弹跳垫：落地即弹起（蹦床）抛向空中光环 */
       let onPad=null;
       for(const bp of bouncePads){
@@ -2330,7 +2358,7 @@ function update(dt){
         score++; scoreEl.textContent=`${score} / ${TOTAL}`;
         blinkT=1;   // 收集时眨一下眼
         burst(o.position);
-        AudioFX.pickup();
+        AudioFX.pickup(challenge.combo+1);   // v0.3.8 连击音高递进
         buzz(12);   // v0.3.3 收集光点轻振动
         if(score===TOTAL){
           if(challenge.active) finishChallenge(true);
@@ -2342,6 +2370,8 @@ function update(dt){
           if(elapsed-challenge.lastPick<COMBO_WINDOW) challenge.combo++;
           else challenge.combo=1;
           challenge.lastPick=elapsed;
+          challenge.comboMax=Math.max(challenge.comboMax||0,challenge.combo);
+          if(challenge.combo>=8) award('combo8');   // v0.3.8 连击大师
           if(challenge.combo>=3){
             challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+COMBO_BONUS);
             toast(`COMBO x${challenge.combo}！ +${COMBO_BONUS} 秒`);
@@ -2452,6 +2482,7 @@ function update(dt){
         blinkT=1; burst(c.position);
         AudioFX.coin(); buzz(30);
         toast(coinCount===coinTotal?'全部金色鲸币收集！+3 秒':'金色鲸币 +3 秒！');
+        if(coinCount===coinTotal) award('coins');   // v0.3.8 满贯鲸币
       }
     }
     /* 空中光环（水平环）：沿弹跳轨迹向上穿过，+2 秒 */
@@ -2744,7 +2775,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   challenge, patrolDrones, powerUps, platforms, powerState, levelCfg,
   applyPowerUp, spawnPowerUp, spawnPatrolDrones, startChallenge, setupLevel, resetChallenge, doJump,
   diffKey:()=>diffKey, level:()=>level, TOTAL:()=>TOTAL, score:()=>score,
-  mode:()=>mode,
+  mode:()=>mode, elapsed:()=>elapsed,   // v0.3.8 连击窗口测试用
   supportAt, terrainH, orbs:()=>orbs, cars:()=>cars,
   /* v0.3.4 新玩法 */
   spawnNewProps, clearNewProps,
@@ -2754,7 +2785,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.4 暂停菜单 */
   paused:()=>paused, openPause, closePause, togglePause,
   /* v0.3.7 闪电联动与测试钩子 */
-  towerMats, lightning:lightningFlash};
+  towerMats, lightning:lightningFlash,
+  /* v0.3.8 成就钩子 */
+  award, achGot:()=>achGot, ACHS};
 window.__T = THREE;
 window.__dbg.shots = {};
 window.__dbg.stop = ()=>renderer.setAnimationLoop(null);
