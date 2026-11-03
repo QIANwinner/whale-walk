@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.23</title>
+<title>鲸步 WHALE WALK · v0.3.24</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1917,7 +1917,13 @@ const AudioFX=(()=>{
  *  输入
  * ===================================================================== */
 /* v0.3.3 触觉反馈：移动端振动（iOS 不支持则静默）+ 音效开关统一入口 */
-function buzz(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(_){} }
+function buzz(ms){ try{
+  if(navigator.vibrate) navigator.vibrate(ms);
+  /* v0.3.24 手柄双马达震动（无手柄/不支持则静默） */
+  const gp=[...(navigator.getGamepads?navigator.getGamepads():[])].find(g=>g&&g.connected&&g.vibrationActuator);
+  if(gp&&gp.vibrationActuator) gp.vibrationActuator.playEffect('dual-rumble',
+    {duration:ms, strongMagnitude:Math.min(1,ms/60), weakMagnitude:0.4}).catch(()=>{});
+}catch(_){} }
 function applyMute(){ const m=AudioFX.toggle();
   try{ localStorage.setItem('ww-muted', m?'1':'0'); }catch(_){}
   document.getElementById('btnMute').textContent = m?'🔇':'🔊';
@@ -2046,8 +2052,8 @@ btnPlay.addEventListener('click',()=>setMode('play'));
 let paused=false;
 const pauseMenuEl=document.getElementById('pauseMenu');
 function openPause(){ if(mode!=='play')return; paused=true; pauseMenuEl.classList.add('show');
-  document.getElementById('pmStats').textContent=   // v0.3.9 暂停即见当前进度
-    `第 ${level} 关 · 剩余 ${Math.ceil(challenge.timeLeft)} 秒 · 收集 ${score}/${TOTAL} · 鲸币 ${coinCount}/${coinTotal}`; }
+  document.getElementById('pmStats').textContent=   // v0.3.9 暂停即见当前进度；v0.3.24 加成就进度
+    `第 ${level} 关 ${levelName()} · 剩余 ${Math.ceil(challenge.timeLeft)} 秒 · 收集 ${score}/${TOTAL} · 鲸币 ${coinCount}/${coinTotal} · 🏆 ${achGot.length}/${ACHS.length}`; }
 function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); }
 function togglePause(){ if(mode!=='play')return; paused?closePause():openPause(); }
 document.getElementById('pmResume').addEventListener('click',()=>closePause());
