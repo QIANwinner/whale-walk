@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.25</title>
+<title>鲸步 WHALE WALK · v0.3.26</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1968,6 +1968,11 @@ addEventListener('keydown',e=>{ keys[e.code]=true;  if(e.code==='KeyP'&&mode==='
     if(p&&p.catch) p.catch(()=>{});
   }catch(_){} }
   if(e.code==='Enter'&&mode==='preview') setMode('play');   // v0.3.13 Enter 快捷开始
+  /* v0.3.26 结算弹窗按 Enter 空格 = 确认按钮（下一关优先于再来一局） */
+  if((e.code==='Enter'||e.code==='Space') && rmEl.classList.contains('show')){
+    e.preventDefault();
+    (btnNext.style.display!=='none'?btnNext:document.getElementById('btnRetry')).click();
+  }
   if(e.code==='KeyM') applyMute();
   if(['Space','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault(); });
 addEventListener('keyup',e=>keys[e.code]=false);
@@ -2310,7 +2315,7 @@ function finishChallenge(win){
       rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
-        +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj
+        +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 最高连击 x'+(challenge.comboMax||0)
         +(stars<3?'<br>下次快 '+fmtT(levelCfg().time*0.45-challenge.timeLeft)+' 即可 3★':'')
         +'<br>下一关：'+(level+1)+' '+LEVEL_NAMES[level]+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
@@ -2335,7 +2340,7 @@ function finishChallenge(win){
     shareSnap={kind:'fail',diff:diff().label,level,score,total:TOTAL};
     rmTitle.textContent='时间到…';
     rmStars.textContent='—';
-    rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 第 '+level+' 关';
+    rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 第 '+level+' 关 · 最高连击 x'+(challenge.comboMax||0);
     rmBest.textContent = challenge.best?('最佳 总用时 '+fmtT(challenge.best.time)):'';
     btnNext.style.display='none';
   }
