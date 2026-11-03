@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.21</title>
+<title>鲸步 WHALE WALK · v0.3.22</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1670,6 +1670,8 @@ function spawnNewProps(){
   if(platforms.length){ const p=platforms[2];
     spots.push({x:p.x, z:p.z, y:terrainH(p.x,p.z)+p.topY+0.6}); }   // 跳跃平台顶（需跳上）
   else spots.push({x:(rn()*2-1)*5, z:64, y:null});
+  if(level>=4 && platforms.length){ const p=platforms[4];             // v0.3.22 高关卡第 4 枚
+    spots.push({x:p.x, z:p.z, y:terrainH(p.x,p.z)+p.topY+0.6}); }
   coinTotal=spots.length;
   spots.forEach(s=>{
     const g=new THREE.Group();
@@ -2303,7 +2305,7 @@ function finishChallenge(win){
       } else rmBest.textContent='';
       btnNext.style.display='none';
     }
-    if(!celebrated){ celebrated=true; cheerT=1; spawnCelebrate(); AudioFX.celebrate(); showCelebrateBanner(); }
+    if(!celebrated){ celebrated=true; cheerT=1; spawnCelebrate(); AudioFX.celebrate(); showCelebrateBanner(); orbitT=2.2; }   // v0.3.22 环视庆祝
   } else {
     shareSnap={kind:'fail',diff:diff().label,level,score,total:TOTAL};
     rmTitle.textContent='时间到…';
@@ -2358,8 +2360,8 @@ function burst(pos){
 
 /* v0.3.3 相机临时向量：复用避免每帧 new Vector3（GC 压力） */
 const _vTgt=new THREE.Vector3(), _vCam=new THREE.Vector3();
-/* v0.3.16 打击感：相机震动 + 受击慢动作 */
-let shakeT=0, hitStop=0;
+/* v0.3.16 打击感：相机震动 + 受击慢动作；v0.3.22 过关庆祝环视 */
+let shakeT=0, hitStop=0, orbitT=0;
 function update(dt){
   if(hitStop>0){ hitStop-=dt; dt*=0.25; }   // 受击瞬间时间放慢到 1/4
   elapsed+=dt;
@@ -2368,6 +2370,7 @@ function update(dt){
 
   /* ---- 相机 ---- */
   if(mode==='preview'&&!dragging){ camS.tYaw+=dt*0.22; }
+  if(orbitT>0){ orbitT-=dt; camS.tYaw+=dt*3.0; }   // v0.3.22 过关庆祝环视（绕角色一圈半）
   camS.yaw=lerpAngle(camS.yaw,camS.tYaw,1-Math.pow(0.0001,dt));
   camS.pitch=lerp(camS.pitch,camS.tPitch,1-Math.pow(0.0001,dt));
   camS.dist=lerp(camS.dist,camS.tDist,1-Math.pow(0.0001,dt));
