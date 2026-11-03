@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>鲸步 WHALE WALK · v0.3.4</title>
+<title>鲸步 WHALE WALK · v0.3.5</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -143,6 +143,9 @@
   #diffPick .dbtn.on{background:linear-gradient(90deg,#002FA7,#1E5FD8);border-color:transparent;color:#fff;
     box-shadow:0 4px 14px rgba(0,47,167,.55);}
   #diffPick .dbtn:hover{border-color:rgba(127,212,255,.7);}
+  /* v0.3.5 挑战中隐藏难度选择器（移动端与跳跃按钮重叠）；预览时隐藏鲸币计数 */
+  body.playing #diffPick{display:none;}
+  body:not(.playing) #coinbar{display:none;}
   /* ---------- 关卡指示 ---------- */
   #hudLevel{top:86px;left:18px;font-size:11px;opacity:.9;letter-spacing:1px;}
   #hudLevel .lv{font-weight:800;color:#7FD4FF;}
@@ -1752,6 +1755,10 @@ const AudioFX=(()=>{
     /* v0.3.4 弹跳：快速上扬滑音 */
     bounce(){ if(muted||!ac())return;
       tone(180,620,0.16,0.18,'square',0.02); },
+    /* v0.3.5 二段跳：双音上扬 */
+    djump(){ if(muted||!ac())return;
+      tone(520,980,0.12,0.15,'triangle');
+      tone(760,1240,0.12,0.10,'sine',0.05); },
     /* v0.3.4 加速：噪声呼啸 + 高频滑升 */
     boost(){ if(muted||!ac())return;
       const t0=ctx.currentTime;
@@ -1817,17 +1824,26 @@ joyEl.addEventListener('touchmove',e=>{ for(const t of e.changedTouches) if(t.id
 joyEl.addEventListener('touchend',e=>{ joyState.active=false; joyState.x=joyState.y=0;
   knob.style.transform='translate(-50%,-50%)'; });
 
-/* v0.3.1 移动端跳跃：提取 doJump 供键盘/触摸按钮共用 */
+/* v0.3.1 移动端跳跃：提取 doJump 供键盘/触摸按钮共用
+   v0.3.5 二段跳：空中可再跳一次（360° 旋体），落地/弹跳垫重置次数；
+   spaceHeld 边沿检测防按住连发 */
+let spinT=0, spaceHeld=false;
 function doJump(){ const st=girl.userData.state;
-  if(mode==='play'&&st.grounded){ st.vy=4.9; st.grounded=false; AudioFX.jump(); } }
+  if(mode!=='play')return;
+  if(st.grounded){ st.vy=4.9; st.grounded=false; st.airJumps=1; AudioFX.jump(); }
+  else if((st.airJumps|0)>0){ st.airJumps--; st.vy=4.35; spinT=0.42;
+    AudioFX.djump(); buzz(10); } }
 const btnJump=document.getElementById('btnJump');
 btnJump.addEventListener('touchstart',e=>{ doJump(); e.preventDefault(); },{passive:false});
+btnJump.addEventListener('click',()=>doJump());   // v0.3.5 触屏笔记本鼠标兜底（touchstart 已 preventDefault，不会双触发）
 /* v0.3.2 移动端暂停：v0.3.4 改为弹出暂停菜单（等同键盘 P） */
 const btnPause=document.getElementById('btnPause');
 btnPause.addEventListener('touchstart',e=>{ togglePause(); e.preventDefault(); },{passive:false});
+btnPause.addEventListener('click',()=>togglePause());   // v0.3.5 鼠标兜底
 /* v0.3.3 移动端静音：触屏点按切换音效（等同键盘 M） */
 const btnMute=document.getElementById('btnMute');
 btnMute.addEventListener('touchstart',e=>{ applyMute(); e.preventDefault(); },{passive:false});
+btnMute.addEventListener('click',()=>applyMute());   // v0.3.5 鼠标兜底
 /* v0.3.1 标签页隐藏时暂停音频 + v0.3.2 暂停渲染循环，节省电量 */
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){ AudioFX.suspend(); renderer.setAnimationLoop(null); }
@@ -1839,7 +1855,7 @@ const camS={yaw:Math.PI, pitch:0.30, dist:3.0, tYaw:Math.PI, tPitch:0.30, tDist:
 let dragging=false,lastX=0,lastY=0,pinchD=0;
 const cvs=renderer.domElement;
 cvs.addEventListener('pointerdown',e=>{ dragging=true; lastX=e.clientX; lastY=e.clientY; cvs.setPointerCapture(e.pointerId); });
-cvs.addEventListener('pointermove',e=>{ if(!dragging)return;
+cvs.addEventListener('pointermove',e=>{ if(!dragging||paused)return;   // v0.3.5 暂停时冻结相机拖拽
   camS.tYaw-=(e.clientX-lastX)*0.0052; camS.tPitch=clamp(camS.tPitch+(e.clientY-lastY)*0.0038,0.02,1.15);
   lastX=e.clientX; lastY=e.clientY; });
 cvs.addEventListener('pointerup',()=>dragging=false);
@@ -1864,7 +1880,7 @@ function setMode(m){
   mode=m; fader.classList.add('on');
   setTimeout(()=>{
     girl.position.set(0,terrainH(0,0),0);
-    girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0};
+    girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0,airJumps:1};
     if(m==='play'){ camS.tYaw=girl.userData.state.yaw+Math.PI; camS.tPitch=0.30; camS.tDist=3.0;
       if(challenge.done||challenge.failed) resetChallenge(); else if(!challenge.active) startChallenge(); }
     else { camS.tYaw=Math.PI*0.85; camS.tPitch=0.14; camS.tDist=2.2;
@@ -1874,7 +1890,7 @@ function setMode(m){
     badge.textContent = m==='preview'?'预览模式':'挑战模式';
     hint.innerHTML = m==='preview'
       ? (isTouch?'拖动旋转 · 双指缩放 · 小地图双指缩放/拖动':'拖动旋转 · 滚轮缩放 · 小地图滚轮缩放/拖动')
-      : (isTouch?'左摇杆移动 · 右侧拖动转视角 · 小地图双指缩放/拖动':'WASD / 方向键 移动 · Shift 奔跑 · 空格 跳跃 · P 返回预览 · M 音效 · 小地图滚轮缩放/拖动');
+      : (isTouch?'左摇杆移动 · 右侧拖动转视角 · 跳跃按钮空中可二段跳 · 小地图双指缩放/拖动':'WASD / 方向键 移动 · Shift 奔跑 · 空格 跳跃·空中二段跳 · P 暂停 · M 音效 · 小地图滚轮缩放/拖动');
     fader.classList.remove('on');
   },360);
 }
@@ -2079,7 +2095,7 @@ function resetChallenge(){
   level=1; runTotalUsed=0;
   celebrated=false;
   girl.position.set(0,terrainH(0,0),0);
-  girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0};
+  girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0,airJumps:1};
   camS.tYaw=Math.PI; camS.tPitch=0.30; camS.tDist=3.0;
   startChallenge();
 }
@@ -2149,6 +2165,9 @@ function update(dt){
   const dirYaw=(mLen>0.01)?Math.atan2(mx,mz):st.yaw;
   st.yaw=lerpAngle(st.yaw,dirYaw,1-Math.pow(0.00005,dt));
   girl.rotation.y=st.yaw;
+  /* v0.3.5 二段跳旋体：平滑 360° 自转 */
+  if(spinT>0){ spinT-=dt; const p=clamp(1-Math.max(0,spinT)/0.42,0,1);
+    girl.rotation.y=st.yaw+Math.PI*2*p*p*(3-2*p); }
 
   /* ---- 移动 + 碰撞 ---- */
   const sp=st.speed;
@@ -2166,7 +2185,8 @@ function update(dt){
   /* ---- 跳跃 + 平台碰撞 ---- */
   const gy=terrainH(px,pz);
   const supY=supportAt(px,pz,girl.position.y);   // 当前可支撑面绝对高度
-  if(keys.Space) doJump();
+  if(keys.Space&&!spaceHeld) doJump();           // v0.3.5 边沿检测：按住不连发二段跳
+  spaceHeld=!!keys.Space;
   if(!st.grounded){
     /* 重设相对支撑面的偏移，避免支撑面切换(如越过平台)时 absY 跳变 */
     st.y = girl.position.y - supY;
@@ -2174,7 +2194,7 @@ function update(dt){
     const absY=supY+st.y;
     if(absY<=supY+0.001){
       const impact=-st.vy;
-      st.y=0; st.vy=0; st.grounded=true;
+      st.y=0; st.vy=0; st.grounded=true; st.airJumps=1;   // v0.3.5 落地重置二段跳
       girl.position.y=supY;
       if(impact>1.2){ AudioFX.land(impact); buzz(18); }
       /* v0.3.4 弹跳垫：落地即弹起（蹦床）抛向空中光环 */
@@ -2183,7 +2203,7 @@ function update(dt){
         if(Math.hypot(px-bp.position.x,pz-bp.position.z)<1.0){ onPad=bp; break; }
       }
       if(onPad && onPad.userData.cool<=0){
-        st.grounded=false; st.vy=8.5; st.y=0.02;
+        st.grounded=false; st.vy=8.5; st.y=0.02; st.airJumps=1;
         onPad.userData.cool=0.8;
         onPad.scale.y=0.6;                     // 压缩反馈
         AudioFX.bounce(); buzz(22);
@@ -2196,7 +2216,7 @@ function update(dt){
     if(supY < girl.position.y-0.05){
       st.grounded=false; st.vy=0; st.y=girl.position.y-supY;
     } else {
-      girl.position.y=supY; st.y=0;
+      girl.position.y=supY; st.y=0; st.airJumps=1;   // v0.3.5 地面持续重置二段跳
     }
   }
   st.airT=lerp(st.airT, st.grounded?0:1, 1-Math.pow(0.0005,dt));
@@ -2680,7 +2700,7 @@ function showCelebrateBanner(){
  *  启动
  * ===================================================================== */
 girl.position.set(0,terrainH(0,0),0);
-girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0};
+girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0,airJumps:1};
 scoreEl.textContent=`0 / ${TOTAL}`;
 setMode('preview');
 
@@ -2700,7 +2720,7 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{
 /* ---- 自查调试钩子（不参与游戏逻辑） ---- */
 window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, audio:AudioFX, mm:drawMinimap,
   challenge, patrolDrones, powerUps, platforms, powerState, levelCfg,
-  applyPowerUp, spawnPowerUp, spawnPatrolDrones, startChallenge, setupLevel, resetChallenge,
+  applyPowerUp, spawnPowerUp, spawnPatrolDrones, startChallenge, setupLevel, resetChallenge, doJump,
   diffKey:()=>diffKey, level:()=>level, TOTAL:()=>TOTAL, score:()=>score,
   mode:()=>mode,
   supportAt, terrainH, orbs:()=>orbs, cars:()=>cars,
