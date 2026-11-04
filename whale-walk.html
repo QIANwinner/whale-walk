@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.17</title>
+<title>鲸步 WHALE WALK · v0.4.18</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2333,6 +2333,10 @@ const AudioFX=(()=>{
     /* 雷声远滚：棕色噪声低频轰鸣 + 次声扫频，多层延迟模拟远滚 */
     thunder(intensity){ if(muted||!ac())return;
       const t0=ctx.currentTime, iv=clamp(intensity||1,0.3,1.2);
+      /* v0.4.18 雷鸣 duck：雨声瞬时压到 30%，0.5s 后回落，雷声更突出 */
+      if(rainGain){ const cur=rainGain.gain.value;
+        rainGain.gain.setTargetAtTime(cur*0.3,t0,0.05);
+        rainGain.gain.setTargetAtTime(muted?0:rainLevel,t0+0.5,0.4); }
       const dur=2.6+iv*1.8;
       const n=Math.max(512,(ctx.sampleRate*dur)|0);
       const buf=ctx.createBuffer(1,n,ctx.sampleRate);
@@ -2668,6 +2672,7 @@ let score=0; let TOTAL=orbs.length;
 const clock=new THREE.Clock();
 let elapsed=0;
 let blinkT=0, cheerT=0;   // 眨眼计时 / 欢呼计时
+let idleT=0;              // v0.4.18 待机发呆计时
 let tailWagLeft=0, tailWagT=0;   // v0.3.95 胜利鲸尾摆动剩余次数/计时
 const boostglowEl=document.getElementById('boostglow');
 const spherePos=new THREE.Vector3();
@@ -3253,6 +3258,10 @@ function finishChallenge(win){
       try{ localStorage.setItem('ww-cleardiff-v1',JSON.stringify(CLEARED)); }catch(_){}
       if(CLEARED.easy&&CLEARED.normal&&CLEARED.hard&&CLEARED.extreme) award('m4');
       rmTitle.textContent='🏆 鲸落之地 · 全部通关！';
+      /* v0.4.18 全通鲸跃：主角跃出街道高空，慢动作 + 环视庆祝加长 */
+      { const st=girl.userData.state;
+        st.grounded=false; st.vy=11; st.y=Math.max(st.y,0.05); st.airJumps=1;
+        hitStop=0.35; orbitT=3.2; cheerT=2.2; }
       rmInfo.innerHTML=MAX_LEVEL+'关总用时 <b>'+fmtT(runTotalUsed)+'</b><br>难度 '+diff().label+' · 鲸币 '+runCoins+' · 穿环 '+runRings
         +(()=>{let c4=0;for(const k in CLEARED)if(CLEARED[k])c4++;return '<br>四难度通关 '+c4+'/4';})()   // v0.3.83 全通四难度进度
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
@@ -3647,13 +3656,17 @@ function update(dt){
   P.body.rotation.x=swing*0.05+st.airT*0.06;
   P.torsoG.rotation.x=Math.sin(ph*2)*0.02*swing;
   P.headG.rotation.x=-swing*0.03+Math.sin(t*1.7)*0.012;
-  P.headG.rotation.z=Math.sin(ph)*0.02*swing;
+  P.headG.rotation.z=Math.sin(ph)*0.02*swing + (idleT>4?Math.sin(t*0.8)*0.10:0);   // v0.4.18 发呆摇头
   /* 呼吸 */
   const br=1+Math.sin(t*2.3)*0.008;
   P.torsoG.scale.set(1,br,1);
 
   /* ---- 眨眼（收集触发 + 偶尔自然眨眼） ---- */
-  if(blinkT<=0 && Math.random()<dt*0.14) blinkT=1;
+  /* v0.4.18 待机小剧场：静止 4s 后进入发呆模式——偶尔长闭眼 + 头部轻摇 */
+  idleT = (sp<0.15 && mode==='play') ? idleT+dt : 0;
+  if(blinkT<=0 && Math.random()<dt*(0.14+(idleT>4?0.06:0))){
+    blinkT = (idleT>4 && Math.random()<0.35) ? 2.4 : 1;   // 发呆时 35% 概率长闭眼
+  }
   blinkT=Math.max(0,blinkT-dt*9);
   const faceMap=(blinkT>0.45)?P.faceClosed:P.faceOpen;
   if(P.face.material.map!==faceMap){ P.face.material.map=faceMap; P.face.material.needsUpdate=true; }
@@ -4623,7 +4636,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.10 成就墙钩子 */
   renderAch,
   /* v0.3.12 操作统计钩子 */
-  stats:()=>({lvDodge, lvDj, lvRewind}),
+  stats:()=>({lvDodge, lvDj, lvRewind, idleT}),
   bestOf, finishChallenge, stars:()=>STARS,
   /* v0.3.15 降质与氛围钩子 */
   autoDegrade, fogHex:()=>scene.fog.color.getHex(),
