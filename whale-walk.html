@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.16</title>
+<title>鲸步 WHALE WALK · v0.4.17</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3419,6 +3419,21 @@ renderLB();
 
 /* 拾取光环粒子池（v0.4.02 扩充 8→12，复用取最闲） */
 const fxPool=[];
+/* v0.4.17 地面导航光箭头：6 个 chevron 依次指向最近光点（濒危转红加速） */
+const navArrows=[];
+{
+  const sh=new THREE.Shape();
+  sh.moveTo(-0.26,0.32); sh.lineTo(0,0.52); sh.lineTo(0.26,0.32);
+  sh.lineTo(0.26,0.10); sh.lineTo(0,-0.12); sh.lineTo(-0.26,0.10);
+  sh.closePath();
+  const navGeo=new THREE.ShapeGeometry(sh);
+  for(let i=0;i<6;i++){
+    const m=new THREE.Mesh(navGeo,new THREE.MeshBasicMaterial({color:0xFFD25A,
+      transparent:true,opacity:0,side:THREE.DoubleSide,
+      blending:THREE.AdditiveBlending,depthWrite:false}));
+    m.rotation.x=-Math.PI/2; m.visible=false; scene.add(m); navArrows.push(m);
+  }
+}
 for(let i=0;i<12;i++){
   const m=new THREE.Mesh(new THREE.RingGeometry(0.10,0.16,20),
     new THREE.MeshBasicMaterial({color:C.neon,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
@@ -3763,6 +3778,31 @@ function update(dt){
     if(s.life<=0)s.m.visible=false; } }
   /* 云 */
   for(const c of clouds){ c.position.x+=dt*0.4; if(c.position.x>150)c.position.x=-150; }
+  /* v0.4.17 地面导航光箭头：沿方向铺向最近存活光点 */
+  {
+    let nearest=null, nd=1e9;
+    for(const o of orbGroup.children){
+      if(!o.userData.alive) continue;
+      const d=(o.position.x-girl.position.x)**2+(o.position.z-girl.position.z)**2;
+      if(d<nd){ nd=d; nearest=o; }
+    }
+    const show=mode==='play'&&challenge.active&&nearest&&nd>2.25;
+    const danger=challenge.danger;
+    for(let i=0;i<navArrows.length;i++){
+      const a=navArrows[i];
+      if(!show){ a.visible=false; continue; }
+      a.visible=true;
+      const t0=2.2+i*1.6;
+      const dx=nearest.position.x-girl.position.x, dz=nearest.position.z-girl.position.z;
+      const L=Math.hypot(dx,dz)||1;
+      a.position.set(girl.position.x+dx/L*Math.min(t0,L*0.9),
+        terrainH(girl.position.x+dx/L*Math.min(t0,L*0.9), girl.position.z+dz/L*Math.min(t0,L*0.9))+0.07,
+        girl.position.z+dz/L*Math.min(t0,L*0.9));
+      a.rotation.z=-Math.atan2(dx,dz);
+      a.material.color.setHex(danger?0xFF5A5A:0xFFD25A);
+      a.material.opacity=0.22+0.16*Math.sin(t*4-i*0.9);
+    }
+  }
   /* v0.4.14 远海鲸群：绕城缓游 + 尾鳍摆动 */
   for(const w of whalePod){
     const u=w.userData;
@@ -4602,7 +4642,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.4.12 鲸语碎片钩子 */
   frags:()=>frags, fragCount:()=>fragCount, fragTotal:()=>fragTotal,
   /* v0.4.14 远海鲸群钩子 */
-  whalePod};
+  whalePod,
+  /* v0.4.17 导航箭头钩子 */
+  navArrows};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
