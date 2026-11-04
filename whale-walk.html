@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.09</title>
+<title>鲸步 WHALE WALK · v0.4.10</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -174,6 +174,14 @@
     transition:transform .15s, box-shadow .15s;font-family:inherit;}
   #btnPlay:hover{transform:translateX(-50%) translateY(-2px);box-shadow:0 10px 30px rgba(0,47,167,.6);}
   #btnPlay:active{transform:translateX(-50%) translateY(0);}
+  /* ---------- v0.4.10 无尽鲸潮入口 ---------- */
+  #btnEndless{position:fixed;left:calc(18px + env(safe-area-inset-left,0px));bottom:calc(120px + env(safe-area-inset-bottom,0px));z-index:15;
+    display:none;background:rgba(10,16,38,.72);border:1px solid rgba(255,210,90,.5);color:#FFD25A;
+    border-radius:999px;padding:11px 22px;font-size:14px;font-weight:800;letter-spacing:2px;cursor:pointer;
+    backdrop-filter:blur(4px);font-family:inherit;transition:transform .12s,border-color .15s;
+    -webkit-tap-highlight-color:transparent;}
+  #btnEndless:hover{transform:translateY(-1px);border-color:rgba(255,210,90,.9);}
+  body:not(.playing) #btnEndless{display:block;}
   /* ---------- 虚拟摇杆 ---------- */
   #joy{position:fixed;left:calc(26px + env(safe-area-inset-left,0px));bottom:calc(70px + env(safe-area-inset-bottom,0px));width:118px;height:118px;border-radius:50%;z-index:12;
     background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.25);display:none;}
@@ -494,6 +502,7 @@
 <div id="levelPick"></div>
 <div id="unlockInfo"></div>
 <button id="btnPlay" data-i18n="play">开始散步</button>
+<button id="btnEndless">♾ 无尽鲸潮</button>
 <div id="joy"><div id="joyKnob"></div></div>
 <button id="btnJump" aria-label="跳跃">⤒</button>
 <button id="btnPause" aria-label="暂停/退出">⏸</button>
@@ -2515,14 +2524,21 @@ function setMode(m){
       challenge.active=false; stopChallengeUI(); }
     btnPlay.style.display = m==='preview'?'block':'none';
     document.body.classList.toggle('playing', m==='play');
-    badge.textContent = m==='preview'?'预览模式':'挑战模式';
+    badge.textContent = m==='preview'?'预览模式':(endless?'♾ 无尽鲸潮':'挑战模式');   // v0.4.10 无尽模式徽标
     hint.innerHTML = m==='preview'
       ? (isTouch?'拖动旋转 · 双指缩放 · 小地图双指缩放/拖动':'拖动旋转 · 滚轮缩放 · Enter 开始 · F 全屏')
       : (isTouch?'左摇杆移动 · 右侧拖动转视角 · 跳跃按钮空中可二段跳 · 小地图双指缩放/拖动':'WASD / 方向键 移动 · Shift 奔跑 · 空格 跳跃·空中二段跳 · P / Esc 暂停 · M 音效 · 小地图滚轮缩放/拖动');
     fader.classList.remove('on');
   },360);
 }
-btnPlay.addEventListener('click',()=>setMode('play'));
+btnPlay.addEventListener('click',()=>{ endless=false; setMode('play'); });
+/* v0.4.10 无尽鲸潮：连续通关流——失败即终，全通后关卡回卷 */
+let endless=false, endlessStreak=0, EBEST=0;
+try{ EBEST=parseInt(localStorage.getItem('ww-endless-best')||'0',10)||0; }catch(_){}
+document.getElementById('btnEndless').addEventListener('click',()=>{
+  endless=true; endlessStreak=0; level=1; setMode('play');
+});
+function endlessNext(){ level = level>=MAX_LEVEL ? 1 : level+1; retainPending=null; startChallenge(); }
 /* v0.3.97 菜单 hover 细微滴答：主按钮/难度/关卡按钮悬停 */
 ['btnPlay','btnRetry','btnNext','btnShare','btnJump','achBtn','lbClear'].forEach(id=>{
   const el=document.getElementById(id);
@@ -2543,7 +2559,7 @@ function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); docum
 function togglePause(){ if(mode!=='play')return; paused?closePause():openPause(); }
 document.getElementById('pmResume').addEventListener('click',()=>closePause());
 document.getElementById('pmRestart').addEventListener('click',()=>{ closePause(); resetChallenge(); });
-document.getElementById('pmExit').addEventListener('click',()=>{ closePause(); setMode('preview'); });
+document.getElementById('pmExit').addEventListener('click',()=>{ endless=false; endlessStreak=0; closePause(); setMode('preview'); });
 
 /* toast */
 const toastEl=document.getElementById('toast'); let toastT=0;
@@ -2743,7 +2759,8 @@ const ACHS=[
   {id:'combo24',     icon:'⚡', label:'连击大师二段 · 单关最高连击 x24'},
   {id:'echo10',      icon:'📡', label:'回响鲸歌 · 单关用回声定位收集 10 个光点'},
   {id:'rewind5',     icon:'⏳', label:'时之鲸 · 单关时光回溯累计恢复 5 秒'},
-  {id:'mirrored',    icon:'🪞', label:'镜中鲸 · 在镜面回响下通关第 9 关'}
+  {id:'mirrored',    icon:'🪞', label:'镜中鲸 · 在镜面回响下通关第 9 关'},
+  {id:'endless5',    icon:'♾', label:'无尽鲸歌 · 无尽模式连续通关 5 关'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -3029,6 +3046,19 @@ function hitDrone(d){
 }
 function finishChallenge(win){
   challenge.active=false; challenge.done=win; challenge.failed=!win;
+  /* v0.4.10 无尽鲸潮：胜利不停表，1.2s 后自动卷入下一关（全通后回第 1 关） */
+  if(win && endless){
+    endlessStreak++;
+    if(endlessStreak>EBEST){ EBEST=endlessStreak;
+      try{ localStorage.setItem('ww-endless-best',String(EBEST)); }catch(_){}
+      if(EBEST>=5) award('endless5');
+    }
+    toast('♾ 无尽鲸潮 · 连续 '+endlessStreak+' 关！ (最佳 '+EBEST+')');
+    rmEl.classList.remove('show');
+    challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+5);   // 连关补给
+    setTimeout(()=>{ if(endless && mode==='play') endlessNext(); },1200);
+    return;
+  }
   levelTimeUsed=levelCfg().time-challenge.timeLeft;
   const stars=win?starsFor(challenge.timeLeft):0;
   if(win) tailWagLeft=stars;   // v0.3.95 胜利鲸尾摆动次数 = 星级
@@ -3149,12 +3179,17 @@ function finishChallenge(win){
     AudioFX.fail();   // v0.3.73 失败下行音
     /* v0.3.89 失败重试保留本关进度：光点/币/环快照，重试同关时恢复 */
     retainPending={level, score, coins:coinCount, rings:ringCount};
-    rmTitle.textContent='时间到…';
+    rmTitle.textContent = endless ? '♾ 无尽鲸潮 · 潮落' : '时间到…';
     rmStars.textContent='—';
     rmRank.style.display='none';
     { const rw=document.getElementById('rmRankWhy'); if(rw) rw.style.display='none'; }
+    if(endless){
+      rmInfo.innerHTML='♾ 连续通关 <b>'+endlessStreak+'</b> 关 · 最佳 '+EBEST+' 关<br>收集 '+score+' / '+TOTAL+' 光点 · 第 '+level+' 关 · 最高连击 x'+(challenge.comboMax||0);
+      endless=false;   // 潮落回到常规模式
+    } else {
     rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关<br>最高连击 x'+(challenge.comboMax||0)
       +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次':'');
+    }
     rmBest.textContent = bestOf()?('本难度最佳 总用时 '+fmtT(bestOf().time)):'';
     btnNext.style.display='none';
   }
@@ -4333,7 +4368,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.21 鲸鱼门环钩子 */
   whaleGate,
   /* v0.4.09 镜面回响钩子 */
-  mirrorOn:()=>mirrorOn};
+  mirrorOn:()=>mirrorOn,
+  /* v0.4.10 无尽鲸潮钩子 */
+  endless:()=>endless, endlessStreak:()=>endlessStreak, ebest:()=>EBEST};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
