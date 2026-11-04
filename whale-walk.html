@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.55</title>
+<title>鲸步 WHALE WALK · v0.3.56</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -178,6 +178,12 @@
     font-size:11px;color:#9FC6E8;letter-spacing:.5px;background:rgba(10,16,38,.55);
     padding:4px 12px;border-radius:999px;white-space:nowrap;}
   body.playing #diffBest{display:none;}
+  #levelPick{position:fixed;bottom:202px;left:50%;transform:translateX(-50%);z-index:15;display:flex;gap:6px;}
+  #levelPick button{width:34px;height:34px;border-radius:8px;border:1px solid rgba(127,212,255,.35);
+    background:rgba(10,16,38,.72);color:#BFE4FF;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0;}
+  #levelPick button.on{background:linear-gradient(180deg,#1E5FD8,#002FA7);color:#fff;border-color:transparent;box-shadow:0 0 12px rgba(0,47,167,.6);}
+  #levelPick button.lock{opacity:.35;cursor:not-allowed;}
+  body.playing #levelPick{display:none;}
   body:not(.playing) #coinbar{display:none;}
   /* ---------- 关卡指示 ---------- */
   #hudLevel{top:86px;left:18px;font-size:11px;opacity:.9;letter-spacing:1px;}
@@ -334,6 +340,7 @@
   <button class="dbtn" data-diff="extreme">极限</button>
 </div>
 <div id="diffBest"></div>
+<div id="levelPick"></div>
 <button id="btnPlay">开始散步</button>
 <div id="joy"><div id="joyKnob"></div></div>
 <button id="btnJump" aria-label="跳跃">⤒</button>
@@ -2198,6 +2205,26 @@ function renderDiffBest(){
   const b=bestOf();
   el.textContent = b ? ('本难度最佳 '+fmtT(b.time)+' · '+('★'.repeat(b.stars||0))) : '本难度暂无通关记录';
 }
+/* v0.3.56 起始关卡解锁：通关第 N 关解锁 N+1 关，主界面可选起步关 */
+let startLevel=1;
+const levelPickEl=document.getElementById('levelPick');
+let unlockMax=1;
+try{ const u=parseInt(localStorage.getItem('ww-unlock-v1')||'1',10); if(u>=1&&u<=MAX_LEVEL) unlockMax=u; }catch(_){}
+function renderLevelPick(){
+  if(!levelPickEl)return;
+  levelPickEl.innerHTML='';
+  for(let i=1;i<=MAX_LEVEL;i++){
+    const b=document.createElement('button');
+    const locked=i>unlockMax;
+    b.textContent=locked?'\u{1F512}':String(i);
+    b.className=(locked?'lock':'')+(i===startLevel?' on':'');
+    b.disabled=locked;
+    b.setAttribute('aria-label','起始关卡 '+i);
+    b.addEventListener('click',()=>{ startLevel=i; renderLevelPick(); toast('起始关卡：第 '+i+' 关'); });
+    levelPickEl.appendChild(b);
+  }
+}
+renderLevelPick();
 renderDiffBest();
 /* =====================================================================
  *  v0.3.8 成就系统：localStorage 持久化（ww-ach-v1），本局新获在结算页展示
@@ -2386,6 +2413,9 @@ function finishChallenge(win){
     if(diffKey==='extreme') award('extreme'); // v0.3.46 极限征服
     if(level<MAX_LEVEL){
       shareSnap={kind:'win',diff:diff().label,level,stars,time:fmtT(levelTimeUsed),rank};   // v0.3.52 胜利也写分享快照
+      unlockMax=Math.max(unlockMax,Math.min(MAX_LEVEL,level+1));   // v0.3.56 通关解锁下一关
+      try{ localStorage.setItem('ww-unlock-v1',String(unlockMax)); }catch(_){}
+      renderLevelPick();
       rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
@@ -2429,7 +2459,7 @@ function finishChallenge(win){
 function nextLevel(){ level++; startChallenge(); }
 btnNext.addEventListener('click',nextLevel);
 function resetChallenge(){
-  level=1; runTotalUsed=0; runCoins=0; runRings=0;
+  level=startLevel; runTotalUsed=0; runCoins=0; runRings=0;
   celebrated=false;
   girl.position.set(0,terrainH(0,0),0);
   girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0,airJumps:1};
