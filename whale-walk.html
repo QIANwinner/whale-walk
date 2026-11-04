@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.30</title>
+<title>鲸步 WHALE WALK · v0.3.31</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2937,6 +2937,22 @@ function drawMinimap(){
     g.save(); g.translate(p.x,p.y); g.rotate(Math.PI/4);
     g.fillRect(-3.2,-3.2,6.4,6.4); g.restore();
   }
+  /* v0.3.31 弹跳垫（青色圆点） */
+  for(const bp of bouncePads){
+    const p=W2S(bp.position.x,bp.position.z);
+    g.fillStyle='rgba(53,224,255,0.85)';
+    g.beginPath(); g.arc(p.x,p.y,3.4,0,Math.PI*2); g.fill();
+  }
+  /* v0.3.31 加速带（青白短横线） */
+  g.strokeStyle='rgba(160,245,255,0.85)'; g.lineWidth=2;
+  for(const bs of boostStrips){
+    const p=W2S(bs.position.x,bs.position.z);
+    g.beginPath(); g.moveTo(p.x-4,p.y); g.lineTo(p.x+4,p.y); g.stroke();
+  }
+  /* v0.3.31 鲸鱼门环（品红环） */
+  g.strokeStyle='rgba(255,79,216,0.85)'; g.lineWidth=2.5;
+  { const p=W2S(0,GATE_Z);
+    g.beginPath(); g.arc(p.x,p.y,6,0,Math.PI*2); g.stroke(); }
   /* v0.3.4 金色鲸币（金币点 + 亮圈） */
   for(const c of coins){
     if(!c.userData.alive) continue;
