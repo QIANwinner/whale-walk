@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.57</title>
+<title>鲸步 WHALE WALK · v0.3.58</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -262,7 +262,10 @@
   #achBox{background:rgba(10,16,38,.95);border:1px solid rgba(255,210,90,.4);border-radius:22px;
     padding:30px 36px;text-align:center;box-shadow:0 0 44px rgba(255,210,90,.25);min-width:270px;max-width:88vw;}
   #achBox .ab-t{font-size:24px;font-weight:900;color:#FFD25A;letter-spacing:3px;}
-  #achBox .ab-s{font-size:12px;color:#BFE4FF;opacity:.85;margin:6px 0 16px;letter-spacing:1px;}
+  #achBox .ab-s{font-size:12px;color:#BFE4FF;opacity:.85;margin:6px 0 10px;letter-spacing:1px;}
+  #achBar{height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;margin:0 0 14px;}
+  #achBar b{display:block;height:100%;width:0%;
+    background:linear-gradient(90deg,#FFD25A,#FF9D3A);box-shadow:0 0 10px rgba(255,210,90,.7);transition:width .4s ease;}
   .ach-row{display:flex;align-items:center;gap:10px;text-align:left;padding:7px 4px;font-size:13px;color:#EAF4FF;}
   .ach-row .ic{font-size:20px;}
   .ach-row.got{color:#FFD25A;}
@@ -369,6 +372,7 @@
   <div id="achBox">
     <div class="ab-t">成就墙</div>
     <div class="ab-s">鲸步旅途的里程碑 · QIAN</div>
+    <div id="achBar"><b id="achBarFill"></b></div>
     <div id="achList"></div>
     <button id="achClose">关闭</button>
   </div>
@@ -2264,6 +2268,8 @@ function renderAch(){
     return `<div class="ach-row ${got?'got':'lock'}"><span class="ic">${a.icon}</span><span>${a.label}${got?'':'（未达成）'}</span></div>`;
   }).join('');
   document.getElementById('achCount').textContent=achGot.length+'/'+ACHS.length;
+  const fill=document.getElementById('achBarFill');   // v0.3.58 成就进度条
+  if(fill) fill.style.width=(achGot.length/ACHS.length*100).toFixed(1)+'%';
 }
 document.getElementById('btnAch').addEventListener('click',()=>{ renderAch(); document.getElementById('achModal').classList.add('show'); });
 document.getElementById('achClose').addEventListener('click',()=>document.getElementById('achModal').classList.remove('show'));
