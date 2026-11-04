@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.87</title>
+<title>鲸步 WHALE WALK · v0.3.88</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -199,6 +199,10 @@
   #levelPick button.on{background:linear-gradient(180deg,#1E5FD8,#002FA7);color:#fff;border-color:transparent;box-shadow:0 0 12px rgba(0,47,167,.6);}
   #levelPick button.lock{opacity:.35;cursor:not-allowed;}
   #levelPick button.max{color:#FFD25A;border-color:rgba(255,210,90,.65);box-shadow:0 0 8px rgba(255,210,90,.35);}
+  #levelPick button.hidden9{color:#FFC850;border-color:rgba(255,200,80,.8);box-shadow:0 0 14px rgba(255,200,80,.55);position:relative;}
+  #levelPick button.hidden9::after{content:'鲸';position:absolute;top:-9px;right:-9px;font-size:8px;color:#FFC850;
+    background:rgba(40,30,8,.9);border:1px solid rgba(255,200,80,.6);border-radius:50%;width:16px;height:16px;
+    display:flex;align-items:center;justify-content:center;}
   body.playing #levelPick{display:none;}
   #unlockInfo{position:fixed;bottom:244px;left:50%;transform:translateX(-50%);z-index:15;
     font-size:11px;color:#FFD25A;letter-spacing:1px;white-space:nowrap;opacity:.9;}
@@ -2073,9 +2077,9 @@ addEventListener('keydown',e=>{ keys[e.code]=true;  if(e.code==='KeyP'&&mode==='
     if(p&&p.catch) p.catch(()=>{});
   }catch(_){} }
   if(e.code==='Enter'&&mode==='preview') setMode('play');   // v0.3.13 Enter 快捷开始
-  if(mode==='preview' && e.code>='Digit1' && e.code<='Digit8'){   // v0.3.69 数字键1-8快选解锁关卡
+  if(mode==='preview' && e.code>='Digit1' && e.code<='Digit9'){   // v0.3.69 数字键1-9快选解锁关卡；v0.3.88 第9关需隐藏解锁
     const n=+e.code.slice(-1);
-    if(n<=unlockMax){ startLevel=n; renderLevelPick(); toast('起始关卡：第 '+n+' 关'); } }
+    if(!lvLocked(n)){ startLevel=n; renderLevelPick(); toast('起始关卡：第 '+n+' 关'); } }
   /* v0.3.26 结算弹窗按 Enter 空格 = 确认按钮（下一关优先于再来一局） */
   if((e.code==='Enter'||e.code==='Space') && rmEl.classList.contains('show')){
     e.preventDefault();
@@ -2231,9 +2235,9 @@ function diff(){ return DIFFS[diffKey]; }
   sync();
 }
 /* 关卡：每完成一关进下一关，光点更多、时间更短 */
-const MAX_LEVEL=8;
-/* v0.3.23 章节命名：每关一个名字，开局横幅与结算标题使用 */
-const LEVEL_NAMES=['霓虹初醒','雨幕疾行','霓虹深渊','雷暴中心','暴雨终章','永夜鲸歌','深海回响','星海鲸梦'];
+const MAX_LEVEL=9;
+/* v0.3.23 章节命名：每关一个名字，开局横幅与结算标题使用；v0.3.88 第9关隐藏关「鲸落之地」 */
+const LEVEL_NAMES=['霓虹初醒','雨幕疾行','霓虹深渊','雷暴中心','暴雨终章','永夜鲸歌','深海回响','星海鲸梦','鲸落之地'];
 const levelName=()=>LEVEL_NAMES[Math.min(level,LEVEL_NAMES.length)-1]||('第 '+level+' 关');
 let level=1, levelTimeUsed=0, runTotalUsed=0, runCoins=0, runRings=0;
 const levelNumEl=document.getElementById('levelNum');
@@ -2300,6 +2304,12 @@ let startLevel=1;
 const levelPickEl=document.getElementById('levelPick');
 let unlockMax=1;
 try{ const u=parseInt(localStorage.getItem('ww-unlock-v1')||'1',10); if(u>=1&&u<=MAX_LEVEL) unlockMax=u; }catch(_){}
+/* v0.3.88 隐藏关：第 9 关「鲸落之地」需极限全通（CLEARED.extreme）才解锁 */
+function hiddenUnlocked(){ return !!CLEARED.extreme; }
+function lvLocked(i){
+  if(i<=8) return i>unlockMax;
+  return !hiddenUnlocked();   // 第9关隐藏关
+}
 function renderLevelPick(){
   if(!levelPickEl)return;
   const ui=document.getElementById('unlockInfo');
@@ -2308,13 +2318,14 @@ function renderLevelPick(){
   levelPickEl.innerHTML='';
   for(let i=1;i<=MAX_LEVEL;i++){
     const b=document.createElement('button');
-    const locked=i>unlockMax;
+    const locked=lvLocked(i);
     b.textContent=locked?'\u{1F512}':String(i);
     b.className=(locked?'lock':'')+(i===startLevel?' on':'');
     b.disabled=locked;
     b.setAttribute('aria-label','起始关卡 '+i);
     b.title='第 '+i+' 关 · 最高 '+((STARS[i]||0)>0?'★'.repeat(STARS[i]):'未获星');   // v0.3.76 悬浮显示星级
     if((STARS[i]||0)>=3) b.classList.add('max');
+    if(i===9 && !locked) b.classList.add('hidden9');   // v0.3.88 隐藏关金色角标
     b.addEventListener('click',()=>{ startLevel=i; renderLevelPick(); toast('起始关卡：第 '+i+' 关'); });
     levelPickEl.appendChild(b);
   }
@@ -2353,7 +2364,8 @@ const ACHS=[
   {id:'orb150',      icon:'✨', label:'星光鲸旅 · 累计收集 150 个光点'},
   {id:'coin30',      icon:'💰', label:'金币鲸旅 · 累计收集 30 枚鲸币'},
   {id:'combo16',     icon:'🌪', label:'风暴之眼 · 单关最高连击 x16'},
-  {id:'clears10',    icon:'🎵', label:'鲸歌回响 · 累计通关 10 次'}
+  {id:'clears10',    icon:'🎵', label:'鲸歌回响 · 累计通关 10 次'},
+  {id:'whalefall',   icon:'🐋', label:'鲸落之地 · 通关隐藏关第 9 关'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -2547,29 +2559,40 @@ function finishChallenge(win){
     if(ringCount>=ringTotal && ringTotal>0) award('rings'); // v0.3.44 穿环大师
     if(diffKey==='extreme') award('extreme'); // v0.3.46 极限征服
     if(level<MAX_LEVEL){
+      /* v0.3.88 故事全通判定（第 8 关通关 = 该难度全通）：CLEARED + 极限大师 */
+      if(level>=8){
+        if(diffKey==='extreme') award('extremeAll');   // v0.3.60 极限大师（第8关极限全通）
+        CLEARED[diffKey]=true;
+        try{ localStorage.setItem('ww-cleardiff-v1',JSON.stringify(CLEARED)); }catch(_){}
+        if(CLEARED.easy&&CLEARED.normal&&CLEARED.hard&&CLEARED.extreme) award('m4');
+      }
       shareSnap={kind:'win',diff:diff().label,level,stars,time:fmtT(levelTimeUsed),rank};   // v0.3.52 胜利也写分享快照
       const beforeUnlock=unlockMax;
-      unlockMax=Math.max(unlockMax,Math.min(MAX_LEVEL,level+1));   // v0.3.56 通关解锁下一关
+      /* v0.3.88 逐关解锁只到第 8 关；第 9 关隐藏关由极限全通（hiddenUnlocked）控制 */
+      unlockMax=Math.max(unlockMax,Math.min(8,level+1));
+      if(hiddenUnlocked()) unlockMax=Math.max(unlockMax,9);   // 极限全通后解锁鲸落之地
       try{ localStorage.setItem('ww-unlock-v1',String(unlockMax)); }catch(_){}
       renderLevelPick();
-      if(unlockMax>beforeUnlock) toast('🔓 新关卡解锁：第 '+Math.min(MAX_LEVEL,level+1)+' 关 · '+LEVEL_NAMES[Math.min(level+1,MAX_LEVEL)-1]);   // v0.3.57 解锁提示
+      if(unlockMax>beforeUnlock) toast('🔓 新关卡解锁：第 '+Math.min(MAX_LEVEL,unlockMax)+' 关 · '+LEVEL_NAMES[Math.min(MAX_LEVEL,unlockMax)-1]);   // v0.3.57 解锁提示
       rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 最高连击 x'+(challenge.comboMax||0)
         +(stars<3?'<br>下次快 '+fmtT(levelCfg().time*0.42-challenge.timeLeft)+' 即可 3★':'')
-        +'<br>下一关：'+(level+1)+' '+LEVEL_NAMES[level]+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
+        +(level<8?'<br>下一关：'+(level+1)+' '+LEVEL_NAMES[level]+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
+          :(hiddenUnlocked()?'<br>隐藏关解锁：第 9 关 · '+LEVEL_NAMES[8]:'<br>故事全通！隐藏关需极限难度通关第 8 关解锁'))
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
       rmBest.textContent='';
       btnNext.style.display='inline-block';
       showLevelBanner('第 '+(level+1)+' 关', '更多光点 · 更短时间 · '+diff().label);
     } else {
+      /* v0.3.88 第 9 关隐藏关「鲸落之地」全通 */
       shareSnap={kind:'final',diff:diff().label,time:fmtT(runTotalUsed),coins:runCoins,rings:runRings};
-      if(diffKey==='extreme') award('extremeAll');   // v0.3.60 极限大师
-      CLEARED[diffKey]=true;   // v0.3.67 难度通关记录
+      award('whalefall');   // v0.3.88 第9关专属成就
+      CLEARED[diffKey]=true;
       try{ localStorage.setItem('ww-cleardiff-v1',JSON.stringify(CLEARED)); }catch(_){}
       if(CLEARED.easy&&CLEARED.normal&&CLEARED.hard&&CLEARED.extreme) award('m4');
-      rmTitle.textContent='🏆 全部通关！';
+      rmTitle.textContent='🏆 鲸落之地 · 全部通关！';
       rmInfo.innerHTML=MAX_LEVEL+'关总用时 <b>'+fmtT(runTotalUsed)+'</b><br>难度 '+diff().label+' · 鲸币 '+runCoins+' · 穿环 '+runRings
         +(()=>{let c4=0;for(const k in CLEARED)if(CLEARED[k])c4++;return '<br>四难度通关 '+c4+'/4';})()   // v0.3.83 全通四难度进度
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
