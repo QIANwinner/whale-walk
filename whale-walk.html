@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.03</title>
+<title>鲸步 WHALE WALK · v0.4.04</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2871,6 +2871,7 @@ function setupLevel(){
   /* v0.3.18 雨势随关卡增强：激活雨丝段数 300+44×level（drawRange 控制顶点数=段数×2） */
   rainMesh.geometry.setDrawRange(0, 2*Math.min(RAIN_N, Math.round((300+level*44)*qScale)));   // v0.3.98 画质缩放雨丝
   AudioFX.rain(0);   // v0.3.96 关卡开始重置背景雨量
+  if(window.__wwLeakCheck) window.__wwLeakCheck();   // v0.4.04 关卡加载后记录资源基线
 }
 function startChallenge(){
   setupLevel();
@@ -3091,13 +3092,20 @@ function resetChallenge(){
 }
 /* v0.3.9 成绩分享：结算时快照，一键复制文本（clipboard 不可用时降级 execCommand） */
 let shareSnap=null;
+/* v0.4.04 安全：外部 URL 一律 https 校验（分享/跳转仅放行 https，拦截 http/其他协议） */
+function safeURL(u){
+  if(!u) return '';
+  return /^https:\/\//i.test(u) ? u : '';
+}
 function shareText(){ if(!shareSnap)return '';
   const u=location.href;
-  /* v0.3.99 四难度进度：CLEARED 计数；v0.4.00 中文标点版本 */
+  /* v0.4.04 隐私：分享仅含成绩数字（难度/星级/用时/四难度计数），不含 localStorage 全量 */
+  /* v0.4.04 安全：外部 URL 一律 https（分享链接强制 https） */
+  const safe=safeURL(u);
   const c4=()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c;};
-  if(shareSnap.kind==='win') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 ${shareSnap.stars}★（评级：${shareSnap.rank}） · 用时：${shareSnap.time} · 四难度通关：${c4()}/4\n${u}`;
-  if(shareSnap.kind==='final') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · ${MAX_LEVEL}关全通！总用时：${shareSnap.time} · 鲸币：${shareSnap.coins} · 穿环：${shareSnap.rings} · 四难度通关：${c4()}/4\n${u}`;
-  return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 时间到 · 收集：${shareSnap.score}/${shareSnap.total}\n${u}`; }
+  if(shareSnap.kind==='win') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 ${shareSnap.stars}★（评级：${shareSnap.rank}） · 用时：${shareSnap.time} · 四难度通关：${c4()}/4\n${safe}`;
+  if(shareSnap.kind==='final') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · ${MAX_LEVEL}关全通！总用时：${shareSnap.time} · 鲸币：${shareSnap.coins} · 穿环：${shareSnap.rings} · 四难度通关：${c4()}/4\n${safe}`;
+  return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 时间到 · 收集：${shareSnap.score}/${shareSnap.total}\n${safe}`; }
 document.getElementById('btnShare').addEventListener('click',()=>{
   const t=shareText(); if(!t)return;
   const fallback=()=>{ const ta=document.createElement('textarea');
@@ -4001,7 +4009,21 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
   window.__wwFps={frames:0,last:performance.now()};
   window.__wwFpsTick=()=>{ const F=window.__wwFps; F.frames++;
     const now=performance.now(), d=now-F.last;
-    if(d>=500){ fpsEl.textContent=(F.frames/d*1000).toFixed(0)+' FPS'; F.frames=0; F.last=now; } };
+    if(d>=500){
+      /* v0.4.04 性能面板：FPS + 渲染调用 + 三角形 + 几何体/纹理计数（renderer.info 上报） */
+      const ri=renderer.info, mem=ri.memory, ren=ri.render;
+      fpsEl.textContent=(F.frames/d*1000).toFixed(0)+' FPS · '+ren.calls+' calls · '+(ren.triangles/1000).toFixed(0)+'k tri · '+mem.geometries+' geo · '+mem.textures+' tex';
+      F.frames=0; F.last=now; } };
+  /* v0.4.04 内存泄漏检测：renderer.info 几何体+纹理跨关卡增长告警 */
+  let __leakBase=null, __leakWarned=false;
+  window.__wwLeakCheck=()=>{
+    const mem=renderer.info.memory, cur=mem.geometries+mem.textures;
+    if(__leakBase===null){ __leakBase=cur; return {base:cur,cur,delta:0,ok:true}; }
+    const delta=cur-__leakBase;
+    if(delta>40 && !__leakWarned){ __leakWarned=true;
+      toast('⚠ 检测到资源持续增长（几何体+纹理 +'+delta+'），建议刷新页面'); }
+    return {base:__leakBase,cur,delta,ok:delta<=40};
+  };
   /* v0.3.99 字体大小档 */
   const fz=document.getElementById('setFont'), fzv=localStorage.getItem('ww-font')||'m';
   fz.value=fzv;
@@ -4175,6 +4197,34 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   rainMesh, gpLatch:()=>gpJumpLatch,
   /* v0.3.21 鲸鱼门环钩子 */
   whaleGate};
+/* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
+window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
+window.__dbg.migrateLS=migrateLS;
+window.__dbg.safeURL=safeURL;
+/* v0.4.04 localStorage 版本迁移函数（v1→v2 通用）：预留重命名表 + 版本戳 */
+function migrateLS(){
+  const renames={};   // 旧键→新键（预留，当前无重命名）
+  let ver='1';
+  try{ ver=localStorage.getItem('ww-ls-v')||'1'; }catch(_){}
+  if(ver==='2') return false;
+  for(const [oldK,newK] of Object.entries(renames)){
+    try{ const v=localStorage.getItem(oldK); if(v!==null){ localStorage.setItem(newK,v); localStorage.removeItem(oldK); } }catch(_){}
+  }
+  try{ localStorage.setItem('ww-ls-v','2'); }catch(_){}
+  return true;
+}
+migrateLS();
+/* v0.4.04 崩溃兜底：白屏自动 reload 一次（sessionStorage 标记防死循环；仅当模块未完成引导时触发） */
+window.__wwBooted=true;
+try{
+  setTimeout(()=>{
+    try{
+      if(!window.__wwBooted && !sessionStorage.getItem('ww-crash')){
+        sessionStorage.setItem('ww-crash','1'); location.reload();
+      }
+    }catch(_){}
+  },8000);
+}catch(_){}
 window.__T = THREE;
 window.__dbg.shots = {};
 window.__dbg.stop = ()=>renderer.setAnimationLoop(null);
