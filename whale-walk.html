@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.46</title>
+<title>鲸步 WHALE WALK · v0.3.49</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -68,11 +68,16 @@
     background:linear-gradient(90deg,#35E0FF,#FFD25A);
     box-shadow:0 0 8px rgba(53,224,255,.6);transition:width .25s ease-out;}
   #timer.danger .t{color:#FF5A5A;animation:timerBlink .5s steps(2) infinite;}
+  #timer.critical .t{color:#FF2D2D;animation:timerBlink .22s steps(2) infinite;text-shadow:0 0 22px rgba(255,45,45,.95);}
+  #timer.critical #timerProgFill{background:linear-gradient(90deg,#FF3B3B,#FFB03A);}
+  #timer.critical{border-color:rgba(255,45,45,.85);box-shadow:0 0 24px rgba(255,45,45,.45);}
   @keyframes timerBlink{50%{opacity:.35;}}
   #combo{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:11;pointer-events:none;
     font-size:20px;font-weight:900;color:#FFD25A;letter-spacing:2px;text-shadow:0 0 14px rgba(255,210,90,.8),0 1px 8px rgba(10,20,60,.8);
     opacity:0;transition:opacity .2s, transform .2s;}
   #combo.on{opacity:1;transform:translateX(-50%) translateY(0);}
+  #combo i{display:block;height:3px;margin-top:5px;border-radius:2px;background:rgba(255,255,255,.16);overflow:hidden;}
+  #combo i b{display:block;height:100%;width:100%;background:linear-gradient(90deg,#FFD25A,#FF7A3A);transition:width .1s linear;}
   /* ---------- 屏幕红闪（受击） ---------- */
   #redflash{position:fixed;inset:0;z-index:30;pointer-events:none;background:radial-gradient(ellipse at center,
     rgba(255,40,40,0) 40%,rgba(255,30,30,.55) 100%);opacity:0;transition:opacity .15s;}
@@ -302,7 +307,7 @@
 <div id="coinbar"><div class="coin-chip">🪙 鲸币 <span class="cc-n" id="coinNum">0 / 3</span></div></div>
 <div id="lightning"></div>
 <div id="lvBanner"><div class="lv-t" id="lvBannerT">第 2 关</div><div class="lv-s">更多光点 · 更短时间</div></div>
-<div id="combo"></div>
+<div id="combo"><span id="comboTxt"></span><i id="comboBar"><b></b></i></div>
 <div id="redflash"></div>
 <div id="boostglow"></div>
 <div id="resultModal">
@@ -2165,6 +2170,7 @@ function levelCfg(){
 const COMBO_WINDOW=8, COMBO_BONUS=2, HIT_PENALTY=3, DRONE_PENALTY=4, INVULN=1.5;
 const timerEl=document.getElementById('timer'), timerNum=document.getElementById('timerNum');
 const comboEl=document.getElementById('combo'), redEl=document.getElementById('redflash');
+const comboTxtEl=document.getElementById('comboTxt'), comboBarEl=document.querySelector('#comboBar b');
 const rmEl=document.getElementById('resultModal'), rmTitle=document.getElementById('rmTitle');
 const rmStars=document.getElementById('rmStars'), rmInfo=document.getElementById('rmInfo');
 const rmBest=document.getElementById('rmBest');
@@ -2384,7 +2390,8 @@ function finishChallenge(win){
     rmTitle.textContent='时间到…';
     rmStars.textContent='—';
     rmRank.style.display='none';
-    rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 第 '+level+' 关 · 最高连击 x'+(challenge.comboMax||0);
+    rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关<br>最高连击 x'+(challenge.comboMax||0)
+      +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次':'');
     rmBest.textContent = challenge.best?('最佳 总用时 '+fmtT(challenge.best.time)):'';
     btnNext.style.display='none';
   }
@@ -2911,19 +2918,23 @@ function update(dt){
       const rn=Math.ceil(challenge.ready/0.4);
       if(rn!==timerNum._last){ timerNum.textContent=rn; timerNum._last=rn; }
       timerEl.classList.remove('danger');
+      timerEl.classList.remove('critical');
     } else {
     challenge.timeLeft-=dt;
     if(challenge.timeLeft<=0){ challenge.timeLeft=0; finishChallenge(false); }
     const tl=Math.ceil(challenge.timeLeft);
     if(tl!==timerNum._last){ timerNum.textContent=tl; timerNum._last=tl; }
     timerEl.classList.toggle('danger', tl<=15);
+    timerEl.classList.toggle('critical', tl<=5);   // v0.3.47 最后 5 秒告急脉冲
     /* v0.3.4 濒危引导：≤10s 提示一次 + 小地图导航增强 */
     if(tl<=10 && !challenge.danger){ challenge.danger=true; toast('⏱ 时间紧张！跟随金色导航冲刺'); }
     }
     /* combo 显示 */
     if(challenge.combo>=2 && elapsed-challenge.lastPick<COMBO_WINDOW){
-      comboEl.textContent='COMBO x'+challenge.combo;
       comboEl.classList.add('on');
+      comboTxtEl.textContent='COMBO x'+challenge.combo;
+      const left=Math.max(0,1-(elapsed-challenge.lastPick)/COMBO_WINDOW);
+      comboBarEl.style.width=(left*100).toFixed(1)+'%';   // v0.3.49 连击剩余时间条
     } else comboEl.classList.remove('on');
     /* 飞车碰撞 */
     for(const c of cars){
