@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.89</title>
+<title>鲸步 WHALE WALK · v0.3.90</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2377,7 +2377,10 @@ const ACHS=[
   {id:'coin30',      icon:'💰', label:'金币鲸旅 · 累计收集 30 枚鲸币'},
   {id:'combo16',     icon:'🌪', label:'风暴之眼 · 单关最高连击 x16'},
   {id:'clears10',    icon:'🎵', label:'鲸歌回响 · 累计通关 10 次'},
-  {id:'whalefall',   icon:'🐋', label:'鲸落之地 · 通关隐藏关第 9 关'}
+  {id:'whalefall',   icon:'🐋', label:'鲸落之地 · 通关隐藏关第 9 关'},
+  {id:'morning',     icon:'🌅', label:'晨风鲸语 · 上午 6-9 点通关一关'},
+  {id:'midnight',    icon:'🌙', label:'午夜鲸歌 · 晚上 22-24 点通关一关'},
+  {id:'combo24',     icon:'⚡', label:'连击大师二段 · 单关最高连击 x24'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -2585,6 +2588,17 @@ function finishChallenge(win){
     if(challenge.timeLeft>=levelCfg().time/2) award('halftime');
     if((challenge.comboMax||0)>=12) award('combo12');
     if((challenge.comboMax||0)>=16) award('combo16');   // v0.3.79 风暴之眼
+    if((challenge.comboMax||0)>=24) award('combo24');   // v0.3.90 连击大师二段
+    /* v0.3.90 时段成就：晨风鲸语（6-9点）/ 午夜鲸歌（22-24点） */
+    { const hr=new Date().getHours();
+      if(hr>=6&&hr<9) award('morning');
+      if(hr>=22) award('midnight'); }
+    /* v0.3.90 每日任务：每天首次通关 +3 秒奖励（ww-daily-date） */
+    { const today=new Date().toDateString();
+      const last=localStorage.getItem('ww-daily-date');
+      if(last!==today){ localStorage.setItem('ww-daily-date',today);
+        challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+3);
+        toast('🌞 每日首次通关 +3 秒！'); } }
     if(ringCount>=ringTotal && ringTotal>0) award('rings'); // v0.3.44 穿环大师
     if(diffKey==='extreme') award('extreme'); // v0.3.46 极限征服
     if(level<MAX_LEVEL){
