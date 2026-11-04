@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.80</title>
+<title>鲸步 WHALE WALK · v0.3.84</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -31,6 +31,8 @@
     background:rgba(14,20,48,.45);padding:8px 16px;border-radius:999px;backdrop-filter:blur(4px);white-space:nowrap;}
   #hudQian{bottom:calc(14px + env(safe-area-inset-bottom,0px));right:calc(18px + env(safe-area-inset-right,0px));font-size:12px;font-weight:700;letter-spacing:3px;color:#BFE4FF;}
   #verTag{position:fixed;bottom:calc(34px + env(safe-area-inset-bottom,0px));right:calc(18px + env(safe-area-inset-right,0px));z-index:11;font-size:10px;letter-spacing:1px;color:#BFE4FF;opacity:.4;}
+  #metaLine{position:fixed;bottom:calc(56px + env(safe-area-inset-bottom,0px));right:calc(18px + env(safe-area-inset-right,0px));z-index:11;font-size:10px;letter-spacing:1px;color:#9FC6E8;opacity:.6;}
+  body.playing #metaLine{display:none;}
   #menuLegend{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));right:calc(18px + env(safe-area-inset-right,0px));z-index:15;
     display:none;font-size:11px;color:#FFD25A;letter-spacing:2px;font-weight:800;white-space:nowrap;
     background:rgba(40,30,8,.6);border:1px solid rgba(255,210,90,.5);border-radius:999px;padding:5px 12px;
@@ -43,6 +45,9 @@
     background:rgba(14,20,48,.5);padding:7px 12px;border-radius:999px;backdrop-filter:blur(4px);
     border:1px solid rgba(127,212,255,.3);pointer-events:auto;}
   #rainCtrl .rc-label{font-size:11px;color:#BFE4FF;letter-spacing:1px;}
+  #vibBtn{background:rgba(127,212,255,.12);color:#BFE4FF;border:1px solid rgba(127,212,255,.4);border-radius:999px;
+    padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit;}
+  #vibBtn.off{opacity:.45;}
   #rainRange::-moz-range-thumb,.volRange::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;
     border:2px solid #35E0FF;box-shadow:0 0 8px rgba(53,224,255,.8);cursor:pointer;}
   #volRange,#rainRange{-webkit-appearance:none;appearance:none;width:72px;height:4px;border-radius:2px;
@@ -320,11 +325,13 @@
 <div class="hud" id="hudHint">拖动旋转 · 滚轮缩放</div>
 <div class="hud" id="hudQian">QIAN</div>
 <div id="verTag"></div>
+<div id="metaLine"></div>
 <div id="menuLegend">🌠 鲸界传说 · 全通 · 3星 · 极限</div>
 <div id="rainCtrl"><span class="rc-label">雨声</span>
   <input type="range" id="rainRange" min="0" max="100" value="33">
   <span class="rc-label">音效</span>
-  <input type="range" id="volRange" min="0" max="100" value="80"></div>
+  <input type="range" id="volRange" min="0" max="100" value="80">
+  <button id="vibBtn">震动:开</button></div>
 <div id="celebrate"><div class="cb-t">★ 全收集 ★</div><div class="cb-s">鲸步大成功 · QIAN</div></div>
 <div id="timer"><div class="t" id="timerNum">80</div><div class="l">挑战倒计时 · 收集全部光点</div>
   <div id="timerProg"><div id="timerProgFill"></div></div></div>
@@ -2002,7 +2009,10 @@ const AudioFX=(()=>{
  *  输入
  * ===================================================================== */
 /* v0.3.3 触觉反馈：移动端振动（iOS 不支持则静默）+ 音效开关统一入口 */
+/* v0.3.82 震动开关：ww-vib（'0'=关） */
+let vibOn=true; try{ vibOn=localStorage.getItem('ww-vib')!=='0'; }catch(_){}
 function buzz(ms){ try{
+  if(!vibOn) return;
   if(navigator.vibrate) navigator.vibrate(ms);
   /* v0.3.24 手柄双马达震动（无手柄/不支持则静默） */
   const gp=[...(navigator.getGamepads?navigator.getGamepads():[])].find(g=>g&&g.connected&&g.vibrationActuator);
@@ -2127,6 +2137,7 @@ function setMode(m){
     girl.position.set(0,terrainH(0,0),0);
     girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0,airJumps:1};
     if(m==='play'){ camS.tYaw=girl.userData.state.yaw+Math.PI; camS.tPitch=0.30; camS.tDist=3.0;
+      RUNS++; try{ localStorage.setItem('ww-runs-v1',String(RUNS)); }catch(_){} metaLine();   // v0.3.81 散步计数
       if(challenge.done||challenge.failed) resetChallenge(); else if(!challenge.active) startChallenge();
       setTimeout(showTutIfFirst,600); }   // v0.3.20 首次进入挑战显示引导
     else { camS.tYaw=Math.PI*0.85; camS.tPitch=0.14; camS.tDist=2.2;
@@ -2241,6 +2252,15 @@ let CLEARED={}; try{ CLEARED=JSON.parse(localStorage.getItem('ww-cleardiff-v1')|
 let ORB=0, COIN=0;
 try{ ORB=parseInt(localStorage.getItem('ww-orbtotal-v1')||'0',10)||0; }catch(_){}
 try{ COIN=parseInt(localStorage.getItem('ww-cointotal-v1')||'0',10)||0; }catch(_){}
+/* v0.3.81 累计散步/通关次数 */
+let RUNS=0, CLEARS=0;
+try{ RUNS=parseInt(localStorage.getItem('ww-runs-v1')||'0',10)||0; }catch(_){}
+try{ CLEARS=parseInt(localStorage.getItem('ww-clears-v1')||'0',10)||0; }catch(_){}
+function metaLine(){
+  const el=document.getElementById('metaLine'); if(!el)return;
+  let c4=0; for(const k in CLEARED) if(CLEARED[k]) c4++;
+  el.textContent='🐳 散步 '+RUNS+' 次 · 通关 '+CLEARS+' 次 · 四难度通关 '+c4+'/4';
+}
 /* v0.3.51 主界面展示当前难度最佳成绩 */
 function renderDiffBest(){
   const el=document.getElementById('diffBest'); if(!el)return;
@@ -2304,11 +2324,13 @@ const ACHS=[
   {id:'m4',          icon:'🌊', label:'鲸迁四海 · 四种难度各通关一次'},
   {id:'orb150',      icon:'✨', label:'星光鲸旅 · 累计收集 150 个光点'},
   {id:'coin30',      icon:'💰', label:'金币鲸旅 · 累计收集 30 枚鲸币'},
-  {id:'combo16',     icon:'🌪', label:'风暴之眼 · 单关最高连击 x16'}
+  {id:'combo16',     icon:'🌪', label:'风暴之眼 · 单关最高连击 x16'},
+  {id:'clears10',    icon:'🎵', label:'鲸歌回响 · 累计通关 10 次'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
 if(typeof updateLegend==='function') updateLegend();   // v0.3.72 成就就绪后初始化徽章
+metaLine();   // v0.3.81 主界面计数行
 /* v0.3.12 单关操作统计（成就判定用） */
 let lvDodge=0, lvDj=0;
 function award(id){
@@ -2464,8 +2486,12 @@ function finishChallenge(win){
       if(sg){ sg.classList.add('on'); setTimeout(()=>sg.classList.remove('on'),2400); }
     }
     /* v0.3.64 每关 3 星记录：ww-stars-v1，全部关卡 3 星颁发 allStars */
+    const oldStars=STARS[level]||0;
     STARS[level]=Math.max(STARS[level]||0, stars);
     try{ localStorage.setItem('ww-stars-v1',JSON.stringify(STARS)); }catch(_){}
+    if(oldStars<3 && stars>=3) toast('⭐ 第 '+level+' 关达成 3 星！');   // v0.3.83 首次3星提示
+    CLEARS++; try{ localStorage.setItem('ww-clears-v1',String(CLEARS)); }catch(_){} metaLine();   // v0.3.81 通关计数
+    if(CLEARS>=10) award('clears10');
     let all3=true; for(let i=1;i<=MAX_LEVEL;i++) if((STARS[i]||0)<3){ all3=false; break; }
     if(all3) award('allStars');
     rmRank.style.display='block';
@@ -2515,6 +2541,7 @@ function finishChallenge(win){
       if(CLEARED.easy&&CLEARED.normal&&CLEARED.hard&&CLEARED.extreme) award('m4');
       rmTitle.textContent='🏆 全部通关！';
       rmInfo.innerHTML=MAX_LEVEL+'关总用时 <b>'+fmtT(runTotalUsed)+'</b><br>难度 '+diff().label+' · 鲸币 '+runCoins+' · 穿环 '+runRings
+        +(()=>{let c4=0;for(const k in CLEARED)if(CLEARED[k])c4++;return '<br>四难度通关 '+c4+'/4';})()   // v0.3.83 全通四难度进度
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
       const prev=bestOf();
       if(runTotalUsed>=1 && (!prev || runTotalUsed<prev.time)){
@@ -3248,6 +3275,17 @@ function drawMinimap(){
     const v=AudioFX.setVolume(vr.value/100);
     try{ localStorage.setItem('ww-vol',String(v)); }catch(_){}
   });
+}
+/* v0.3.82 震动开关按钮 */
+{
+  const vb=document.getElementById('vibBtn');
+  if(vb){
+    const syncVib=()=>{ vb.textContent=vibOn?'震动:开':'震动:关'; vb.classList.toggle('off',!vibOn); };
+    syncVib();
+    vb.addEventListener('click',()=>{ vibOn=!vibOn;
+      try{ localStorage.setItem('ww-vib',vibOn?'1':'0'); }catch(_){}
+      syncVib(); toast(vibOn?'震动已开启':'震动已关闭'); });
+  }
 }
 /* 小地图：滚轮缩放 / 拖动平移 / 双击复位 */
 {
