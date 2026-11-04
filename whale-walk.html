@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.15</title>
+<title>鲸步 WHALE WALK · v0.4.16</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1923,34 +1923,40 @@ function placeOrbs(count, highCount){
  *  巡逻无人机（主动追踪的敌人）
  * ===================================================================== */
 const patrolDrones=[];
-function buildPatrolDrone(){
+function buildPatrolDrone(elite){
   const g=new THREE.Group();
   /* v0.3.85 蓄力红光：本体材质加 emissive，windup 时染红 */
   const body=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.32,0.5),
-    new THREE.MeshStandardMaterial({color:0x0A0E18,roughness:0.6,metalness:0.4,emissive:0x000000}));
+    new THREE.MeshStandardMaterial({color:elite?0x1A0A18:0x0A0E18,roughness:0.6,metalness:0.4,
+      emissive:elite?0x4A0A3A:0x000000}));
   g.add(body);
   const wing=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.07,1.6),
     new THREE.MeshStandardMaterial({color:0x141A28,roughness:0.6}));
   wing.position.y=0.03; g.add(wing);
   const beacon=new THREE.Mesh(new THREE.SphereGeometry(0.09,8,6),
-    new THREE.MeshBasicMaterial({color:0xFF3B30}));
+    new THREE.MeshBasicMaterial({color:elite?0xFF2FD8:0xFF3B30}));
   beacon.position.set(0.68,0.2,0); g.add(beacon);
   const under=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,6),
-    new THREE.MeshBasicMaterial({color:0xFFB04A}));
+    new THREE.MeshBasicMaterial({color:elite?0xFF7AE8:0xFFB04A}));
   under.position.set(-0.62,-0.16,0); g.add(under);
-  /* 底部红色扫描环 */
+  /* 底部扫描环（精英紫红） */
   const scan=new THREE.Mesh(new THREE.RingGeometry(0.5,0.62,20),
-    new THREE.MeshBasicMaterial({color:0xFF5A5A,transparent:true,opacity:0.4,
+    new THREE.MeshBasicMaterial({color:elite?0xFF5AE8:0xFF5A5A,transparent:true,opacity:0.4,
       blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
   scan.rotation.x=-Math.PI/2; scan.position.y=-0.34; g.add(scan);
+  /* v0.4.16 精英外环（常建，spawn 时按 elite 切换可见——对象池复用同一 Group） */
+  const crown=new THREE.Mesh(new THREE.TorusGeometry(0.82,0.05,8,24),
+    new THREE.MeshBasicMaterial({color:0xFF4FD8,transparent:true,opacity:0.8,
+      blending:THREE.AdditiveBlending,depthWrite:false}));
+  crown.rotation.x=Math.PI/2; crown.position.y=0.1; crown.visible=false; g.add(crown);
   /* v0.3.85 冲锋红区：地面红色指示条，windup 显示并锁定朝向玩家（蓄力红光） */
   const aimGrp=new THREE.Group();
-  const aimPlane=new THREE.Mesh(new THREE.PlaneGeometry(1.5,3.4),
-    new THREE.MeshBasicMaterial({color:0xFF3B30,transparent:true,opacity:0,
+  const aimPlane=new THREE.Mesh(new THREE.PlaneGeometry(elite?1.9:1.5,elite?4.2:3.4),
+    new THREE.MeshBasicMaterial({color:elite?0xFF4FD8:0xFF3B30,transparent:true,opacity:0,
       blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
-  aimPlane.rotation.x=-Math.PI/2; aimPlane.position.z=1.7;
+  aimPlane.rotation.x=-Math.PI/2; aimPlane.position.z=elite?2.1:1.7;
   aimGrp.add(aimPlane); aimGrp.visible=false; g.add(aimGrp);
-  g.userData={beacon,scan,body,aimGrp,aimPlane};
+  g.userData={beacon,scan,body,aimGrp,aimPlane,elite:!!elite,crown};
   scene.add(g);
   return g;
 }
@@ -1966,8 +1972,13 @@ function spawnPatrolDrones(n){
     const side=(i%2?1:-1);
     const x=side*(5+drn()*6), z=12+i*22+drn()*8;
     grp.position.set(x,terrainH(x,z)+2.6,z);
+    /* v0.4.16 精英变种：L7+/无尽深处（streak≥4）最后一架为精英——更快、更亮、击杀奖励翻倍 */
+    const elite=(level>=7||endless&&endlessStreak>=4) && i===n-1;
+    grp.userData.elite=elite;
+    grp.scale.setScalar(elite?1.28:1);   // 池复用时同步体形
+    if(grp.userData.crown) grp.userData.crown.visible=!!elite;
     patrolDrones.push({grp, home:{x,z}, ph:drn()*6.28, mode:'patrol',
-      yaw:drn()*Math.PI*2, cool:0, t:0, vx:0, vz:0});
+      yaw:drn()*Math.PI*2, cool:0, t:0, vx:0, vz:0, elite});
   }
 }
 
@@ -2844,6 +2855,7 @@ const ACHS=[
   {id:'rewind5',     icon:'⏳', label:'时之鲸 · 单关时光回溯累计恢复 5 秒'},
   {id:'mirrored',    icon:'🪞', label:'镜中鲸 · 在镜面回响下通关第 9 关'},
   {id:'frag3',       icon:'🎶', label:'鲸语通 · 单关集齐全部鲸语碎片'},
+  {id:'hunter',      icon:'🎯', label:'猎鲸者 · 踏灭精英无人机'},
   {id:'endless5',    icon:'♾', label:'无尽鲸歌 · 无尽模式连续通关 5 关'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
@@ -3802,7 +3814,8 @@ function update(dt){
     else if(d.mode==='chase' && dist>16) d.mode='return';
     else if(d.mode==='windup'){ d.t+=dt;
       if(d.t>0.55){ d.mode='dash'; d.t=0; AudioFX.dashWhiz();
-        const L=Math.hypot(dxp,dzp)||1; d.vx=dxp/L*9.2; d.vz=dzp/L*9.2; } }
+        const L=Math.hypot(dxp,dzp)||1; const dsp=d.elite?11.5:9.2;   // v0.4.16 精英冲刺更快
+        d.vx=dxp/L*dsp; d.vz=dzp/L*dsp; } }
     else if(d.mode==='dash'){ d.t+=dt; if(d.t>0.45){ d.mode='cool'; d.t=0;
       if(dist>3) lvDodge++; } }   // v0.3.12 冲锋结束仍距 3m 以上算成功躲避
     else if(d.mode==='cool'){ d.t+=dt;
@@ -3812,7 +3825,8 @@ function update(dt){
     let tx=g.position.x, tz=g.position.z, spd=2.2;
     if(d.mode==='patrol'){
       tx=d.home.x+Math.cos(d.ph*0.7)*3.5; tz=d.home.z+Math.sin(d.ph*0.7)*3.5;
-    } else if(d.mode==='chase'){ tx=girl.position.x; tz=girl.position.z; spd=Math.min(5.2,4.0+0.30*(level-1)); }
+    } else if(d.mode==='chase'){ tx=girl.position.x; tz=girl.position.z;
+      spd=Math.min(5.2,4.0+0.30*(level-1))*(d.elite?1.3:1); }   // v0.4.16 精英追踪 1.3×
     else if(d.mode==='windup'){ tx=girl.position.x; tz=girl.position.z; spd=0; }   // 悬停蓄力，朝向锁定玩家
     else if(d.mode==='dash'){ spd=0; }   // 冲刺走下方直线分支
     else { tx=d.home.x; tz=d.home.z; spd=3.5; }
@@ -3845,14 +3859,16 @@ function update(dt){
     d.grp.userData.beacon.material.color.setHex(blink>0?0xFF3B30:0x7A1512);
     d.grp.userData.scan.material.opacity=0.30+0.18*Math.sin(d.ph*4)+(d.mode==='windup'?0.15:0);
     d.grp.userData.scan.scale.setScalar(d.mode==='windup'?1+Math.sin(d.t*26)*0.18:1);
-    /* 命中判定（v0.3.85 跳顶消灭：从上方下落落到无人机 → 消灭 +2 秒） */
+    /* 命中判定（v0.3.85 跳顶消灭：从上方下落落到无人机 → 消灭 +2 秒；v0.4.16 精英 +4 秒 + 猎鲸者成就） */
     if(mode==='play' && challenge.active && dist<1.25 && girl.position.y>g.position.y+0.7
        && girl.userData.state.vy<0.5){
       const idx=patrolDrones.indexOf(d);
       if(idx>=0) patrolDrones.splice(idx,1);
       scene.remove(g); d.dead=true;
-      challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2);
-      toast('🐙 踏灭无人机！ +2 秒'); AudioFX.boost(); buzz(30);
+      const killBonus=d.elite?4:2;
+      challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+killBonus);
+      if(d.elite) award('hunter');
+      toast('🐙 踏灭'+(d.elite?'精英':'')+'无人机！ +'+killBonus+' 秒'); AudioFX.boost(); buzz(d.elite?50:30);
       burst(g.position.clone());
       continue;
     }
@@ -4175,11 +4191,11 @@ function drawMinimap(){
     g.save(); g.translate(p.x,p.y); g.rotate(Math.PI/4);
     g.fillRect(-2.8,-2.8,5.6,5.6); g.restore();
   }
-  /* 巡逻无人机（红点 + 真实警戒圈，半径 9 世界单位；v0.3.93 危险脉冲放大） */
+  /* 巡逻无人机（红点 + 真实警戒圈，半径 9 世界单位；v0.3.93 危险脉冲放大；v0.4.16 精英紫亮大点） */
   for(const d of patrolDrones){
     const p=W2S(d.grp.position.x,d.grp.position.z);
     const threat=(d.mode==='windup'||d.mode==='dash');
-    g.fillStyle=threat?'#FFB04A':'#FF5A5A';   // v0.3.11 蓄力/冲锋转橙预警
+    g.fillStyle=d.elite?'#FF4FD8':(threat?'#FFB04A':'#FF5A5A');
     g.beginPath(); g.arc(p.x,p.y,3.5,0,Math.PI*2); g.fill();
     /* v0.3.93 危险脉冲：威胁时放大红色脉冲环 */
     if(threat){
