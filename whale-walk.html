@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.28</title>
+<title>鲸步 WHALE WALK · v0.3.29</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2222,7 +2222,7 @@ function applyPowerUp(type){
 }
 function fmtT(s){ return s.toFixed(1)+' 秒'; }
 function starsFor(tl){ const t=levelCfg().time;
-  return tl>=t*0.45?3:tl>=t*0.2?2:1; }   // v0.3.17 星级门槛按关卡时长比例（normal 80s≈36/16 与旧值兼容）
+  return tl>=t*0.42?3:tl>=t*0.18?2:1; }   // v0.3.29 星级门槛放宽（高关 3★ 更可达）
 /* 关卡横幅 */
 const lvBannerEl=document.getElementById('lvBanner'), lvBannerT=document.getElementById('lvBannerT');
 let lvBannerTO=0;
@@ -2325,7 +2325,7 @@ function finishChallenge(win){
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 最高连击 x'+(challenge.comboMax||0)
-        +(stars<3?'<br>下次快 '+fmtT(levelCfg().time*0.45-challenge.timeLeft)+' 即可 3★':'')
+        +(stars<3?'<br>下次快 '+fmtT(levelCfg().time*0.42-challenge.timeLeft)+' 即可 3★':'')
         +'<br>下一关：'+(level+1)+' '+LEVEL_NAMES[level]+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
       rmBest.textContent='';
