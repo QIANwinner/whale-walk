@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.38</title>
+<title>鲸步 WHALE WALK · v0.3.39</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -91,6 +91,8 @@
   #resultModal .rm-t{font-size:30px;font-weight:900;color:#FFD25A;letter-spacing:2px;
     text-shadow:0 0 18px rgba(255,210,90,.8);}
   #resultModal .rm-stars{font-size:30px;margin:10px 0 4px;color:#FFD25A;letter-spacing:6px;}
+  #rmRank{font-size:32px;font-weight:900;margin:2px 0 6px;color:#7FE4FF;letter-spacing:4px;
+    text-shadow:0 0 17px rgba(127,228,255,.9);display:none;}
   /* v0.3.25 星星逐个弹出 */
   #resultModal .rm-stars .star-on{display:inline-block;animation:starPop .4s cubic-bezier(.2,1.6,.4,1) both;}
   @keyframes starPop{0%{transform:scale(0) rotate(-40deg);opacity:0}
@@ -306,6 +308,7 @@
 <div id="resultModal">
   <div class="rm-t" id="rmTitle">完成！</div>
   <div class="rm-stars" id="rmStars">★★★</div>
+  <div id="rmRank"></div>
   <div class="rm-info" id="rmInfo">用时 0.0 秒</div>
   <div class="rm-best" id="rmBest"></div>
   <div id="rmBtns">
@@ -2315,7 +2318,12 @@ function finishChallenge(win){
   challenge.active=false; challenge.done=win; challenge.failed=!win;
   levelTimeUsed=levelCfg().time-challenge.timeLeft;
   const stars=win?starsFor(challenge.timeLeft):0;
+  const rmRank=document.getElementById('rmRank');
   if(win){
+    const rank = stars>=3 ? (challenge.timeLeft >= levelCfg().time*0.6 ? 'S' : 'A')
+                : stars===2 ? 'B' : 'C';
+    rmRank.textContent=rank;
+    rmRank.style.display='block';
     runTotalUsed+=levelTimeUsed; runCoins+=coinCount; runRings+=ringCount;
     /* v0.3.25 星星逐个弹出 */
     rmStars.innerHTML='★★★☆☆☆'.slice(0,stars*2).split('').map((s,i)=>
@@ -2362,6 +2370,7 @@ function finishChallenge(win){
     shareSnap={kind:'fail',diff:diff().label,level,score,total:TOTAL};
     rmTitle.textContent='时间到…';
     rmStars.textContent='—';
+    rmRank.style.display='none';
     rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 第 '+level+' 关 · 最高连击 x'+(challenge.comboMax||0);
     rmBest.textContent = challenge.best?('最佳 总用时 '+fmtT(challenge.best.time)):'';
     btnNext.style.display='none';
