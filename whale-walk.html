@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.32</title>
+<title>鲸步 WHALE WALK · v0.3.33</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -77,6 +77,11 @@
   #redflash{position:fixed;inset:0;z-index:30;pointer-events:none;background:radial-gradient(ellipse at center,
     rgba(255,40,40,0) 40%,rgba(255,30,30,.55) 100%);opacity:0;transition:opacity .15s;}
   #redflash.on{opacity:1;transition:none;}
+  /* ---------- 屏幕青色辉光（加速带） ---------- */
+  #boostglow{position:fixed;inset:0;z-index:29;pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(53,224,255,0) 55%, rgba(53,224,255,.35) 100%);
+    opacity:0;transition:opacity .12s;}
+  #boostglow.on{opacity:1;}
   /* ---------- 结果弹窗 ---------- */
   #resultModal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);z-index:40;
     background:rgba(10,16,38,.92);border:1px solid rgba(127,212,255,.4);border-radius:20px;
@@ -297,6 +302,7 @@
 <div id="lvBanner"><div class="lv-t" id="lvBannerT">第 2 关</div><div class="lv-s">更多光点 · 更短时间</div></div>
 <div id="combo"></div>
 <div id="redflash"></div>
+<div id="boostglow"></div>
 <div id="resultModal">
   <div class="rm-t" id="rmTitle">完成！</div>
   <div class="rm-stars" id="rmStars">★★★</div>
@@ -2100,6 +2106,7 @@ let score=0; let TOTAL=orbs.length;
 const clock=new THREE.Clock();
 let elapsed=0;
 let blinkT=0, cheerT=0;   // 眨眼计时 / 欢呼计时
+const boostglowEl=document.getElementById('boostglow');
 const spherePos=new THREE.Vector3();
 /* v0.3.10 连击辉光：零分配颜色复用 */
 const _rimBlue=new THREE.Color(0x8FC8FF), _rimGold=new THREE.Color(0xFFD25A);
@@ -2820,6 +2827,7 @@ function update(dt){
     }
   }
   /* 加速带冲刺倒计时 */
+  boostglowEl.classList.toggle('on', boostT>0);
   if(boostT>0){ boostT-=dt; if(boostT<=0) boostT=0; }
   /* 弹跳垫冷却 + 回弹 + 光环脉冲 */
   for(const bp of bouncePads){
