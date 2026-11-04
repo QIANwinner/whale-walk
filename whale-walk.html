@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.13</title>
+<title>鲸步 WHALE WALK · v0.4.14</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1298,6 +1298,26 @@ function place(minR,maxR){ // 采样一个位置：避开出生点
   }
   bInst.instanceMatrix.needsUpdate=true; lInst.instanceMatrix.needsUpdate=true;
   scene.add(bInst); scene.add(lInst);
+}
+/* v0.4.14 远海鲸群：3 条程序化鲸鱼剪影在天际线外绕城缓慢游动（雾中若隐若现） */
+const whalePod=[];
+{
+  const whaleMat=new THREE.MeshBasicMaterial({color:0x0D1626});
+  const finMat=new THREE.MeshBasicMaterial({color:0x14213A});
+  for(let i=0;i<3;i++){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.SphereGeometry(1,12,10),whaleMat);
+    body.scale.set(3.2,1.05,1.0); g.add(body);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.85,10,8),whaleMat);
+    head.position.x=2.9; g.add(head);
+    const fin=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.14,1.9),finMat);
+    fin.position.x=-2.9; g.add(fin);          // 尾鳍（update 摆动）
+    const dorsal=new THREE.Mesh(new THREE.ConeGeometry(0.28,0.9,6),finMat);
+    dorsal.position.set(0.2,0.95,0); g.add(dorsal);
+    const ang=i/3*Math.PI*2;
+    g.userData={ang, r:100+i*7, h:20+i*4, speed:0.028+i*0.006, fin};
+    whalePod.push(g); scene.add(g);
+  }
 }
 /* 低空雨雾湿气团 */
 const clouds=[];
@@ -3196,6 +3216,7 @@ function finishChallenge(win){
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 最高连击 x'+(challenge.comboMax||0)
+        +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
         +'<br>本局净得分 <b id="rmNetScore">0</b> 分'
         +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)+'）'   // v0.3.89
         +(stars<3?'<br>下次快 '+fmtT(levelCfg().time*0.42-challenge.timeLeft)+' 即可 3★':'')
@@ -3246,6 +3267,7 @@ function finishChallenge(win){
       endless=false;   // 潮落回到常规模式
     } else {
     rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关<br>最高连击 x'+(challenge.comboMax||0)
+      +(fragTotal?' · 鲸语碎片 '+fragCount+'/'+fragTotal:'')
       +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次':'');
     }
     rmBest.textContent = bestOf()?('本难度最佳 总用时 '+fmtT(bestOf().time)):'';
@@ -3723,6 +3745,14 @@ function update(dt){
     if(s.life<=0)s.m.visible=false; } }
   /* 云 */
   for(const c of clouds){ c.position.x+=dt*0.4; if(c.position.x>150)c.position.x=-150; }
+  /* v0.4.14 远海鲸群：绕城缓游 + 尾鳍摆动 */
+  for(const w of whalePod){
+    const u=w.userData;
+    u.ang+=u.speed*dt;
+    w.position.set(Math.cos(u.ang)*u.r, u.h+Math.sin(elapsed*0.5+u.ang)*1.2, Math.sin(u.ang)*u.r);
+    w.rotation.y=-u.ang;   // 头朝行进方向
+    u.fin.rotation.y=Math.sin(elapsed*2.2+u.ang*3)*0.5;
+  }
   /* v0.3.21 鲸鱼门环：双环反向旋转 + 鲸鱼剪影呼吸 */
   whaleGate.userData.tor.rotation.z+=dt*0.3;
   whaleGate.userData.tor2.rotation.z-=dt*0.2;
@@ -4516,7 +4546,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.4.11 成绩卡钩子 */
   makeScoreCard,
   /* v0.4.12 鲸语碎片钩子 */
-  frags:()=>frags, fragCount:()=>fragCount, fragTotal:()=>fragTotal};
+  frags:()=>frags, fragCount:()=>fragCount, fragTotal:()=>fragTotal,
+  /* v0.4.14 远海鲸群钩子 */
+  whalePod};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
