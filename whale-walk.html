@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.12</title>
+<title>鲸步 WHALE WALK · v0.4.13</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1152,6 +1152,9 @@ const P=girl.userData.parts;
 /* =====================================================================
  *  地形
  * ===================================================================== */
+/* v0.4.13 每日布局种子：YYYYMMDD 整数，同一天全服布局一致 */
+function daySeed(){ const d=new Date();
+  return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate(); }
 function terrainH(x,z){
   let h = Math.sin(x*0.05)*Math.cos(z*0.045)*0.35
         + Math.sin(x*0.11+1.7)*Math.sin(z*0.09+3.1)*0.15;
@@ -1846,6 +1849,7 @@ const orbHaloMat=new THREE.MeshBasicMaterial({color:C.neon,transparent:true,opac
 const ringGeo=new THREE.RingGeometry(0.16,0.21,20);
 const orbPool=[];   // v0.4.03 光点 Mesh 对象池（跨关卡复用，免 GC 抖动）
 function placeOrbs(count, highCount){
+  const orn=mulberry32(daySeed()+level*7717);   // v0.4.13 每日布局:光点位置每日固定
   /* v0.4.03 清空旧光点回池（对象池复用 Mesh） */
   for(const o of orbGroup.children){ o.visible=false; o.userData.alive=false; orbPool.push(o); }
   while(orbGroup.children.length) orbGroup.remove(orbGroup.children[0]);
@@ -1859,16 +1863,16 @@ function placeOrbs(count, highCount){
     let x,z,y;
     if(wantHigh && highPts.length){
       /* 高处光点：放在平台正上方 */
-      const p=highPts[Math.floor(rnd()*highPts.length)];
+      const p=highPts[Math.floor(orn()*highPts.length)];
       highPts.splice(highPts.indexOf(p),1);
       x=p.x; z=p.z; y=terrainH(p.x,p.z)+p.topY+1.5;   // 高处光点：站上平台(脚下+0.9)才能捡，地面站立捡不到
     } else {
       /* 地面光点：沿街均匀铺开 */
-      const zz=8+(placed/(count||1))*74+rnd()*3;
-      x=(rnd()*2-1)*6.5; z=zz;
+      const zz=8+(placed/(count||1))*74+orn()*3;
+      x=(orn()*2-1)*6.5; z=zz;
       y=terrainH(x,z)+0.55;
       /* 高处光点之外，地面光点尽量不落在平台正下方 */
-      for(const p of platforms){ if(Math.abs(x-p.x)<1.4 && Math.abs(z-p.z)<1.4){ x=(rnd()*2-1)*6.5; } }
+      for(const p of platforms){ if(Math.abs(x-p.x)<1.4 && Math.abs(z-p.z)<1.4){ x=(orn()*2-1)*6.5; } }
     }
     let ok=true;
     for(const o of obstacles){ if(Math.hypot(x-o.x,z-o.z)<o.r+0.8){ok=false;break;} }
@@ -1880,7 +1884,7 @@ function placeOrbs(count, highCount){
       const hh=new THREE.Mesh(ringGeo,orbHaloMat); hh.rotation.x=-Math.PI/2; mm.add(hh); return mm; })();
     m.visible=true;
     m.position.set(x,y,z);
-    m.userData={alive:true,baseY:y,ph:rnd()*6.28,halo:m.children[0],high:wantHigh};
+    m.userData={alive:true,baseY:y,ph:orn()*6.28,halo:m.children[0],high:wantHigh};
     orbGroup.add(m); orbs.push(m.position.clone());
     placed++;
   }
@@ -1926,6 +1930,7 @@ function buildPatrolDrone(){
 }
 const dronePool=[];   // v0.4.03 无人机 Group 对象池（跨关卡复用）
 function spawnPatrolDrones(n){
+  const drn=mulberry32(daySeed()+level*7877);   // v0.4.13 每日布局:无人机巡逻位每日固定
   /* v0.4.03 清掉旧的回池 */
   for(const d of patrolDrones){ d.grp.visible=false; scene.remove(d.grp); dronePool.push(d.grp); }
   patrolDrones.length=0;
@@ -1933,10 +1938,10 @@ function spawnPatrolDrones(n){
     const grp=dronePool.pop()||buildPatrolDrone();   // v0.4.03 池取或新建
     grp.visible=true;
     const side=(i%2?1:-1);
-    const x=side*(5+rnd()*6), z=12+i*22+rnd()*8;
+    const x=side*(5+drn()*6), z=12+i*22+drn()*8;
     grp.position.set(x,terrainH(x,z)+2.6,z);
-    patrolDrones.push({grp, home:{x,z}, ph:rnd()*6.28, mode:'patrol',
-      yaw:rnd()*Math.PI*2, cool:0, t:0, vx:0, vz:0});
+    patrolDrones.push({grp, home:{x,z}, ph:drn()*6.28, mode:'patrol',
+      yaw:drn()*Math.PI*2, cool:0, t:0, vx:0, vz:0});
   }
 }
 
@@ -2067,7 +2072,8 @@ function clearNewProps(){
 }
 function spawnNewProps(){
   clearNewProps();
-  const rn=Math.random, rnd6=(a,b)=>a+rn()*(b-a);
+  /* v0.4.13 每日布局：金币/碎片位置用日期种子（mulberry32），同一天全服一致，配合每日任务 */
+  const rn=mulberry32(daySeed()+level*7919), rnd6=(a,b)=>a+rn()*(b-a);
   const lane=(rn()<0.5?-1:1)*(2.6+(level%3)*0.9);
   /* ---- 金色鲸币 ×3：飞车路中央 / 无人机巡逻圈 / 跳跃平台顶 ---- */
   const spots=[];
@@ -3055,7 +3061,7 @@ function startChallenge(){
   mirrorOn=(level===9);   // v0.4.09 镜面回响：仅隐藏关第 9 关生效
   const mirrorHudEl=document.getElementById('mirrorHud');
   if(mirrorHudEl) mirrorHudEl.classList.toggle('on',mirrorOn);
-  showLevelBanner('第 '+level+' 关 · '+levelName(), diff().label+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点'+(mirrorOn?' · ⚠ 左右反转':''));   // v0.3.23 开局章节横幅
+  showLevelBanner('第 '+level+' 关 · '+levelName(), diff().label+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点'+(mirrorOn?' · ⚠ 左右反转':'')+' · 今日布局');   // v0.3.23 开局章节横幅；v0.4.13 每日布局标注
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
   timerNum.textContent=Math.ceil(challenge.timeLeft);
   levelTimeUsed=0;
@@ -4505,6 +4511,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   mirrorOn:()=>mirrorOn,
   /* v0.4.10 无尽鲸潮钩子 */
   endless:()=>endless, endlessStreak:()=>endlessStreak, ebest:()=>EBEST,
+  /* v0.4.13 每日布局钩子 */
+  daySeed,
   /* v0.4.11 成绩卡钩子 */
   makeScoreCard,
   /* v0.4.12 鲸语碎片钩子 */
