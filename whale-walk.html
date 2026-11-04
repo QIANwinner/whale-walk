@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.19</title>
+<title>鲸步 WHALE WALK · v0.4.20</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1872,6 +1872,9 @@ function supportAt(x,z,feetY){
 const orbGeo=new THREE.SphereGeometry(0.095,12,10);
 const orbMat=new THREE.MeshStandardMaterial({color:'#8FE0FF',emissive:'#4FA9E8',emissiveIntensity:2.2,roughness:.4});
 const orbHaloMat=new THREE.MeshBasicMaterial({color:C.neon,transparent:true,opacity:0.5,side:THREE.DoubleSide});   // v0.3.19 共享 halo 材质（呼吸改走 scale）
+/* v0.4.20 稀有金光点材质（每关第 6 颗，收集 +2 秒额外） */
+const orbGoldMat=new THREE.MeshStandardMaterial({color:'#FFE9A8',emissive:'#D8A018',emissiveIntensity:2.6,roughness:.3});
+const orbGoldHaloMat=new THREE.MeshBasicMaterial({color:0xFFD25A,transparent:true,opacity:0.55,side:THREE.DoubleSide});
 const ringGeo=new THREE.RingGeometry(0.16,0.21,20);
 const orbPool=[];   // v0.4.03 光点 Mesh 对象池（跨关卡复用，免 GC 抖动）
 function placeOrbs(count, highCount){
@@ -1905,12 +1908,15 @@ function placeOrbs(count, highCount){
     if(!ok) continue;
     for(const q of orbs){ if(Math.hypot(x-q.x,z-q.z)<minD){ok=false;break;} }
     if(!ok) continue;
-    /* v0.4.03 对象池取光点（无则新建） */
+    /* v0.4.03 对象池取光点（无则新建）；v0.4.20 每关第 6 颗为稀有金光点（+2 秒额外） */
+    const golden=(placed%12===5);
     const m=orbPool.pop()||(()=>{ const mm=new THREE.Mesh(orbGeo,orbMat);
       const hh=new THREE.Mesh(ringGeo,orbHaloMat); hh.rotation.x=-Math.PI/2; mm.add(hh); return mm; })();
     m.visible=true;
+    m.material=golden?orbGoldMat:orbMat;
+    if(m.children[0]) m.children[0].material=golden?orbGoldHaloMat:orbHaloMat;
     m.position.set(x,y,z);
-    m.userData={alive:true,baseY:y,ph:orn()*6.28,halo:m.children[0],high:wantHigh};
+    m.userData={alive:true,baseY:y,ph:orn()*6.28,halo:m.children[0],high:wantHigh,golden};
     orbGroup.add(m); orbs.push(m.position.clone());
     placed++;
   }
@@ -2730,6 +2736,8 @@ function diff(){ return DIFFS[diffKey]; }
 const MAX_LEVEL=9;
 /* v0.4.09 镜面回响：隐藏关第 9 关专属机制——左右操作反转 */
 let mirrorOn=false;
+/* v0.4.20 镜面回响日轮换：每周三/周五全部关卡镜像（模块级供 __dbg 读取） */
+const mirrorDay=()=>(new Date().getDay()===3||new Date().getDay()===5);
 /* v0.3.23 章节命名：每关一个名字，开局横幅与结算标题使用；v0.3.88 第9关隐藏关「鲸落之地」 */
 const LEVEL_NAMES=['霓虹初醒','雨幕疾行','霓虹深渊','雷暴中心','暴雨终章','永夜鲸歌','深海回响','星海鲸梦','鲸落之地'];
 const levelName=()=>LEVEL_NAMES[Math.min(level,LEVEL_NAMES.length)-1]||('第 '+level+' 关');
@@ -3127,8 +3135,8 @@ function startChallenge(){
   lvDodge=0; lvDj=0;   // v0.3.12 单关操作统计
   lvPU=0;   // v0.4.19 道具拾取计数
   challenge.recentLoss=0; lvRewind=0;   // v0.4.08 时光回溯记账重置
-  mirrorOn=(level===9);   // v0.4.09 镜面回响：仅隐藏关第 9 关生效
-  const mirrorHudEl=document.getElementById('mirrorHud');
+  /* v0.4.20 镜面回响日轮换：每周三/周五全部关卡镜像 */
+  mirrorOn=(level===9)||mirrorDay();  const mirrorHudEl=document.getElementById('mirrorHud');
   if(mirrorHudEl) mirrorHudEl.classList.toggle('on',mirrorOn);
   showLevelBanner('第 '+level+' 关 · '+levelName(), diff().label+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点'+(mirrorOn?' · ⚠ 左右反转':'')+' · 今日布局');   // v0.3.23 开局章节横幅；v0.4.13 每日布局标注
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
@@ -3765,6 +3773,12 @@ function update(dt){
       /* 收集：水平距离 + 垂直窗口（高处光点需站上平台） */
       if(dd<1.4 && Math.abs(girl.position.y+0.9-o.position.y)<1.05){
         u.alive=false; o.visible=false;
+        /* v0.4.20 稀有金光点：额外 +2 秒 */
+        if(u.golden){
+          challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2);
+          AudioFX.coin();
+          toast('🌟 稀有金光点！额外 +2 秒');
+        }
         score++; scoreEl.textContent=`${score} / ${TOTAL}`;
         ORB++; try{ localStorage.setItem('ww-orbtotal-v1',String(ORB)); }catch(_){}   // v0.3.77 累计光点
         if(ORB>=150) award('orb150');
@@ -4679,7 +4693,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.21 鲸鱼门环钩子 */
   whaleGate,
   /* v0.4.09 镜面回响钩子 */
-  mirrorOn:()=>mirrorOn,
+  mirrorOn:()=>mirrorOn, mirrorDay:()=>mirrorDay(),
   /* v0.4.10 无尽鲸潮钩子 */
   endless:()=>endless, endlessStreak:()=>endlessStreak, ebest:()=>EBEST,
   /* v0.4.13 每日布局钩子 */
