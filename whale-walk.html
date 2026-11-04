@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.05</title>
+<title>鲸步 WHALE WALK · v0.4.06</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -254,6 +254,7 @@
   #pwSlow{border-color:rgba(201,168,255,.6);color:#C9A8FF;}
   #pwFreeze{border-color:rgba(140,220,255,.6);color:#9FE8FF;}
   #pwDouble{border-color:rgba(255,200,80,.6);color:#FFC850;}
+  #pwEcho{border-color:rgba(127,228,255,.6);color:#7FE4FF;}
   /* ---------- 闪电 ---------- */
   #lightning{position:fixed;inset:0;z-index:28;pointer-events:none;background:#EAF4FF;
     opacity:0;mix-blend-mode:screen;}
@@ -445,6 +446,7 @@
   <div class="pw-chip" id="pwSlow">🌀 子弹时间 <span class="pw-t"></span></div>
   <div class="pw-chip" id="pwFreeze">🧊 时间冻结 <span class="pw-t"></span></div>
   <div class="pw-chip" id="pwDouble">💰 双倍鲸币 <span class="pw-t"></span></div>
+  <div class="pw-chip" id="pwEcho">📡 回声定位 <span class="pw-t"></span></div>
 </div>
 <div id="coinbar"><div class="coin-chip">🪙 鲸币 <span class="cc-n" id="coinNum">0 / 3</span></div></div>
 <div id="lightning"></div>
@@ -1909,20 +1911,21 @@ const PU_TYPES={ shield:{label:'护盾',icon:'🛡',color:0x7FD4FF,dur:0},
   speed:{label:'加速',icon:'⚡',color:0x35E0FF,dur:5},
   slow:{label:'子弹时间',icon:'🌀',color:0xC9A8FF,dur:6},
   freeze:{label:'时间冻结',icon:'🧊',color:0x9FE8FF,dur:3},       // v0.3.86 时间冻结：无人机/车静止 3s
-  double:{label:'双倍鲸币',icon:'💰',color:0xFFC850,dur:10} };    // v0.3.86 双倍鲸币：10s 金币翻倍
+  double:{label:'双倍鲸币',icon:'💰',color:0xFFC850,dur:10},      // v0.3.86 双倍鲸币：10s 金币翻倍
+  echo:{label:'回声定位',icon:'📡',color:0x7FE4FF,dur:6} };       // v0.4.06 回声定位：隔墙透视全场收集物 6s
 const puGeo=new THREE.OctahedronGeometry(0.26,0);
-const puCols={shield:0x7FD4FF,magnet:0xFFD25A,speed:0x35E0FF,slow:0xC9A8FF,freeze:0x9FE8FF,double:0xFFC850};
+const puCols={shield:0x7FD4FF,magnet:0xFFD25A,speed:0x35E0FF,slow:0xC9A8FF,freeze:0x9FE8FF,double:0xFFC850,echo:0x7FE4FF};
 function spawnPowerUp(){
   /* v0.3.28 平衡：道具概率按难度/关卡加权（高关更多解压型磁铁/子弹时间，easy 更多护盾） */
-  const w={shield:2,magnet:3,speed:2,slow:3,freeze:2,double:2};
-  if(diffKey==='easy'){ w.shield=3; w.magnet=2; w.slow=2; w.freeze=1; w.double=1; }
-  else if(diffKey==='hard'){ w.shield=2; w.magnet=3; w.slow=4; w.freeze=2; w.double=3; }
-  else if(diffKey==='extreme'){ w.freeze=3; w.double=3; }
+  const w={shield:2,magnet:3,speed:2,slow:3,freeze:2,double:2,echo:2};
+  if(diffKey==='easy'){ w.shield=3; w.magnet=2; w.slow=2; w.freeze=1; w.double=1; w.echo=2; }
+  else if(diffKey==='hard'){ w.shield=2; w.magnet=3; w.slow=4; w.freeze=2; w.double=3; w.echo=3; }
+  else if(diffKey==='extreme'){ w.freeze=3; w.double=3; w.echo=3; }
   w.magnet+=Math.floor((level-1)*0.25);
   w.slow+=Math.floor((level-1)*0.5);
   let tot=0; for(const k in w) tot+=w[k];
   let r=Math.random()*tot, type='shield';
-  for(const k of ['shield','magnet','speed','slow','freeze','double']){ r-=w[k]; if(r<0){ type=k; break; } }
+  for(const k of ['shield','magnet','speed','slow','freeze','double','echo']){ r-=w[k]; if(r<0){ type=k; break; } }
   const z=girl.position.z+rand(8,26);
   const x=(Math.random()*2-1)*5.2;
   const g=new THREE.Group();
@@ -1938,7 +1941,7 @@ function spawnPowerUp(){
   scene.add(g); powerUps.push(g);
 }
 /* 道具状态 + HUD */
-const powerState={shield:false,magnet:0,speed:0,slow:0,freeze:0,double:0};
+const powerState={shield:false,magnet:0,speed:0,slow:0,freeze:0,double:0,echo:0};
 /* 护盾气泡（附着角色） */
 const shieldBubble=new THREE.Mesh(new THREE.SphereGeometry(1.15,20,14),
   new THREE.MeshBasicMaterial({color:0x7FD4FF,transparent:true,opacity:0.16,
@@ -1946,14 +1949,40 @@ const shieldBubble=new THREE.Mesh(new THREE.SphereGeometry(1.15,20,14),
 shieldBubble.visible=false; girl.add(shieldBubble);
 const pwShieldEl=document.getElementById('pwShield'), pwMagnetEl=document.getElementById('pwMagnet'),
       pwSpeedEl=document.getElementById('pwSpeed'), pwSlowEl=document.getElementById('pwSlow'),
-      pwFreezeEl=document.getElementById('pwFreeze'), pwDoubleEl=document.getElementById('pwDouble');
+      pwFreezeEl=document.getElementById('pwFreeze'), pwDoubleEl=document.getElementById('pwDouble'),
+      pwEchoEl=document.getElementById('pwEcho');
+/* v0.4.06 回声定位：隔墙透视全场收集物（共享高亮材质替换，零分配）
+   echoOn 把未收集光点/金币/道具/光环的高亮子材质换成 echoMat（depthTest=false 可穿墙），
+   原材质暂存 mesh.userData.__echoOld，还原时用；每帧重建 echoSet（已高亮的不重复覆盖），
+   新生成道具也会被下一帧捕获。 */
+const echoMat=new THREE.MeshBasicMaterial({color:0x7FE4FF,transparent:true,opacity:0.9,
+  blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,side:THREE.DoubleSide});
+const echoSet=[];
+function echoOn(){
+  echoSet.length=0;
+  const grab=(mesh)=>{ if(mesh&&mesh.material){
+    if(mesh.material!==echoMat){ mesh.userData.__echoOld=mesh.material; mesh.material=echoMat; }
+    echoSet.push(mesh);
+  } };
+  for(const o of orbGroup.children){ if(o.userData.alive) grab(o.children[0]); }        // 光点 halo
+  for(const c of coins){ if(c.userData.alive) grab(c.userData.halo); }                    // 金币 halo
+  for(const p of powerUps){ grab(p.userData.core); grab(p.userData.ring); }              // 道具 core+ring
+  for(const r of rings){ if(r.userData.alive) grab(r.userData.glow); }                    // 光环 glow
+}
+function echoOff(){
+  for(const mesh of echoSet){ if(mesh.userData.__echoOld){ mesh.material=mesh.userData.__echoOld; delete mesh.userData.__echoOld; } }
+  echoSet.length=0;
+}
+let echoPick=0;   // v0.4.06 回声定位生效期间累计收集光点（成就 echo10 判定）
 function clearPowerups(){
   for(const p of powerUps) scene.remove(p);
   powerUps.length=0;
   powerState.shield=false; powerState.magnet=0; powerState.speed=0; powerState.slow=0;
-  powerState.freeze=0; powerState.double=0;
+  powerState.freeze=0; powerState.double=0; powerState.echo=0;
   pwShieldEl.classList.remove('on'); pwMagnetEl.classList.remove('on'); pwSpeedEl.classList.remove('on');
   pwSlowEl.classList.remove('on'); pwFreezeEl.classList.remove('on'); pwDoubleEl.classList.remove('on');
+  pwEchoEl.classList.remove('on');
+  echoOff();   // v0.4.06 还原透视
   if(shieldBubble) shieldBubble.visible=false;
 }
 
@@ -2171,6 +2200,13 @@ const AudioFX=(()=>{
       tone(392,784,0.42,0.15,'sine',0.20);
       tone(523,1046,0.55,0.14,'sine',0.44);
       tone(196,392,0.95,0.10,'sine',0.08); },
+    /* v0.4.06 回声定位：鲸歌回声（低音上行 + 延迟回响层） */
+    echo(){ if(muted||!ac())return;
+      tone(262,524,0.50,0.12,'sine',0);
+      tone(330,660,0.55,0.11,'sine',0.16);
+      tone(392,784,0.60,0.10,'sine',0.32);
+      tone(262,262,0.70,0.07,'sine',0.50);
+      tone(330,330,0.75,0.06,'sine',0.66); },
     /* 失败：下行三连滑音，像鲸鸣谢幕；v0.3.97 改低音大提琴滑奏（sawtooth 滑降 + 颤音） */
     fail(){ if(muted||!ac())return;
       const t0=ctx.currentTime;
@@ -2684,7 +2720,8 @@ const ACHS=[
   {id:'whalefall',   icon:'🐋', label:'鲸落之地 · 通关隐藏关第 9 关'},
   {id:'morning',     icon:'🌅', label:'晨风鲸语 · 上午 6-9 点通关一关'},
   {id:'midnight',    icon:'🌙', label:'午夜鲸歌 · 晚上 22-24 点通关一关'},
-  {id:'combo24',     icon:'⚡', label:'连击大师二段 · 单关最高连击 x24'}
+  {id:'combo24',     icon:'⚡', label:'连击大师二段 · 单关最高连击 x24'},
+  {id:'echo10',      icon:'📡', label:'回响鲸歌 · 单关用回声定位收集 10 个光点'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -2845,6 +2882,7 @@ function applyPowerUp(type){
   else if(type==='slow'){ powerState.slow=info.dur; pwSlowEl.classList.add('on'); }
   else if(type==='freeze'){ powerState.freeze=info.dur; pwFreezeEl.classList.add('on'); }
   else if(type==='double'){ powerState.double=info.dur; pwDoubleEl.classList.add('on'); }
+  else if(type==='echo'){ powerState.echo=info.dur; pwEchoEl.classList.add('on'); echoOn(); AudioFX.echo(); }
   toast(info.icon+' 获得'+info.label+'！');
   AudioFX.pickup();
 }
@@ -2906,6 +2944,7 @@ function startChallenge(){
   challenge.invuln=0; challenge.flashT=0; challenge.danger=false; rmEl.classList.remove('show');
   challenge.ready=1.2;   // v0.3.17 开局缓冲：1.2s 内不计时且免伤
   challenge.tookHit=false; challenge.comboMax=0; newAch=[];   // v0.3.8 成就判定状态
+  echoPick=0;   // v0.4.06 回声定位计数重置
   lvDodge=0; lvDj=0;   // v0.3.12 单关操作统计
   showLevelBanner('第 '+level+' 关 · '+levelName(), diff().label+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点');   // v0.3.23 开局章节横幅
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
@@ -3449,6 +3488,8 @@ function update(dt){
         score++; scoreEl.textContent=`${score} / ${TOTAL}`;
         ORB++; try{ localStorage.setItem('ww-orbtotal-v1',String(ORB)); }catch(_){}   // v0.3.77 累计光点
         if(ORB>=150) award('orb150');
+        /* v0.4.06 回响鲸歌：回声定位生效期间收集累计 10 光点 */
+        if(powerState.echo>0){ echoPick++; if(echoPick>=10) award('echo10'); }
         scoreEl.classList.remove('pop'); void scoreEl.offsetWidth; scoreEl.classList.add('pop');   // v0.3.16 收集弹跳
         document.getElementById('timerProgFill').style.width=Math.round(score/(TOTAL||1)*100)+'%';   // v0.3.25 进度条
         blinkT=1;   // 收集时眨一下眼
@@ -3622,6 +3663,10 @@ function update(dt){
   if(powerState.slow>0){ powerState.slow-=dt; if(powerState.slow<=0){ powerState.slow=0; pwSlowEl.classList.remove('on'); } }
   if(powerState.freeze>0){ powerState.freeze-=dt; if(powerState.freeze<=0){ powerState.freeze=0; pwFreezeEl.classList.remove('on'); } }
   if(powerState.double>0){ powerState.double-=dt; if(powerState.double<=0){ powerState.double=0; pwDoubleEl.classList.remove('on'); } }
+  /* v0.4.06 回声定位：持续期间每帧维持透视（新生成道具也高亮），到期还原 */
+  if(powerState.echo>0){ echoOn();
+    powerState.echo-=dt;
+    if(powerState.echo<=0){ powerState.echo=0; pwEchoEl.classList.remove('on'); echoOff(); } }
 
   /* ---- v0.3.4 新玩法物件：金币 / 穿环 / 加速带 ---- */
   if(mode==='play' && challenge.active){
@@ -3880,6 +3925,15 @@ function drawMinimap(){
     g.beginPath(); g.arc(p.x,p.y,3.2,0,Math.PI*2); g.fill();
     const d=(o.position.x-gx)**2+(o.position.z-gz)**2;
     if(d<nd){nd=d; nearest=o;}
+  }
+  /* v0.4.06 回声定位：激活期间小地图显示全部光点（青色实心大点，不只最近导航） */
+  if(powerState.echo>0){
+    g.fillStyle='rgba(127,228,255,0.95)';
+    for(const o of orbGroup.children){
+      if(!o.userData.alive) continue;
+      const p=W2S(o.position.x,o.position.z);
+      g.beginPath(); g.arc(p.x,p.y,3.6,0,Math.PI*2); g.fill();
+    }
   }
   /* 最近光点导航：金色脉冲环 + 虚线引导 + 指向箭头（v0.3.4 濒危时变粗变红） */
   if(nearest){
@@ -4179,6 +4233,8 @@ renderer.setAnimationLoop(renderLoop);
 /* ---- 自查调试钩子（不参与游戏逻辑） ---- */
 window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, audio:AudioFX, mm:drawMinimap,
   challenge, patrolDrones, powerUps, platforms, powerState, levelCfg,
+  /* v0.4.06 回声定位钩子 */
+  echoOn, echoOff, echoSet:()=>echoSet.length, echoState:()=>powerState.echo, echoPick:()=>echoPick,
   applyPowerUp, spawnPowerUp, spawnPatrolDrones, startChallenge, setupLevel, resetChallenge, doJump,
   diffKey:()=>diffKey, level:()=>level, TOTAL:()=>TOTAL, score:()=>score,
   mode:()=>mode, elapsed:()=>elapsed,   // v0.3.8 连击窗口测试用
