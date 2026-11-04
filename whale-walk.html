@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.29</title>
+<title>鲸步 WHALE WALK · v0.3.30</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2780,10 +2780,14 @@ function update(dt){
       if(dd<1.3 && Math.abs(girl.position.y+0.9-c.position.y)<1.15){
         u.alive=false; coinGroup.remove(c); coins.splice(i,1);
         coinCount++; coinNumEl.textContent=`${coinCount} / ${coinTotal}`;
-        challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+3);
+        /* v0.3.30：combo≥3 时鲸币奖励翻倍 */
+        const coinBonus=(challenge.combo>=3)?6:3;
+        challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+coinBonus);
         blinkT=1; burst(c.position);
         AudioFX.coin(); buzz(30);
-        toast(coinCount===coinTotal?'全部金色鲸币收集！+3 秒':'金色鲸币 +3 秒！');
+        toast(coinCount===coinTotal
+          ?('全部金色鲸币收集！+'+coinBonus+' 秒（组合翻倍）')
+          :('金色鲸币 +'+coinBonus+' 秒！'+(coinBonus>3?'（连击 x'+challenge.combo+' 翻倍）':'')));
         if(coinCount===coinTotal) award('coins');   // v0.3.8 满贯鲸币
       }
     }
