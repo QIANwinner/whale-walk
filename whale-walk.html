@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.90</title>
+<title>鲸步 WHALE WALK · v0.3.91</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1518,6 +1518,29 @@ function updateRain(dt,cam){
   }
   rainGeo.attributes.position.needsUpdate=true;
 }
+/* v0.3.91 地面雨滴涟漪池：角色附近随机地面涟漪扩散（雨滴落点） */
+const rainPuddle=[];
+for(let i=0;i<7;i++){
+  const m=new THREE.Mesh(new THREE.RingGeometry(0.06,0.10,14),
+    new THREE.MeshBasicMaterial({color:0x8FD8FF,transparent:true,opacity:0,
+      side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
+  m.rotation.x=-Math.PI/2; m.visible=false; scene.add(m);
+  rainPuddle.push({m,t:Math.random()});
+}
+function updatePuddle(dt){
+  for(const pd of rainPuddle){
+    pd.t+=dt*1.1;
+    if(pd.t>=1){ pd.t=0;
+      /* 在角色周围随机地面落点重生 */
+      const a=Math.random()*6.28, r=1.5+Math.random()*6;
+      const x=girl.position.x+Math.cos(a)*r, z=girl.position.z+Math.sin(a)*r;
+      pd.m.position.set(x,terrainH(x,z)+0.04,z);
+    }
+    pd.m.visible=true;
+    pd.m.scale.setScalar(0.4+pd.t*2.6);
+    pd.m.material.opacity=Math.sin(pd.t*Math.PI)*0.35;
+  }
+}
 /* ---- 飞车（参照图右上角） ---- */
 const drone=new THREE.Group();
 {
@@ -2734,13 +2757,42 @@ for(let i=0;i<8;i++){
     new THREE.MeshBasicMaterial({color:C.neon,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
   m.rotation.x=-Math.PI/2; m.visible=false; scene.add(m); fxPool.push({m,life:0});
 }
+/* v0.3.91 星形爆散粒子池：收集光点时四向飞散小星 + 微光拖尾 */
+const starPool=[];
+{
+  const starShape=(()=>{ const s=new THREE.Shape();
+    for(let i=0;i<10;i++){ const a=i*Math.PI/5, r=(i%2?0.5:1.0)*0.22;
+      const px=Math.cos(a)*r, py=Math.sin(a)*r;
+      if(i===0)s.moveTo(px,py); else s.lineTo(px,py); }
+    s.closePath(); return s; })();
+  const starGeo=new THREE.ShapeGeometry(starShape);
+  for(let i=0;i<10;i++){
+    const m=new THREE.Mesh(starGeo,new THREE.MeshBasicMaterial({color:0xFFE08A,transparent:true,
+      opacity:0,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
+    m.visible=false; scene.add(m);
+    starPool.push({m,life:0,vx:0,vy:0,vz:0,spin:0});
+  }
+}
 function burst(pos){
   const f=fxPool.find(f=>f.life<=0)||fxPool[0];
   f.m.position.copy(pos); f.life=1; f.m.visible=true;
+  /* v0.3.91 星形爆散：3 星向四周飞散 + 自旋 */
+  for(let i=0;i<3;i++){
+    const s=starPool.find(x=>x.life<=0); if(!s)break;
+    s.m.position.copy(pos);
+    s.m.position.y+=0.1;
+    s.life=1; s.m.visible=true;
+    const a=Math.random()*6.28;
+    s.vx=Math.cos(a)*2.4; s.vz=Math.sin(a)*2.4; s.vy=1.6+Math.random()*1.4;
+    s.spin=(Math.random()*2-1)*8;
+    s.m.material.color.setHex(0xFFE08A);
+  }
 }
 
 /* v0.3.3 相机临时向量：复用避免每帧 new Vector3（GC 压力） */
 const _vTgt=new THREE.Vector3(), _vCam=new THREE.Vector3();
+/* v0.3.91 相机 fov 平滑：速度低通滤波状态 */
+let smSpd=0;
 /* v0.3.16 打击感：相机震动 + 受击慢动作；v0.3.22 过关庆祝环视 */
 let shakeT=0, hitStop=0, orbitT=0;
 function update(dt){
@@ -2769,7 +2821,9 @@ function update(dt){
   camera.lookAt(_vTgt);
   const sp01=clamp(st.speed/5.1,0,1);
   /* v0.3.2 FOV 阈值更新：仅在变化明显时重算投影矩阵，避免每帧开销 */
-  const tgtFov=64+sp01*6;
+  /* v0.3.91 相机 fov 随速度平滑：速度低通滤波消除分段抖动，fov 连续插值 */
+  smSpd=lerp(smSpd,sp01,1-Math.pow(0.02,dt));
+  const tgtFov=64+smSpd*6;
   if(Math.abs(camera.fov-tgtFov)>0.01){ camera.fov=lerp(camera.fov,tgtFov,0.08); camera.updateProjectionMatrix(); }
   /* v0.3.1 阴影相机跟随玩家：保证远离出生点后阴影不裁剪丢失 */
   sun.position.set(girl.position.x+24, girl.position.y+40, girl.position.z+18);
@@ -2926,16 +2980,18 @@ function update(dt){
 
   /* ---- 软阴影贴片 ---- */
   /* v0.3.3 软阴影贴片：只 set 一次，去掉被覆盖的冗余赋值 */
+  /* v0.3.91 实时软阴影：随高度缩小变淡 + 移动时沿速度方向拉伸，更软 */
   P.blob.position.set(0,supY-girl.position.y+0.035,0);
-  P.blob.material.opacity=clamp(1-st.y*1.3,0.25,1);
-  P.blob.scale.setScalar(1+st.y*0.5);
+  P.blob.material.opacity=clamp(1-st.y*1.5,0.18,0.9);
+  P.blob.scale.set(1+st.y*0.45+Math.min(0.3,st.speed*0.06), 1+st.y*0.45+Math.min(0.3,st.speed*0.06), 1);
 
-  /* ---- v0.3.10 连击辉光：轮廓光随连击由冷蓝转金、变亮 ---- */
+  /* ---- v0.3.10 连击辉光：轮廓光随连击由冷蓝转金、变亮；v0.3.91 x8 后持续金色 ---- */
   {
     const hot=(challenge.active && challenge.combo>=2 && elapsed-challenge.lastPick<comboWindow())
       ? Math.min(1,(challenge.combo-1)/8) : 0;
-    P.rimLight.color.copy(_rimBlue).lerp(_rimGold,hot);
-    P.rimLight.intensity=6+hot*3;
+    const gold=(challenge.active && challenge.combo>=8);   // v0.3.91 x8 触发持续金
+    P.rimLight.color.copy(gold?_rimGold:_rimBlue).lerp(_rimGold,hot);
+    P.rimLight.intensity=(gold?10:6)+hot*3;
   }
 
   /* ---- 角色雨滴微光粒子（缓慢滑落 + 微闪） ---- */
@@ -3005,6 +3061,15 @@ function update(dt){
     f.m.scale.setScalar(1+(1-f.life)*4);
     f.m.material.opacity=Math.max(0,f.life)*0.8;
     if(f.life<=0)f.m.visible=false; } }
+  /* v0.3.91 星形爆散更新：飞行 + 自旋 + 微光拖尾 */
+  for(const s of starPool){ if(s.life>0){
+    s.life-=dt*1.3;
+    s.m.position.x+=s.vx*dt; s.m.position.y+=s.vy*dt; s.m.position.z+=s.vz*dt;
+    s.vy-=dt*4.2;
+    s.m.rotation.z+=s.spin*dt;
+    s.m.material.opacity=Math.max(0,s.life)*0.9;
+    s.m.scale.setScalar(0.7+0.5*s.life);
+    if(s.life<=0)s.m.visible=false; } }
   /* 云 */
   for(const c of clouds){ c.position.x+=dt*0.4; if(c.position.x>150)c.position.x=-150; }
   /* v0.3.21 鲸鱼门环：双环反向旋转 + 鲸鱼剪影呼吸 */
@@ -3013,6 +3078,7 @@ function update(dt){
   whaleGate.userData.whale.material.opacity=0.55+0.25*Math.sin(t*2.1);
   /* 雨 & 飞车 */
   updateRain(dt,camera.position);
+  if(mode==='play') updatePuddle(dt);   // v0.3.91 地面雨滴涟漪（仅游玩时）
   rainMesh.material.opacity=0.26+(lightningT>0?lightningT*0.5:0);   // v0.3.27 闪电时雨丝增亮
   drone.position.x+=dt*6;
   if(drone.position.x>60) drone.position.x=-60;
