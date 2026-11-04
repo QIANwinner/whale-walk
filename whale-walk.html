@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.85</title>
+<title>鲸步 WHALE WALK · v0.3.86</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -221,6 +221,8 @@
   #pwMagnet{border-color:rgba(255,210,90,.6);color:#FFD25A;}
   #pwSpeed{border-color:rgba(53,224,255,.6);color:#35E0FF;}
   #pwSlow{border-color:rgba(201,168,255,.6);color:#C9A8FF;}
+  #pwFreeze{border-color:rgba(140,220,255,.6);color:#9FE8FF;}
+  #pwDouble{border-color:rgba(255,200,80,.6);color:#FFC850;}
   /* ---------- 闪电 ---------- */
   #lightning{position:fixed;inset:0;z-index:28;pointer-events:none;background:#EAF4FF;
     opacity:0;mix-blend-mode:screen;}
@@ -340,6 +342,8 @@
   <div class="pw-chip" id="pwMagnet">🧲 磁铁 <span class="pw-t"></span></div>
   <div class="pw-chip" id="pwSpeed">⚡ 加速 <span class="pw-t"></span></div>
   <div class="pw-chip" id="pwSlow">🌀 子弹时间 <span class="pw-t"></span></div>
+  <div class="pw-chip" id="pwFreeze">🧊 时间冻结 <span class="pw-t"></span></div>
+  <div class="pw-chip" id="pwDouble">💰 双倍鲸币 <span class="pw-t"></span></div>
 </div>
 <div id="coinbar"><div class="coin-chip">🪙 鲸币 <span class="cc-n" id="coinNum">0 / 3</span></div></div>
 <div id="lightning"></div>
@@ -1677,19 +1681,22 @@ const powerUps=[];
 const PU_TYPES={ shield:{label:'护盾',icon:'🛡',color:0x7FD4FF,dur:0},
   magnet:{label:'磁铁',icon:'🧲',color:0xFFD25A,dur:8},
   speed:{label:'加速',icon:'⚡',color:0x35E0FF,dur:5},
-  slow:{label:'子弹时间',icon:'🌀',color:0xC9A8FF,dur:6} };
+  slow:{label:'子弹时间',icon:'🌀',color:0xC9A8FF,dur:6},
+  freeze:{label:'时间冻结',icon:'🧊',color:0x9FE8FF,dur:3},       // v0.3.86 时间冻结：无人机/车静止 3s
+  double:{label:'双倍鲸币',icon:'💰',color:0xFFC850,dur:10} };    // v0.3.86 双倍鲸币：10s 金币翻倍
 const puGeo=new THREE.OctahedronGeometry(0.26,0);
-const puCols={shield:0x7FD4FF,magnet:0xFFD25A,speed:0x35E0FF,slow:0xC9A8FF};
+const puCols={shield:0x7FD4FF,magnet:0xFFD25A,speed:0x35E0FF,slow:0xC9A8FF,freeze:0x9FE8FF,double:0xFFC850};
 function spawnPowerUp(){
   /* v0.3.28 平衡：道具概率按难度/关卡加权（高关更多解压型磁铁/子弹时间，easy 更多护盾） */
-  const w={shield:2,magnet:3,speed:2,slow:3};
-  if(diffKey==='easy'){ w.shield=3; w.magnet=2; w.slow=2; }
-  else if(diffKey==='hard'){ w.shield=2; w.magnet=3; w.slow=4; }
+  const w={shield:2,magnet:3,speed:2,slow:3,freeze:2,double:2};
+  if(diffKey==='easy'){ w.shield=3; w.magnet=2; w.slow=2; w.freeze=1; w.double=1; }
+  else if(diffKey==='hard'){ w.shield=2; w.magnet=3; w.slow=4; w.freeze=2; w.double=3; }
+  else if(diffKey==='extreme'){ w.freeze=3; w.double=3; }
   w.magnet+=Math.floor((level-1)*0.25);
   w.slow+=Math.floor((level-1)*0.5);
   let tot=0; for(const k in w) tot+=w[k];
   let r=Math.random()*tot, type='shield';
-  for(const k of ['shield','magnet','speed','slow']){ r-=w[k]; if(r<0){ type=k; break; } }
+  for(const k of ['shield','magnet','speed','slow','freeze','double']){ r-=w[k]; if(r<0){ type=k; break; } }
   const z=girl.position.z+rand(8,26);
   const x=(Math.random()*2-1)*5.2;
   const g=new THREE.Group();
@@ -1705,20 +1712,22 @@ function spawnPowerUp(){
   scene.add(g); powerUps.push(g);
 }
 /* 道具状态 + HUD */
-const powerState={shield:false,magnet:0,speed:0,slow:0};
+const powerState={shield:false,magnet:0,speed:0,slow:0,freeze:0,double:0};
 /* 护盾气泡（附着角色） */
 const shieldBubble=new THREE.Mesh(new THREE.SphereGeometry(1.15,20,14),
   new THREE.MeshBasicMaterial({color:0x7FD4FF,transparent:true,opacity:0.16,
     blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
 shieldBubble.visible=false; girl.add(shieldBubble);
 const pwShieldEl=document.getElementById('pwShield'), pwMagnetEl=document.getElementById('pwMagnet'),
-      pwSpeedEl=document.getElementById('pwSpeed'), pwSlowEl=document.getElementById('pwSlow');
+      pwSpeedEl=document.getElementById('pwSpeed'), pwSlowEl=document.getElementById('pwSlow'),
+      pwFreezeEl=document.getElementById('pwFreeze'), pwDoubleEl=document.getElementById('pwDouble');
 function clearPowerups(){
   for(const p of powerUps) scene.remove(p);
   powerUps.length=0;
   powerState.shield=false; powerState.magnet=0; powerState.speed=0; powerState.slow=0;
+  powerState.freeze=0; powerState.double=0;
   pwShieldEl.classList.remove('on'); pwMagnetEl.classList.remove('on'); pwSpeedEl.classList.remove('on');
-  pwSlowEl.classList.remove('on');
+  pwSlowEl.classList.remove('on'); pwFreezeEl.classList.remove('on'); pwDoubleEl.classList.remove('on');
   if(shieldBubble) shieldBubble.visible=false;
 }
 
@@ -1774,11 +1783,11 @@ function spawnNewProps(){
     g.userData={alive:true,baseY:y,ph:rn()*6.28,halo};
     coinGroup.add(g); coins.push(g);
   });
-  /* ---- 弹跳垫 ×1-2：落地即弹起（蹦床），抛向空中光环 ---- */
-  const padN=1+((level-1)%2);
+  /* ---- 弹跳垫（v0.3.86 数量 +2/关）：落地即弹起（蹦床），抛向空中光环 ---- */
+  const padN=3+((level-1)%2);
   const padSpots=[];
   for(let i=0;i<padN;i++){
-    const px=(i%2?1:-1)*(3.6+rn()*1.5), pz=30+i*22+rn()*4;
+    const px=(i%2?1:-1)*(3.6+rn()*1.5), pz=26+i*15+rn()*4;   // v0.3.86 间距收紧容纳 3-4 垫
     padSpots.push({x:px,z:pz});
     const g=new THREE.Group();
     const pad=new THREE.Mesh(bouncePadGeo,new THREE.MeshStandardMaterial({
@@ -2400,6 +2409,8 @@ function applyPowerUp(type){
   else if(type==='magnet'){ powerState.magnet=info.dur; pwMagnetEl.classList.add('on'); }
   else if(type==='speed'){ powerState.speed=info.dur; pwSpeedEl.classList.add('on'); }
   else if(type==='slow'){ powerState.slow=info.dur; pwSlowEl.classList.add('on'); }
+  else if(type==='freeze'){ powerState.freeze=info.dur; pwFreezeEl.classList.add('on'); }
+  else if(type==='double'){ powerState.double=info.dur; pwDoubleEl.classList.add('on'); }
   toast(info.icon+' 获得'+info.label+'！');
   AudioFX.pickup();
 }
@@ -2880,8 +2891,9 @@ function update(dt){
           challenge.comboMax=Math.max(challenge.comboMax||0,challenge.combo);
           if(challenge.combo>=8) award('combo8');   // v0.3.8 连击大师
           if(challenge.combo>=3){
-            challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+COMBO_BONUS);
-            toast(`COMBO x${challenge.combo}！ +${COMBO_BONUS} 秒`);
+            const cb=(diffKey==='extreme')?COMBO_BONUS*1.25:COMBO_BONUS;   // v0.3.86 极限难度连击加成 1.25×
+            challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+cb);
+            toast(`COMBO x${challenge.combo}！ +${cb.toFixed(1)} 秒`);
           }
         }
       }
@@ -2912,8 +2924,8 @@ function update(dt){
     rp.material.opacity=u.baseOp*(0.72+0.28*Math.sin(t*1.7+u.ph));
     if(u.kind==='pud') rp.scale.x=1+0.06*Math.sin(t*2.1+u.ph);
   }
-  /* 车流光带（沿街行驶）；v0.3.7 子弹时间：车与无人机以 45% 速率移动 */
-  const sdt=(powerState.slow>0)?dt*0.45:dt;
+  /* 车流光带（沿街行驶）；v0.3.7 子弹时间：车与无人机以 45% 速率移动；v0.3.86 时间冻结：完全静止 */
+  const sdt=(powerState.freeze>0)?0:(powerState.slow>0)?dt*0.45:dt;
   for(const c of cars){
     const u=c.userData;
     c.position.z+=u.speed*u.dir*sdt;
@@ -3016,6 +3028,8 @@ function update(dt){
   if(powerState.magnet>0){ powerState.magnet-=dt; if(powerState.magnet<=0){ powerState.magnet=0; pwMagnetEl.classList.remove('on'); } }
   if(powerState.speed>0){ powerState.speed-=dt; if(powerState.speed<=0){ powerState.speed=0; pwSpeedEl.classList.remove('on'); } }
   if(powerState.slow>0){ powerState.slow-=dt; if(powerState.slow<=0){ powerState.slow=0; pwSlowEl.classList.remove('on'); } }
+  if(powerState.freeze>0){ powerState.freeze-=dt; if(powerState.freeze<=0){ powerState.freeze=0; pwFreezeEl.classList.remove('on'); } }
+  if(powerState.double>0){ powerState.double-=dt; if(powerState.double<=0){ powerState.double=0; pwDoubleEl.classList.remove('on'); } }
 
   /* ---- v0.3.4 新玩法物件：金币 / 穿环 / 加速带 ---- */
   if(mode==='play' && challenge.active){
@@ -3038,14 +3052,14 @@ function update(dt){
         coinCount++; coinNumEl.textContent=`${coinCount} / ${coinTotal}`;
         COIN++; try{ localStorage.setItem('ww-cointotal-v1',String(COIN)); }catch(_){}   // v0.3.78 累计鲸币
         if(COIN>=30) award('coin30');
-        /* v0.3.30：combo≥3 时鲸币奖励翻倍 */
-        const coinBonus=(challenge.combo>=3)?6:3;
+        /* v0.3.30：combo≥3 时鲸币奖励翻倍；v0.3.86 双倍鲸币道具再 ×2 */
+        const coinBonus=(powerState.double>0?2:1)*((challenge.combo>=3)?6:3);
         challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+coinBonus);
         blinkT=1; burst(c.position);
         AudioFX.coin(); buzz(30);
         toast(coinCount===coinTotal
-          ?('全部金色鲸币收集！+'+coinBonus+' 秒（组合翻倍）')
-          :('金色鲸币 +'+coinBonus+' 秒！'+(coinBonus>3?'（连击 x'+challenge.combo+' 翻倍）':'')));
+          ?('全部金色鲸币收集！+'+coinBonus+' 秒'+(powerState.double>0?'（双倍鲸币×2）':'')+(challenge.combo>=3?'（组合翻倍）':''))
+          :('金色鲸币 +'+coinBonus+' 秒！'+(powerState.double>0?'（双倍鲸币）':'')+(coinBonus>6?'（连击 x'+challenge.combo+' 翻倍）':'')));
         if(coinCount===coinTotal) award('coins');   // v0.3.8 满贯鲸币
       }
     }
@@ -3065,13 +3079,13 @@ function update(dt){
         toast('穿环 +2 秒！');
       }
     }
-    /* 加速带：踏上 1.2s ×2.2 冲刺 */
+    /* 加速带（v0.3.86 时间 2.2→2.6s，极限难度保持 2.2）：踏上 ×2.2 冲刺 */
     for(const bs of boostStrips){
       const u=bs.userData;
       if(u.cool>0){ u.cool-=dt; continue; }
       if(Math.abs(girl.position.x-bs.position.x)<u.halfW
          && Math.abs(girl.position.z-bs.position.z)<u.halfL){
-        boostT=1.2; u.cool=1.4;
+        boostT=(diffKey==='extreme')?2.2:2.6; u.cool=boostT+0.2;
         AudioFX.boost(); buzz(16);
         toast('加速带！⚡');
       }
