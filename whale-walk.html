@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.58</title>
+<title>鲸步 WHALE WALK · v0.3.59</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -187,6 +187,7 @@
   body:not(.playing) #coinbar{display:none;}
   /* ---------- 关卡指示 ---------- */
   #hudLevel{top:86px;left:18px;font-size:11px;opacity:.9;letter-spacing:1px;}
+  body.extreme #hudLevel{color:#FF8A8A;border-color:rgba(255,90,90,.6);box-shadow:0 0 14px rgba(255,60,60,.35);}
   #hudLevel .lv{font-weight:800;color:#7FD4FF;}
   /* ---------- 道具状态栏 ---------- */
   #powerbar{position:fixed;top:112px;left:50%;transform:translateX(-50%);z-index:11;
@@ -2159,7 +2160,8 @@ function diff(){ return DIFFS[diffKey]; }
 {
   const box=document.getElementById('diffPick');
   const sync=()=>{ box.querySelectorAll('.dbtn').forEach(b=>b.classList.toggle('on', b.dataset.diff===diffKey));
-    document.getElementById('diffLabel').textContent=diff().label; };
+    document.getElementById('diffLabel').textContent=diff().label;
+    document.body.classList.toggle('extreme', diffKey==='extreme'); };   // v0.3.59 极限难度 HUD 亮红
   box.addEventListener('click',e=>{
     const b=e.target.closest('.dbtn'); if(!b)return;
     diffKey=b.dataset.diff; try{ localStorage.setItem('ww-diff',diffKey); }catch(_){}
