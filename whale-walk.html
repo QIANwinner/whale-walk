@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.11</title>
+<title>鲸步 WHALE WALK · v0.4.12</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -316,6 +316,14 @@
     font-size:12px;font-weight:800;color:#FFD25A;letter-spacing:1px;
     box-shadow:0 0 14px rgba(255,210,90,.35);backdrop-filter:blur(3px);}
   .coin-chip .cc-n{font-size:14px;color:#FFE9A8;}
+  /* ---------- v0.4.12 鲸语碎片 chip ---------- */
+  #fragbar{position:fixed;top:186px;left:50%;transform:translateX(-50%);z-index:11;pointer-events:none;}
+  body:not(.playing) #fragbar{display:none;}
+  .frag-chip{display:flex;align-items:center;gap:6px;background:rgba(30,20,50,.72);
+    border:1px solid rgba(201,168,255,.55);border-radius:999px;padding:5px 16px;
+    font-size:12px;font-weight:800;color:#C9A8FF;letter-spacing:1px;
+    box-shadow:0 0 14px rgba(201,168,255,.35);backdrop-filter:blur(3px);}
+  .frag-chip .cc-n{font-size:14px;color:#E4D4FF;}
   /* ---------- 暂停菜单 ---------- */
   #pauseMenu{position:fixed;inset:0;z-index:38;display:none;align-items:center;justify-content:center;
     background:rgba(6,10,26,.78);backdrop-filter:blur(6px);}
@@ -474,6 +482,7 @@
   <div class="pw-chip" id="pwEcho">📡 回声定位 <span class="pw-t"></span></div>
 </div>
 <div id="coinbar"><div class="coin-chip">🪙 鲸币 <span class="cc-n" id="coinNum">0 / 3</span></div></div>
+<div id="fragbar" style="display:none"><div class="frag-chip">🎶 鲸语 <span class="cc-n" id="fragNum">0 / 3</span></div></div>
 <div id="lightning"></div>
 <div id="lvBanner"><div class="lv-t" id="lvBannerT">第 2 关</div><div class="lv-s">更多光点 · 更短时间</div></div>
 <div id="combo"><span id="comboTxt"></span><i id="comboBar"><b></b></i></div>
@@ -1996,6 +2005,7 @@ function echoOn(){
   } };
   for(const o of orbGroup.children){ if(o.userData.alive) grab(o.children[0]); }        // 光点 halo
   for(const c of coins){ if(c.userData.alive) grab(c.userData.halo); }                    // 金币 halo
+  for(const f of frags){ if(f.userData.alive) grab(f.userData.core); }                    // v0.4.12 鲸语碎片
   for(const p of powerUps){ grab(p.userData.core); grab(p.userData.ring); }              // 道具 core+ring
   for(const r of rings){ if(r.userData.alive) grab(r.userData.glow); }                    // 光环 glow
 }
@@ -2024,6 +2034,12 @@ function clearPowerups(){
 const coins=[], coinGroup=new THREE.Group(); scene.add(coinGroup);
 const rings=[], ringGroup=new THREE.Group(); scene.add(ringGroup);
 const bouncePads=[], boostStrips=[];
+/* v0.4.12 鲸语碎片：每关 3 片，拾取 +1s，集齐 +3s 并触发全城共鸣 */
+const frags=[], fragGroup=new THREE.Group(); scene.add(fragGroup);
+let fragCount=0, fragTotal=3;
+const fragGeo=new THREE.OctahedronGeometry(0.17,0);
+const fragMat=new THREE.MeshStandardMaterial({color:0xC9A8FF,emissive:0x8F6FE8,
+  emissiveIntensity:1.8,roughness:.3,metalness:.3});
 /* v0.3.94 弹跳落点预测圈：跳跃/弹跳时地面显示预计落点圆圈 */
 const landPred=new THREE.Mesh(new THREE.RingGeometry(0.32,0.42,24),
   new THREE.MeshBasicMaterial({color:0x7FE4FF,transparent:true,opacity:0,side:THREE.DoubleSide,
@@ -2041,9 +2057,13 @@ const boostGeo=new THREE.BoxGeometry(2.4,0.05,6.0);
 function clearNewProps(){
   while(coinGroup.children.length) coinGroup.remove(coinGroup.children[0]);
   while(ringGroup.children.length) ringGroup.remove(ringGroup.children[0]);
+  while(fragGroup.children.length) fragGroup.remove(fragGroup.children[0]);
   coins.length=0; rings.length=0; bouncePads.length=0; boostStrips.length=0;
-  coinCount=0; boostT=0; ringCount=0;
+  frags.length=0;
+  coinCount=0; boostT=0; ringCount=0; fragCount=0;
   coinNumEl.textContent='0 / '+(coinTotal||3);
+  const fragNumEl=document.getElementById('fragNum');
+  if(fragNumEl) fragNumEl.textContent='0 / '+(fragTotal||3);
 }
 function spawnNewProps(){
   clearNewProps();
@@ -2073,6 +2093,21 @@ function spawnNewProps(){
     g.userData={alive:true,baseY:y,ph:rn()*6.28,halo};
     coinGroup.add(g); coins.push(g);
   });
+  /* ---- v0.4.12 鲸语碎片 ×3：沿街随机散落，拾取 +1s，集齐 +3s 触发全城共鸣 ---- */
+  fragTotal=3;
+  for(let i=0;i<fragTotal;i++){
+    const fx=(rn()*2-1)*5.5, fz=14+i*26+rn()*10;
+    const g=new THREE.Group();
+    const core=new THREE.Mesh(fragGeo,fragMat); g.add(core);
+    const halo=new THREE.Mesh(new THREE.RingGeometry(0.24,0.32,18),
+      new THREE.MeshBasicMaterial({color:0xC9A8FF,transparent:true,opacity:0.5,
+        side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+    halo.rotation.x=-Math.PI/2; g.add(halo);
+    const fy=terrainH(fx,fz)+0.7;
+    g.position.set(fx,fy,fz);
+    g.userData={alive:true,baseY:fy,ph:rn()*6.28,halo,core};
+    fragGroup.add(g); frags.push(g);
+  }
   /* ---- 弹跳垫（v0.3.86 数量 +2/关）：落地即弹起（蹦床），抛向空中光环 ---- */
   const padN=3+((level-1)%2);
   const padSpots=[];
@@ -2285,6 +2320,16 @@ const AudioFX=(()=>{
       tone(46,30,dur*0.9,0.10*iv,'sine',0.5);
       tone(52,36,dur*1.1,0.07*iv,'sine',1.1); },
     /* v0.3.4 金币：明亮双音叮咚 */
+    /* v0.4.12 鲸语碎片音：五声音阶柔音上滑（第几片走第几级） */
+    whaleNote(k){ if(muted||!ac())return;
+      const scale=[523,587,659,784,880];
+      const f=scale[Math.min(Math.max(k,1),5)-1]*1.5;
+      tone(f,f*1.12,0.22,0.15,'sine');
+      tone(f*2,f*2,0.14,0.08,'sine',0.10); },
+    /* 集齐三片：小和弦鸣响 */
+    whaleChord(){ if(muted||!ac())return;
+      [523,659,784].forEach((f,i)=>tone(f,f,0.5,0.12,'triangle',i*0.05));
+      tone(1046,1046,0.7,0.14,'sine',0.2); },
     coin(){ if(muted||!ac())return;
       tone(988,988,0.09,0.13,'sine');
       tone(1319,1319,0.22,0.15,'sine',0.07); },
@@ -2766,6 +2811,7 @@ const ACHS=[
   {id:'echo10',      icon:'📡', label:'回响鲸歌 · 单关用回声定位收集 10 个光点'},
   {id:'rewind5',     icon:'⏳', label:'时之鲸 · 单关时光回溯累计恢复 5 秒'},
   {id:'mirrored',    icon:'🪞', label:'镜中鲸 · 在镜面回响下通关第 9 关'},
+  {id:'frag3',       icon:'🎶', label:'鲸语通 · 单关集齐全部鲸语碎片'},
   {id:'endless5',    icon:'♾', label:'无尽鲸歌 · 无尽模式连续通关 5 关'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
@@ -3835,6 +3881,31 @@ function update(dt){
         if(coinCount===coinTotal) award('coins');   // v0.3.8 满贯鲸币
       }
     }
+    /* v0.4.12 鲸语碎片：浮动 + 拾取 +1s，集齐 3 片 +3s 触发全城共鸣 */
+    for(let i=frags.length-1;i>=0;i--){
+      const f=frags[i], u=f.userData;
+      if(!u.alive) continue;
+      f.position.y=u.baseY+Math.sin(t*2.2+u.ph)*0.12;
+      f.rotation.y+=dt*2.0; f.rotation.x=Math.sin(t*1.4+u.ph)*0.35;
+      u.halo.material.opacity=0.4+Math.sin(t*3+u.ph)*0.2;
+      const dd=Math.hypot(girl.position.x-f.position.x,girl.position.z-f.position.z);
+      if(dd<1.2 && Math.abs(girl.position.y+0.9-f.position.y)<1.3){
+        u.alive=false; fragGroup.remove(f); frags.splice(i,1);
+        fragCount++;
+        const fragNumEl=document.getElementById('fragNum');
+        if(fragNumEl) fragNumEl.textContent=`${fragCount} / ${fragTotal}`;
+        challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+1);
+        blinkT=1; burst(f.position);
+        AudioFX.whaleNote(fragCount); buzz(20);
+        if(fragCount>=fragTotal){
+          challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+3);
+          resPulse=1;   // v0.4.07 全城霓虹共鸣
+          AudioFX.whaleChord();
+          toast('🐋 鲸语通！碎片齐鸣 +3 秒，全城共鸣！');
+          award('frag3');
+        } else toast('鲸语碎片 +1 秒（'+fragCount+'/'+fragTotal+'）');
+      }
+    }
     /* 空中光环（水平环）：沿弹跳轨迹向上穿过，+2 秒 */
     for(let i=rings.length-1;i>=0;i--){
       const r=rings[i], u=r.userData;
@@ -4053,6 +4124,14 @@ function drawMinimap(){
     if(!r.userData.alive) continue;
     const p=W2S(r.position.x,r.position.z);
     g.beginPath(); g.arc(p.x,p.y,5.5+(Math.sin(elapsed*3.4)+1)*1.2,0,Math.PI*2); g.stroke();
+  }
+  /* v0.4.12 鲸语碎片（紫色菱形点） */
+  g.fillStyle='#C9A8FF';
+  for(const f of frags){
+    if(!f.userData.alive) continue;
+    const p=W2S(f.position.x,f.position.z);
+    g.save(); g.translate(p.x,p.y); g.rotate(Math.PI/4);
+    g.fillRect(-2.8,-2.8,5.6,5.6); g.restore();
   }
   /* 巡逻无人机（红点 + 真实警戒圈，半径 9 世界单位；v0.3.93 危险脉冲放大） */
   for(const d of patrolDrones){
@@ -4427,7 +4506,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.4.10 无尽鲸潮钩子 */
   endless:()=>endless, endlessStreak:()=>endlessStreak, ebest:()=>EBEST,
   /* v0.4.11 成绩卡钩子 */
-  makeScoreCard};
+  makeScoreCard,
+  /* v0.4.12 鲸语碎片钩子 */
+  frags:()=>frags, fragCount:()=>fragCount, fragTotal:()=>fragTotal};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
