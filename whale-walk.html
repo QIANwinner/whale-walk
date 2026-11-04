@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.56</title>
+<title>鲸步 WHALE WALK · v0.3.57</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2413,9 +2413,11 @@ function finishChallenge(win){
     if(diffKey==='extreme') award('extreme'); // v0.3.46 极限征服
     if(level<MAX_LEVEL){
       shareSnap={kind:'win',diff:diff().label,level,stars,time:fmtT(levelTimeUsed),rank};   // v0.3.52 胜利也写分享快照
+      const beforeUnlock=unlockMax;
       unlockMax=Math.max(unlockMax,Math.min(MAX_LEVEL,level+1));   // v0.3.56 通关解锁下一关
       try{ localStorage.setItem('ww-unlock-v1',String(unlockMax)); }catch(_){}
       renderLevelPick();
+      if(unlockMax>beforeUnlock) toast('🔓 新关卡解锁：第 '+Math.min(MAX_LEVEL,level+1)+' 关 · '+LEVEL_NAMES[Math.min(level+1,MAX_LEVEL)-1]);   // v0.3.57 解锁提示
       rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
