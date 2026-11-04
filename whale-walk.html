@@ -212,6 +212,7 @@
   #levelPick button.hidden9::after{content:'鲸';position:absolute;top:-9px;right:-9px;font-size:8px;color:#FFC850;
     background:rgba(40,30,8,.9);border:1px solid rgba(255,200,80,.6);border-radius:50%;width:16px;height:16px;
     display:flex;align-items:center;justify-content:center;}
+  #levelPick button.extreme9{color:#FFB84A;border-color:rgba(255,184,74,.6);}
   body.playing #levelPick{display:none;}
   #unlockInfo{position:fixed;bottom:244px;left:50%;transform:translateX(-50%);z-index:15;
     font-size:11px;color:#FFD25A;letter-spacing:1px;white-space:nowrap;opacity:.9;}
@@ -2336,6 +2337,7 @@ function renderLevelPick(){
     b.title='第 '+i+' 关 · 最高 '+((STARS[i]||0)>0?'★'.repeat(STARS[i]):'未获星');   // v0.3.76 悬浮显示星级
     if((STARS[i]||0)>=3) b.classList.add('max');
     if(i===9 && !locked) b.classList.add('hidden9');   // v0.3.88 隐藏关金色角标
+    if(i<=8 && !locked && hiddenUnlocked() && (STARS[i]||0)>0) b.classList.add('extreme9');   // v0.3.89 已极限全通关卡角标
     b.addEventListener('click',()=>{ startLevel=i; renderLevelPick(); toast('起始关卡：第 '+i+' 关'); });
     levelPickEl.appendChild(b);
   }
