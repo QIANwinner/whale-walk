@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.07</title>
+<title>鲸步 WHALE WALK · v0.4.08</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1919,20 +1919,21 @@ const PU_TYPES={ shield:{label:'护盾',icon:'🛡',color:0x7FD4FF,dur:0},
   slow:{label:'子弹时间',icon:'🌀',color:0xC9A8FF,dur:6},
   freeze:{label:'时间冻结',icon:'🧊',color:0x9FE8FF,dur:3},       // v0.3.86 时间冻结：无人机/车静止 3s
   double:{label:'双倍鲸币',icon:'💰',color:0xFFC850,dur:10},      // v0.3.86 双倍鲸币：10s 金币翻倍
-  echo:{label:'回声定位',icon:'📡',color:0x7FE4FF,dur:6} };       // v0.4.06 回声定位：隔墙透视全场收集物 6s
+  echo:{label:'回声定位',icon:'📡',color:0x7FE4FF,dur:6},       // v0.4.06 回声定位：隔墙透视全场收集物 6s
+  rewind:{label:'时光回溯',icon:'⏳',color:0xFFE9A8,dur:0} };    // v0.4.08 时光回溯：找回近期受击扣掉的时间（瞬时）
 const puGeo=new THREE.OctahedronGeometry(0.26,0);
-const puCols={shield:0x7FD4FF,magnet:0xFFD25A,speed:0x35E0FF,slow:0xC9A8FF,freeze:0x9FE8FF,double:0xFFC850,echo:0x7FE4FF};
+const puCols={shield:0x7FD4FF,magnet:0xFFD25A,speed:0x35E0FF,slow:0xC9A8FF,freeze:0x9FE8FF,double:0xFFC850,echo:0x7FE4FF,rewind:0xFFE9A8};
 function spawnPowerUp(){
   /* v0.3.28 平衡：道具概率按难度/关卡加权（高关更多解压型磁铁/子弹时间，easy 更多护盾） */
-  const w={shield:2,magnet:3,speed:2,slow:3,freeze:2,double:2,echo:2};
-  if(diffKey==='easy'){ w.shield=3; w.magnet=2; w.slow=2; w.freeze=1; w.double=1; w.echo=2; }
-  else if(diffKey==='hard'){ w.shield=2; w.magnet=3; w.slow=4; w.freeze=2; w.double=3; w.echo=3; }
-  else if(diffKey==='extreme'){ w.freeze=3; w.double=3; w.echo=3; }
+  const w={shield:2,magnet:3,speed:2,slow:3,freeze:2,double:2,echo:2,rewind:2};
+  if(diffKey==='easy'){ w.shield=3; w.magnet=2; w.slow=2; w.freeze=1; w.double=1; w.echo=2; w.rewind=3; }
+  else if(diffKey==='hard'){ w.shield=2; w.magnet=3; w.slow=4; w.freeze=2; w.double=3; w.echo=3; w.rewind=3; }
+  else if(diffKey==='extreme'){ w.freeze=3; w.double=3; w.echo=3; w.rewind=3; }
   w.magnet+=Math.floor((level-1)*0.25);
   w.slow+=Math.floor((level-1)*0.5);
   let tot=0; for(const k in w) tot+=w[k];
   let r=Math.random()*tot, type='shield';
-  for(const k of ['shield','magnet','speed','slow','freeze','double','echo']){ r-=w[k]; if(r<0){ type=k; break; } }
+  for(const k of ['shield','magnet','speed','slow','freeze','double','echo','rewind']){ r-=w[k]; if(r<0){ type=k; break; } }
   const z=girl.position.z+rand(8,26);
   const x=(Math.random()*2-1)*5.2;
   const g=new THREE.Group();
@@ -2615,7 +2616,7 @@ const rmEl=document.getElementById('resultModal'), rmTitle=document.getElementBy
 const rmStars=document.getElementById('rmStars'), rmInfo=document.getElementById('rmInfo');
 const rmBest=document.getElementById('rmBest');
 const challenge={active:false, timeLeft:0, combo:0, lastPick:-99,
-  invuln:0, done:false, failed:false, flashT:0, best:null, startTime:0, danger:false, ready:0};
+  invuln:0, done:false, failed:false, flashT:0, best:null, startTime:0, danger:false, ready:0, recentLoss:0};
 /* v0.3.50 最佳成绩按难度分开记录（ww-best-v3）；旧 ww-best-v2 自动迁移到当前难度 */
 let BEST={};
 try{
@@ -2731,7 +2732,8 @@ const ACHS=[
   {id:'morning',     icon:'🌅', label:'晨风鲸语 · 上午 6-9 点通关一关'},
   {id:'midnight',    icon:'🌙', label:'午夜鲸歌 · 晚上 22-24 点通关一关'},
   {id:'combo24',     icon:'⚡', label:'连击大师二段 · 单关最高连击 x24'},
-  {id:'echo10',      icon:'📡', label:'回响鲸歌 · 单关用回声定位收集 10 个光点'}
+  {id:'echo10',      icon:'📡', label:'回响鲸歌 · 单关用回声定位收集 10 个光点'},
+  {id:'rewind5',     icon:'⏳', label:'时之鲸 · 单关时光回溯累计恢复 5 秒'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -2739,6 +2741,7 @@ if(typeof updateLegend==='function') updateLegend();   // v0.3.72 成就就绪�
 metaLine();   // v0.3.81 主界面计数行
 /* v0.3.12 单关操作统计（成就判定用） */
 let lvDodge=0, lvDj=0;
+let lvRewind=0;   // v0.4.08 单关时光回溯累计恢复秒数（rewind5 判定）
 function award(id){
   if(achGot.includes(id))return;
   const a=ACHS.find(x=>x.id===id); if(!a)return;
@@ -2893,7 +2896,20 @@ function applyPowerUp(type){
   else if(type==='freeze'){ powerState.freeze=info.dur; pwFreezeEl.classList.add('on'); }
   else if(type==='double'){ powerState.double=info.dur; pwDoubleEl.classList.add('on'); }
   else if(type==='echo'){ powerState.echo=info.dur; pwEchoEl.classList.add('on'); echoOn(); AudioFX.echo(); }
-  toast(info.icon+' 获得'+info.label+'！');
+  else if(type==='rewind'){
+    /* v0.4.08 时光回溯：找回近期受击扣掉的时间（最多 5 秒）；近期无损时折算 +2 秒 */
+    const back=Math.min(challenge.recentLoss,5);
+    if(back>0.1){
+      challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+back);
+      challenge.recentLoss-=back; lvRewind+=back;
+      if(lvRewind>=5) award('rewind5');
+      toast('⏳ 时光回溯！时间找回 '+back.toFixed(1)+' 秒');
+    } else {
+      challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2);
+      toast('⏳ 时光回溯！近期无损，折算 +2 秒');
+    }
+  }
+  if(type!=='rewind') toast(info.icon+' 获得'+info.label+'！');   // v0.4.08 回溯有专属文案
   AudioFX.pickup();
 }
 function fmtT(s){ return s.toFixed(1)+' 秒'; }
@@ -2956,6 +2972,7 @@ function startChallenge(){
   challenge.tookHit=false; challenge.comboMax=0; newAch=[];   // v0.3.8 成就判定状态
   echoPick=0;   // v0.4.06 回声定位计数重置
   lvDodge=0; lvDj=0;   // v0.3.12 单关操作统计
+  challenge.recentLoss=0; lvRewind=0;   // v0.4.08 时光回溯记账重置
   showLevelBanner('第 '+level+' 关 · '+levelName(), diff().label+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点');   // v0.3.23 开局章节横幅
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
   timerNum.textContent=Math.ceil(challenge.timeLeft);
@@ -2972,6 +2989,7 @@ function hitCar(){
   challenge.invuln=INVULN; challenge.flashT=0.4;
   shakeT=0.35; hitStop=0.12;   // v0.3.16 打击感：相机震动 + 受击慢动作
   challenge.timeLeft=Math.max(0,challenge.timeLeft-HIT_PENALTY);
+  challenge.recentLoss=Math.min(8,challenge.recentLoss+HIT_PENALTY);   // v0.4.08 记账：可供时光回溯找回
   redEl.classList.add('on');
   girl.userData.state.speed*=0.4;
   challenge.tookHit=true;   // v0.3.8 无伤成就判定（护盾抵消不算）
@@ -2984,6 +3002,7 @@ function hitDrone(d){
   challenge.invuln=INVULN; challenge.flashT=0.4;
   shakeT=0.35; hitStop=0.12;   // v0.3.16 打击感
   challenge.timeLeft=Math.max(0,challenge.timeLeft-DRONE_PENALTY);
+  challenge.recentLoss=Math.min(8,challenge.recentLoss+DRONE_PENALTY);   // v0.4.08 记账：可供时光回溯找回
   redEl.classList.add('on');
   /* 击退：把角色推离无人机 */
   const st=girl.userData.state;
@@ -4290,7 +4309,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.10 成就墙钩子 */
   renderAch,
   /* v0.3.12 操作统计钩子 */
-  stats:()=>({lvDodge, lvDj}),
+  stats:()=>({lvDodge, lvDj, lvRewind}),
   bestOf, finishChallenge, stars:()=>STARS,
   /* v0.3.15 降质与氛围钩子 */
   autoDegrade, fogHex:()=>scene.fog.color.getHex(),
