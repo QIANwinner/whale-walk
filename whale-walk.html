@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.06</title>
+<title>鲸步 WHALE WALK · v0.4.07</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -103,6 +103,12 @@
   #combo.on{opacity:1;transform:translateX(-50%) translateY(0);}
   #combo i{display:block;height:3px;margin-top:5px;border-radius:2px;background:rgba(255,255,255,.16);overflow:hidden;}
   #combo i b{display:block;height:100%;width:100%;background:linear-gradient(90deg,#FFD25A,#FF7A3A);transition:width .1s linear;}
+  /* v0.4.07 鲸歌共鸣：连击档位指示（≥8 金色） */
+  #resHud{position:fixed;top:88px;left:50%;transform:translateX(-50%);z-index:11;pointer-events:none;
+    font-size:13px;font-weight:800;color:#7FE4FF;letter-spacing:1px;text-shadow:0 0 10px rgba(127,228,255,.8);
+    opacity:0;transition:opacity .2s;}
+  #resHud.on{opacity:1;}
+  #resHud.gold{color:#FFD25A;text-shadow:0 0 12px rgba(255,210,90,.9);}
   /* ---------- 屏幕红闪（受击） ---------- */
   #redflash{position:fixed;inset:0;z-index:30;pointer-events:none;background:radial-gradient(ellipse at center,
     rgba(255,40,40,0) 40%,rgba(255,30,30,.55) 100%);opacity:0;transition:opacity .15s;}
@@ -452,6 +458,7 @@
 <div id="lightning"></div>
 <div id="lvBanner"><div class="lv-t" id="lvBannerT">第 2 关</div><div class="lv-s">更多光点 · 更短时间</div></div>
 <div id="combo"><span id="comboTxt"></span><i id="comboBar"><b></b></i></div>
+<div id="resHud"><span id="resTxt"></span></div>
 <div id="redflash"></div>
 <div id="sGlow"></div>
 <div id="boostglow"></div>
@@ -2601,6 +2608,9 @@ const COMBO_BONUS=2, HIT_PENALTY=3, DRONE_PENALTY=4, INVULN=1.5;
 const timerEl=document.getElementById('timer'), timerNum=document.getElementById('timerNum');
 const comboEl=document.getElementById('combo'), redEl=document.getElementById('redflash');
 const comboTxtEl=document.getElementById('comboTxt'), comboBarEl=document.querySelector('#comboBar b');
+/* v0.4.07 鲸歌共鸣：收集触发城市霓虹演奏 + 连击共鸣指示 */
+let resPulse=0;
+const resHudEl=document.getElementById('resHud'), resTxtEl=document.getElementById('resTxt');
 const rmEl=document.getElementById('resultModal'), rmTitle=document.getElementById('rmTitle');
 const rmStars=document.getElementById('rmStars'), rmInfo=document.getElementById('rmInfo');
 const rmBest=document.getElementById('rmBest');
@@ -3505,6 +3515,7 @@ function update(dt){
         if(TOTAL-score===3) toast('还剩最后 3 个光点！');   // v0.3.27 冲刺提醒
         /* 连击 + 时间奖励 */
         if(challenge.active){
+          resPulse=1;   // v0.4.07 收集触发城市霓虹共鸣
           if(elapsed-challenge.lastPick<comboWindow()) challenge.combo++;
           else challenge.combo=1;
           challenge.lastPick=elapsed;
@@ -3814,6 +3825,28 @@ function update(dt){
       const left=Math.max(0,1-(elapsed-challenge.lastPick)/comboWindow());
       comboBarEl.style.width=(left*100).toFixed(1)+'%';   // v0.3.49 连击剩余时间条
     } else comboEl.classList.remove('on');
+    /* v0.4.07 鲸歌共鸣：收集点亮城市霓虹（主/侧广告牌 + 门环），连击≥8 呼吸脉动 */
+    if(resPulse>0) resPulse=Math.max(0,resPulse-dt*1.8);
+    const resHot=challenge.active&&challenge.combo>=8;
+    const glow=(resHot?1:0)+resPulse;
+    if(glow>0){
+      const b=Math.min(2,1+glow*0.55+0.10*Math.sin(t*5));
+      mainBill.material.color.setScalar(b);
+      sideBill.material.color.setScalar(Math.min(1.7,1+glow*0.4));
+      whaleGate.userData.tor.material.opacity=Math.min(1,0.75+glow*0.2);
+      whaleGate.userData.tor2.material.opacity=Math.min(1,0.5+glow*0.2);
+    } else {
+      mainBill.material.color.setScalar(1);
+      sideBill.material.color.setScalar(1);
+      whaleGate.userData.tor.material.opacity=0.75;
+      whaleGate.userData.tor2.material.opacity=0.5;
+    }
+    /* v0.4.07 共鸣指示：连击档位显示（≥8 金色） */
+    if(challenge.combo>=2 && elapsed-challenge.lastPick<comboWindow()){
+      resHudEl.classList.add('on');
+      resHudEl.classList.toggle('gold', challenge.combo>=8);
+      resTxtEl.textContent='🎵 共鸣 ×'+challenge.combo;
+    } else { resHudEl.classList.remove('on'); resHudEl.classList.remove('gold'); }
     /* 飞车碰撞（v0.3.85 判定放宽至 0.75） */
     for(const c of cars){
       if(Math.hypot(girl.position.x-c.position.x, girl.position.z-c.position.z)<0.75
@@ -4235,6 +4268,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   challenge, patrolDrones, powerUps, platforms, powerState, levelCfg,
   /* v0.4.06 回声定位钩子 */
   echoOn, echoOff, echoSet:()=>echoSet.length, echoState:()=>powerState.echo, echoPick:()=>echoPick,
+  /* v0.4.07 鲸歌共鸣钩子 */
+  resPulse:()=>resPulse, resHot:()=>challenge.active&&challenge.combo>=8, resGlow:()=>{ const g=(challenge.active&&challenge.combo>=8?1:0)+resPulse; return g; },
   applyPowerUp, spawnPowerUp, spawnPatrolDrones, startChallenge, setupLevel, resetChallenge, doJump,
   diffKey:()=>diffKey, level:()=>level, TOTAL:()=>TOTAL, score:()=>score,
   mode:()=>mode, elapsed:()=>elapsed,   // v0.3.8 连击窗口测试用
