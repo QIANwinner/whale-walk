@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.52</title>
+<title>鲸步 WHALE WALK · v0.3.54</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2214,7 +2214,8 @@ const ACHS=[
   {id:'halftime', icon:'⏱', label:'游刃有余 · 单关剩余过半时间通关'},
   {id:'l6',       icon:'🐋', label:'永夜鲸歌 · 通关第 6 关'},
   {id:'l8',       icon:'🌌', label:'星海鲸梦 · 通关第 8 关'},
-  {id:'extreme',  icon:'🔥', label:'极限征服 · 以极限难度通关任意关卡'}
+  {id:'extreme',  icon:'🔥', label:'极限征服 · 以极限难度通关任意关卡'},
+  {id:'srank',    icon:'👑', label:'完美鲸跃 · 单关拿到 S 评级'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -2361,6 +2362,7 @@ function finishChallenge(win){
     const rank = stars>=3 ? (challenge.timeLeft >= levelCfg().time*0.6 ? 'S' : 'A')
                 : stars===2 ? 'B' : 'C';
     rmRank.textContent=rank;
+    if(rank==='S') award('srank');   // v0.3.53 S 评级成就
     rmRank.style.display='block';
     runTotalUsed+=levelTimeUsed; runCoins+=coinCount; runRings+=ringCount;
     /* v0.3.25 星星逐个弹出 */
@@ -2405,7 +2407,8 @@ function finishChallenge(win){
         try{ localStorage.setItem('ww-best-v3',JSON.stringify(BEST)); }catch(_){}
         renderDiffBest();
       } else if(prev){
-        rmBest.textContent='本难度最佳 总用时 '+fmtT(prev.time)+' · '+('★'.repeat(prev.stars||0));
+        rmBest.textContent='本难度最佳 总用时 '+fmtT(prev.time)+' · '+('★'.repeat(prev.stars||0))
+          +' · 本局慢 '+fmtT(Math.max(0,runTotalUsed-prev.time));   // v0.3.54 与最佳差距
       } else rmBest.textContent='';
       btnNext.style.display='none';
     }
