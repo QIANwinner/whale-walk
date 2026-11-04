@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.49</title>
+<title>鲸步 WHALE WALK · v0.3.50</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2176,7 +2176,16 @@ const rmStars=document.getElementById('rmStars'), rmInfo=document.getElementById
 const rmBest=document.getElementById('rmBest');
 const challenge={active:false, timeLeft:0, combo:0, lastPick:-99,
   invuln:0, done:false, failed:false, flashT:0, best:null, startTime:0, danger:false, ready:0};
-try{ const b=JSON.parse(localStorage.getItem('ww-best-v2')||'null'); if(b&&b.time>=1) challenge.best=b; }catch(_){}
+/* v0.3.50 最佳成绩按难度分开记录（ww-best-v3）；旧 ww-best-v2 自动迁移到当前难度 */
+let BEST={};
+try{
+  const raw=localStorage.getItem('ww-best-v3');
+  const b=raw?JSON.parse(raw):null;
+  if(b&&typeof b==='object') BEST=b;
+  else { const old=JSON.parse(localStorage.getItem('ww-best-v2')||'null');
+    if(old&&old.time>=1) BEST={[diffKey]:old}; }
+}catch(_){}
+const bestOf=()=>BEST[diffKey]||null;
 /* =====================================================================
  *  v0.3.8 成就系统：localStorage 持久化（ww-ach-v1），本局新获在结算页展示
  * ===================================================================== */
@@ -2375,12 +2384,13 @@ function finishChallenge(win){
       rmTitle.textContent='🏆 全部通关！';
       rmInfo.innerHTML=MAX_LEVEL+'关总用时 <b>'+fmtT(runTotalUsed)+'</b><br>难度 '+diff().label+' · 鲸币 '+runCoins+' · 穿环 '+runRings
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
-      if(runTotalUsed>=1 && (!challenge.best || runTotalUsed<challenge.best.time)){
-        challenge.best={time:runTotalUsed, stars};
+      const prev=bestOf();
+      if(runTotalUsed>=1 && (!prev || runTotalUsed<prev.time)){
+        BEST[diffKey]={time:runTotalUsed, stars};
         rmBest.textContent='新纪录！ 总用时 '+fmtT(runTotalUsed)+' · '+('★'.repeat(stars));
-        try{ localStorage.setItem('ww-best-v2',JSON.stringify(challenge.best)); }catch(_){}
-      } else if(challenge.best){
-        rmBest.textContent='最佳 总用时 '+fmtT(challenge.best.time)+' · '+('★'.repeat(challenge.best.stars));
+        try{ localStorage.setItem('ww-best-v3',JSON.stringify(BEST)); }catch(_){}
+      } else if(prev){
+        rmBest.textContent='本难度最佳 总用时 '+fmtT(prev.time)+' · '+('★'.repeat(prev.stars||0));
       } else rmBest.textContent='';
       btnNext.style.display='none';
     }
@@ -2392,7 +2402,7 @@ function finishChallenge(win){
     rmRank.style.display='none';
     rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关<br>最高连击 x'+(challenge.comboMax||0)
       +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次':'');
-    rmBest.textContent = challenge.best?('最佳 总用时 '+fmtT(challenge.best.time)):'';
+    rmBest.textContent = bestOf()?('本难度最佳 总用时 '+fmtT(bestOf().time)):'';
     btnNext.style.display='none';
   }
   rmEl.classList.add('show');
@@ -3199,6 +3209,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   renderAch,
   /* v0.3.12 操作统计钩子 */
   stats:()=>({lvDodge, lvDj}),
+  bestOf,
   /* v0.3.15 降质与氛围钩子 */
   autoDegrade, fogHex:()=>scene.fog.color.getHex(),
   /* v0.3.18 雨势钩子 */
