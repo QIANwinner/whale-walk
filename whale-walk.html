@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.18</title>
+<title>鲸步 WHALE WALK · v0.4.19</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2082,6 +2082,28 @@ let fragCount=0, fragTotal=3;
 const fragGeo=new THREE.OctahedronGeometry(0.17,0);
 const fragMat=new THREE.MeshStandardMaterial({color:0xC9A8FF,emissive:0x8F6FE8,
   emissiveIntensity:1.8,roughness:.3,metalness:.3});
+/* v0.4.19 拾取音符 ♪ 粒子池：收集时从头顶上浮淡出 */
+const notePool=[];
+{
+  const nc=document.createElement('canvas'); nc.width=nc.height=64;
+  const ng=nc.getContext('2d');
+  ng.font='700 44px sans-serif'; ng.textAlign='center'; ng.textBaseline='middle';
+  ng.fillStyle='#FFD25A'; ng.shadowColor='#FFD25A'; ng.shadowBlur=12;
+  ng.fillText('♪',32,32);
+  const noteTex=new THREE.CanvasTexture(nc);
+  for(let i=0;i<4;i++){
+    const m=new THREE.Sprite(new THREE.SpriteMaterial({map:noteTex,transparent:true,
+      opacity:0,depthWrite:false}));
+    m.scale.setScalar(0.4); m.visible=false; scene.add(m);
+    notePool.push({m,life:0,ph:Math.random()*6.28});
+  }
+}
+function floatNote(pos){
+  const n=notePool.find(x=>x.life<=0)||notePool[0];
+  n.m.position.copy(pos); n.m.position.y+=0.6;
+  n.m.position.x+=rand(-0.15,0.15); n.m.position.z+=rand(-0.15,0.15);
+  n.life=1; n.m.visible=true;
+}
 /* v0.3.94 弹跳落点预测圈：跳跃/弹跳时地面显示预计落点圆圈 */
 const landPred=new THREE.Mesh(new THREE.RingGeometry(0.32,0.42,24),
   new THREE.MeshBasicMaterial({color:0x7FE4FF,transparent:true,opacity:0,side:THREE.DoubleSide,
@@ -2870,6 +2892,7 @@ metaLine();   // v0.3.81 主界面计数行
 /* v0.3.12 单关操作统计（成就判定用） */
 let lvDodge=0, lvDj=0;
 let lvRewind=0;   // v0.4.08 单关时光回溯累计恢复秒数（rewind5 判定）
+let lvPU=0;       // v0.4.19 单关拾取道具计数（结算展示）
 function award(id){
   if(achGot.includes(id))return;
   const a=ACHS.find(x=>x.id===id); if(!a)return;
@@ -3017,6 +3040,7 @@ function lightningFlash(){
 let puTimer=8;
 function applyPowerUp(type){
   const info=PU_TYPES[type];
+  lvPU++;   // v0.4.19 单关道具拾取统计
   if(type==='shield'){ powerState.shield=true; shieldBubble.visible=true; pwShieldEl.classList.add('on'); }
   else if(type==='magnet'){ powerState.magnet=info.dur; pwMagnetEl.classList.add('on'); }
   else if(type==='speed'){ powerState.speed=info.dur; pwSpeedEl.classList.add('on'); }
@@ -3026,6 +3050,7 @@ function applyPowerUp(type){
   else if(type==='echo'){ powerState.echo=info.dur; pwEchoEl.classList.add('on'); echoOn(); AudioFX.echo(); }
   else if(type==='rewind'){
     /* v0.4.08 时光回溯：找回近期受击扣掉的时间（最多 5 秒）；近期无损时折算 +2 秒 */
+    lvPU++;
     const back=Math.min(challenge.recentLoss,5);
     if(back>0.1){
       challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+back);
@@ -3100,6 +3125,7 @@ function startChallenge(){
   challenge.tookHit=false; challenge.comboMax=0; newAch=[];   // v0.3.8 成就判定状态
   echoPick=0;   // v0.4.06 回声定位计数重置
   lvDodge=0; lvDj=0;   // v0.3.12 单关操作统计
+  lvPU=0;   // v0.4.19 道具拾取计数
   challenge.recentLoss=0; lvRewind=0;   // v0.4.08 时光回溯记账重置
   mirrorOn=(level===9);   // v0.4.09 镜面回响：仅隐藏关第 9 关生效
   const mirrorHudEl=document.getElementById('mirrorHud');
@@ -3238,7 +3264,7 @@ function finishChallenge(win){
       rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
-        +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 最高连击 x'+(challenge.comboMax||0)
+        +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 道具 ×'+lvPU+' · 最高连击 x'+(challenge.comboMax||0)
         +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
         +'<br>本局净得分 <b id="rmNetScore">0</b> 分'
         +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)+'）'   // v0.3.89
@@ -3294,7 +3320,7 @@ function finishChallenge(win){
       endless=false;   // 潮落回到常规模式
     } else {
     rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关<br>最高连击 x'+(challenge.comboMax||0)
-      +(fragTotal?' · 鲸语碎片 '+fragCount+'/'+fragTotal:'')
+      +(fragTotal?' · 鲸语碎片 '+fragCount+'/'+fragTotal:'')+' · 道具 ×'+lvPU
       +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次':'');
     }
     rmBest.textContent = bestOf()?('本难度最佳 总用时 '+fmtT(bestOf().time)):'';
@@ -3748,6 +3774,7 @@ function update(dt){
         document.getElementById('timerProgFill').style.width=Math.round(score/(TOTAL||1)*100)+'%';   // v0.3.25 进度条
         blinkT=1;   // 收集时眨一下眼
         burst(o.position);
+        floatNote(o.position);   // v0.4.19 音符飘出
         AudioFX.pickup(challenge.combo+1);   // v0.3.8 连击音高递进
         AudioFX.rain(score/(TOTAL||1));   // v0.3.96 背景雨声随收集进度渐强
         buzz(12);   // v0.3.3 收集光点轻振动
@@ -3780,6 +3807,11 @@ function update(dt){
     f.m.scale.setScalar(1+(1-f.life)*4);
     f.m.material.opacity=Math.max(0,f.life)*0.8;
     if(f.life<=0)f.m.visible=false; } }
+  /* v0.4.19 音符粒子：上浮淡出 */
+  for(const n of notePool){ if(n.life>0){ n.life-=dt*1.1;
+    n.m.position.y+=dt*0.85;
+    n.m.material.opacity=Math.max(0,n.life);
+    if(n.life<=0)n.m.visible=false; } }
   /* v0.3.91 星形爆散更新：飞行 + 自旋 + 微光拖尾 */
   for(const s of starPool){ if(s.life>0){
     s.life-=dt*1.3;
@@ -4636,7 +4668,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.10 成就墙钩子 */
   renderAch,
   /* v0.3.12 操作统计钩子 */
-  stats:()=>({lvDodge, lvDj, lvRewind, idleT}),
+  stats:()=>({lvDodge, lvDj, lvRewind, idleT, lvPU}),
+  /* v0.4.19 音符粒子钩子 */
+  notePool,
   bestOf, finishChallenge, stars:()=>STARS,
   /* v0.3.15 降质与氛围钩子 */
   autoDegrade, fogHex:()=>scene.fog.color.getHex(),
