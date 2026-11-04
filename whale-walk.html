@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.41</title>
+<title>鲸步 WHALE WALK · v0.3.42</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -322,6 +322,7 @@
   <button class="dbtn" data-diff="easy">简单</button>
   <button class="dbtn on" data-diff="normal">普通</button>
   <button class="dbtn" data-diff="hard">困难</button>
+  <button class="dbtn" data-diff="extreme">极限</button>
 </div>
 <button id="btnPlay">开始散步</button>
 <div id="joy"><div id="joyKnob"></div></div>
@@ -2121,6 +2122,7 @@ const DIFFS={
   easy:  {label:'简单', time:100, carMul:0.85, drones:1, orbHigh:2, thunderMin:15, thunderMax:32},
   normal:{label:'普通', time:80,  carMul:1.0,  drones:2, orbHigh:4, thunderMin:10, thunderMax:24},
   hard:  {label:'困难', time:64,  carMul:1.25, drones:3, orbHigh:6, thunderMin:6,  thunderMax:16},
+  extreme:{label:'极限', time:60,  carMul:1.45, drones:4, orbHigh:8, thunderMin:5,  thunderMax:12},
 };
 let diffKey='normal';
 try{ const d=localStorage.getItem('ww-diff'); if(DIFFS[d]) diffKey=d; }catch(_){}
@@ -2151,7 +2153,7 @@ function levelCfg(){
   const d=diff();
   return { time:levelTime(), orbs:levelOrbs(), high:d.orbHigh,
     cars:Math.min(8, 3+Math.floor((level-1)*1.25)), carMul:d.carMul*(1+0.05*(level-1)),
-    drones:Math.min(diffKey==='easy'?2:5, d.drones+((level-1)>>1)),
+    drones:Math.min(diffKey==='easy'?2:diffKey==='extreme'?6:5, d.drones+((level-1)>>1)),
     thunderMin:Math.max(5,d.thunderMin-(level-1)), thunderMax:Math.max(10,d.thunderMax-(level-1)*2) };
 }
 const COMBO_WINDOW=8, COMBO_BONUS=2, HIT_PENALTY=3, DRONE_PENALTY=4, INVULN=1.5;
