@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.04</title>
+<title>鲸步 WHALE WALK · v0.4.05</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -575,6 +575,13 @@ import * as THREE from 'three';
 
 /* v0.4.02 画质档全局（提前声明供场景初始化使用）：ww-quality 低/中/高 */
 let qScale=1; try{ const q=localStorage.getItem('ww-quality')||'mid'; qScale=q==='low'?0.6:q==='high'?1.2:1; }catch(_){}
+/* v0.4.05 低端机检测：硬件并发 ≤4 且未手动设画质 → 默认低画质（雨丝/阴影减半） */
+try{
+  if(navigator.hardwareConcurrency && navigator.hardwareConcurrency<=4 && !localStorage.getItem('ww-quality')){
+    qScale=0.6;
+    try{ localStorage.setItem('ww-quality','low'); }catch(_){}
+  }
+}catch(_){}
 
 /* =====================================================================
  *  调色板与工具
@@ -2379,7 +2386,10 @@ function joyUpdate(t){ const r=joyEl.getBoundingClientRect();
   let dx=t.clientX-(r.left+r.width/2), dy=t.clientY-(r.top+r.height/2);
   const d=Math.hypot(dx,dy), m=r.width*0.38;
   if(d>m){dx*=m/d;dy*=m/d;}
-  joyState.x=dx/m; joyState.y=dy/m;
+  let nx=dx/m, ny=dy/m;
+  /* v0.4.05 触控防误触：deadzone 0.15，微幅抖动不产生输入 */
+  if(Math.hypot(nx,ny)<0.15){ nx=0; ny=0; }
+  joyState.x=nx; joyState.y=ny;
   knob.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`; }
 joyEl.addEventListener('touchstart',e=>{ joyState.active=true; joyState.id=e.changedTouches[0].identifier;
   joyUpdate(e.changedTouches[0]); e.preventDefault(); },{passive:false});
