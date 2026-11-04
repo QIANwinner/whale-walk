@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.40</title>
+<title>鲸步 WHALE WALK · v0.3.41</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -281,7 +281,7 @@
   <div class="t2">鲸步 · 蓝鲸女仆散步中</div>
 </div>
 <div class="hud" id="hudMode"><span class="badge" id="modeBadge">预览模式</span></div>
-<div class="hud" id="hudLevel">第 <span class="lv" id="levelNum">1</span> / 5 关 · <span id="diffLabel">普通</span></div>
+<div class="hud" id="hudLevel">第 <span class="lv" id="levelNum">1</span> / <span id="levelMax">8</span> 关 · <span id="diffLabel">普通</span></div>
 <div class="hud" id="hudScore"><div class="n" id="scoreNum">0 / 24</div><div class="l">光点收集</div></div>
 <canvas id="minimap" width="320" height="320"></canvas>
 <div class="hud" id="hudHint">拖动旋转 · 滚轮缩放</div>
@@ -2258,6 +2258,7 @@ function setupLevel(){
   clearPowerups();
   spawnNewProps();   // v0.3.4 金色鲸币 / 空中光环 / 弹跳垫 / 加速带
   levelNumEl.textContent=level;
+  document.getElementById('levelMax').textContent=MAX_LEVEL;
   thunderT=rand(cfg.thunderMin,cfg.thunderMax);
   puTimer=Math.max(2.5, rand(4,7)-(level-1)*0.3);
   _tintC.setHex(LEVEL_TINTS[Math.min(level,LEVEL_TINTS.length)-1]);
