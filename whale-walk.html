@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.98</title>
+<title>鲸步 WHALE WALK · v0.3.99</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -12,6 +12,8 @@
   /* v0.3.95 全屏色调分档：预览/挑战/暂停/结算不同画布色调 */
   #app canvas{transition:filter .5s ease;}
   body.paused #app canvas{filter:brightness(.78) saturate(.85);}
+  /* v0.3.99 暂停时显示小地图：浮现在暂停菜单之上 */
+  body.paused #minimap{z-index:39;opacity:.95;box-shadow:0 0 16px rgba(47,167,232,.5);}
   body.playing #app canvas{filter:brightness(1);}
   /* ---------- HUD ---------- */
   .hud{position:fixed;z-index:10;color:#fff;pointer-events:none;text-shadow:0 1px 6px rgba(10,20,60,.55);}
@@ -335,6 +337,16 @@
   #fps{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:calc(14px + env(safe-area-inset-left,0px));z-index:12;
     display:none;font-size:11px;font-family:monospace;color:#8FC8FF;opacity:.85;pointer-events:none;}
   #fps.on{display:block;}
+  /* v0.3.99 字体大小档：HUD 缩放（body.hud-s / body.hud-l） */
+  body.hud-s #hudTitle .t1{font-size:17px;} body.hud-s #hudScore .n{font-size:17px;}
+  body.hud-s #hudTitle .t2{font-size:10px;} body.hud-s .hud{text-shadow:0 1px 5px rgba(10,20,60,.5);}
+  body.hud-l #hudTitle .t1{font-size:24px;} body.hud-l #hudScore .n{font-size:24px;}
+  body.hud-l #hudTitle .t2{font-size:12px;}
+  /* v0.3.99 色弱模式：红色危险加符号辅标（不依赖颜色区分） */
+  body.colorblind #timer.danger .t::after{content:' ⚠';font-size:.7em;color:#FFB84A;}
+  body.colorblind #timer.critical .t::after{content:' ⚠⚠';font-size:.7em;color:#FFB84A;animation:timerBlink .5s steps(2) infinite;}
+  body.colorblind #redflash.on{background:repeating-linear-gradient(45deg,rgba(255,80,60,.5) 0 18px,rgba(255,80,60,0) 18px 36px);}
+  body.colorblind #combo{color:#FFB84A;}
   /* ---------- v0.3.10 成就墙 ---------- */
   #btnAch{position:fixed;top:calc(186px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));z-index:11;
     display:none;background:rgba(10,16,38,.6);border:1px solid rgba(255,210,90,.45);color:#FFD25A;
@@ -490,6 +502,9 @@
       <div class="set-row"><span>画质</span><select id="setQuality">
         <option value="low">低</option><option value="mid" selected>中</option><option value="high">高</option></select></div>
       <div class="set-row"><span>帧率显示</span><button id="setFps">关</button></div>
+      <div class="set-row"><span>字体大小</span><select id="setFont">
+        <option value="s">小</option><option value="m" selected>中</option><option value="l">大</option></select></div>
+      <div class="set-row"><span>色弱模式</span><button id="setCb">关</button></div>
     </div>
     <div class="set-sec">
       <div class="set-sec-title">🎮 操控</div>
@@ -2302,7 +2317,8 @@ btnMute.addEventListener('touchstart',e=>{ applyMute(); e.preventDefault(); },{p
 btnMute.addEventListener('click',()=>applyMute());   // v0.3.5 鼠标兜底
 /* v0.3.1 标签页隐藏时暂停音频 + v0.3.2 暂停渲染循环，节省电量 */
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){ AudioFX.suspend(); renderer.setAnimationLoop(null); }
+  if(document.hidden){ AudioFX.suspend(); renderer.setAnimationLoop(null);
+    if(mode==='play'&&!paused) openPause(); }   // v0.3.99 切后台自动暂停
   else { AudioFX.resume(); clock.getDelta(); renderer.setAnimationLoop(renderLoop); }
 });
 
@@ -2887,8 +2903,10 @@ function resetChallenge(){
 let shareSnap=null;
 function shareText(){ if(!shareSnap)return '';
   const u=location.href;
-  if(shareSnap.kind==='win') return `🐳 鲸步 WHALE WALK · ${shareSnap.diff} · 第${shareSnap.level}关 ${shareSnap.stars}★ 评级${shareSnap.rank} · 用时 ${shareSnap.time}\n${u}`;
-  if(shareSnap.kind==='final') return `🐳 鲸步 WHALE WALK · ${shareSnap.diff} · ${MAX_LEVEL}关全通！总用时 ${shareSnap.time} · 鲸币 ${shareSnap.coins} · 穿环 ${shareSnap.rings}\n${u}`;
+  /* v0.3.99 四难度进度：CLEARED 计数 */
+  const c4=()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c;};
+  if(shareSnap.kind==='win') return `🐳 鲸步 WHALE WALK · ${shareSnap.diff} · 第${shareSnap.level}关 ${shareSnap.stars}★ 评级${shareSnap.rank} · 用时 ${shareSnap.time} · 四难度 ${c4()}/4\n${u}`;
+  if(shareSnap.kind==='final') return `🐳 鲸步 WHALE WALK · ${shareSnap.diff} · ${MAX_LEVEL}关全通！总用时 ${shareSnap.time} · 鲸币 ${shareSnap.coins} · 穿环 ${shareSnap.rings} · 四难度 ${c4()}/4\n${u}`;
   return `🐳 鲸步 WHALE WALK · ${shareSnap.diff} · 第${shareSnap.level}关 时间到 · 收集 ${shareSnap.score}/${shareSnap.total}\n${u}`; }
 document.getElementById('btnShare').addEventListener('click',()=>{
   const t=shareText(); if(!t)return;
@@ -3766,6 +3784,20 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
   window.__wwFpsTick=()=>{ const F=window.__wwFps; F.frames++;
     const now=performance.now(), d=now-F.last;
     if(d>=500){ fpsEl.textContent=(F.frames/d*1000).toFixed(0)+' FPS'; F.frames=0; F.last=now; } };
+  /* v0.3.99 字体大小档 */
+  const fz=document.getElementById('setFont'), fzv=localStorage.getItem('ww-font')||'m';
+  fz.value=fzv;
+  const syncFont=()=>{ document.body.classList.toggle('hud-s',fz.value==='s'); document.body.classList.toggle('hud-l',fz.value==='l'); };
+  syncFont();
+  fz.addEventListener('change',()=>{ try{ localStorage.setItem('ww-font',fz.value); }catch(_){}
+    syncFont(); AudioFX.tick(); toast('字体：'+(fz.value==='s'?'小':fz.value==='l'?'大':'中')); });
+  /* v0.3.99 色弱模式 */
+  const cb=document.getElementById('setCb');
+  let cbOn=false; try{ cbOn=localStorage.getItem('ww-colorblind')==='1'; }catch(_){}
+  const syncCb=()=>{ cb.textContent=cbOn?'开':'关'; cb.classList.toggle('off',!cbOn);
+    document.body.classList.toggle('colorblind',cbOn); }; syncCb();
+  cb.addEventListener('click',()=>{ cbOn=!cbOn; try{ localStorage.setItem('ww-colorblind',cbOn?'1':'0'); }catch(_){}
+    syncCb(); AudioFX.tick(); toast(cbOn?'色弱模式已开启':'色弱模式已关闭'); });
 }
 /* 操控：陀螺仪 / 触觉强度 */
 {
