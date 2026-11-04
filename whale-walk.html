@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.10</title>
+<title>鲸步 WHALE WALK · v0.4.11</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -292,6 +292,11 @@
     border-radius:999px;padding:11px 24px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;
     transition:transform .12s;font-family:inherit;}
   #btnShare:hover{transform:translateY(-1px);border-color:rgba(127,212,255,.8);}
+  /* v0.4.11 成绩卡按钮（与复制成绩同款） */
+  #btnCard{background:rgba(127,212,255,.12);color:#BFE4FF;border:1px solid rgba(127,212,255,.45);
+    border-radius:999px;padding:11px 22px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;
+    transition:transform .12s;font-family:inherit;}
+  #btnCard:hover{transform:translateY(-1px);border-color:rgba(127,212,255,.8);}
   #rmBtns{display:flex;justify-content:center;gap:10px;margin-top:2px;}
   /* ---------- 关卡完成横幅 ---------- */
   #lvBanner{position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);z-index:26;
@@ -488,6 +493,7 @@
   <div id="rmBtns">
     <button id="btnRetry">再来一局</button>
     <button id="btnShare">复制成绩</button>
+    <button id="btnCard">📸 成绩卡</button>
     <button id="btnNext" style="display:none">下一关</button>
   </div>
 </div>
@@ -3219,6 +3225,55 @@ function resetChallenge(){
 }
 /* v0.3.9 成绩分享：结算时快照，一键复制文本（clipboard 不可用时降级 execCommand） */
 let shareSnap=null;
+/* v0.4.11 成绩卡片：canvas 绘制精美成绩图（640×360），一键保存 PNG */
+function makeScoreCard(){
+  if(!shareSnap) return '';
+  const W=640,H=360;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const g=cv.getContext('2d');
+  const gr=g.createLinearGradient(0,0,0,H);
+  gr.addColorStop(0,'#0E1430'); gr.addColorStop(1,'#05070F');
+  g.fillStyle=gr; g.fillRect(0,0,W,H);
+  const glow=(x,y,c)=>{ const r=g.createRadialGradient(x,y,4,x,y,110);
+    r.addColorStop(0,c); r.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=r; g.fillRect(0,0,W,H); };
+  glow(80,70,'rgba(53,224,255,.20)'); glow(560,300,'rgba(255,79,216,.16)'); glow(600,60,'rgba(255,176,74,.12)');
+  try{ g.drawImage(whaleGateTex, W-250, H-140, 220,110); }catch(_){}
+  g.textBaseline='top';
+  g.fillStyle='#7FD4FF'; g.font='800 30px sans-serif';
+  g.fillText('🐳 鲸步 WHALE WALK', 36, 28);
+  const sub=(shareSnap.kind==='final')?'全部通关':(shareSnap.kind==='fail'?'潮落':('第 '+shareSnap.level+' 关'));
+  g.fillStyle='#BFE4FF'; g.font='600 15px sans-serif';
+  g.fillText((shareSnap.diff||'')+' · '+sub, 36, 72);
+  g.fillStyle='#FFFFFF'; g.font='900 52px sans-serif';
+  const big=shareSnap.kind==='fail' ? (shareSnap.score+'/'+shareSnap.total) : (shareSnap.time||'');
+  g.fillText(big, 36, 104);
+  g.fillStyle='#8FC8FF'; g.font='600 14px sans-serif';
+  g.fillText(shareSnap.kind==='fail'?'收集光点':'本关用时', 36, 166);
+  if(shareSnap.stars){ g.fillStyle='#FFD25A'; g.font='900 40px sans-serif';
+    g.fillText('★'.repeat(shareSnap.stars)+'☆'.repeat(3-shareSnap.stars), 36, 200); }
+  if(shareSnap.rank){ g.fillStyle='#FFD25A'; g.font='900 84px sans-serif';
+    g.fillText(shareSnap.rank, W-134, 36);
+    g.font='600 13px sans-serif'; g.fillStyle='#8FC8FF'; g.fillText('评级', W-130, 16); }
+  g.fillStyle='#BFE4FF'; g.font='600 15px sans-serif';
+  const lines=[];
+  if(shareSnap.coins!=null) lines.push('🪙 鲸币 '+shareSnap.coins);
+  if(shareSnap.rings!=null) lines.push('⭕ 穿环 '+shareSnap.rings);
+  if(shareSnap.kind==='final') lines.push('🏆 全部 '+MAX_LEVEL+' 关通关');
+  lines.forEach((s,i)=>g.fillText(s, 36, 246+i*26));
+  g.fillStyle='rgba(191,228,255,.6)'; g.font='600 12px sans-serif';
+  g.fillText(new Date().toLocaleDateString('zh-CN')+' · QIAN', 36, H-32);
+  g.fillText('qianwinner.github.io/whale-walk', W-270, H-32);
+  return cv.toDataURL('image/png');
+}
+document.getElementById('btnCard').addEventListener('click',()=>{
+  const url=makeScoreCard();
+  if(!url){ toast('没有可生成的成绩'); return; }
+  try{
+    const a=document.createElement('a'); a.href=url; a.download='whale-walk-成绩卡.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('成绩卡已保存 📸');
+  }catch(_){ toast('成绩卡生成失败'); }
+});
 /* v0.4.04 安全：外部 URL 一律 https 校验（分享/跳转仅放行 https，拦截 http/其他协议） */
 function safeURL(u){
   if(!u) return '';
@@ -4370,7 +4425,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.4.09 镜面回响钩子 */
   mirrorOn:()=>mirrorOn,
   /* v0.4.10 无尽鲸潮钩子 */
-  endless:()=>endless, endlessStreak:()=>endlessStreak, ebest:()=>EBEST};
+  endless:()=>endless, endlessStreak:()=>endlessStreak, ebest:()=>EBEST,
+  /* v0.4.11 成绩卡钩子 */
+  makeScoreCard};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
