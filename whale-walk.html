@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.96</title>
+<title>鲸步 WHALE WALK · v0.3.97</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2002,11 +2002,21 @@ const AudioFX=(()=>{
       tone(392,784,0.42,0.15,'sine',0.20);
       tone(523,1046,0.55,0.14,'sine',0.44);
       tone(196,392,0.95,0.10,'sine',0.08); },
-    /* 失败：下行三连滑音，像鲸鸣谢幕 */
+    /* 失败：下行三连滑音，像鲸鸣谢幕；v0.3.97 改低音大提琴滑奏（sawtooth 滑降 + 颤音） */
     fail(){ if(muted||!ac())return;
-      tone(392,311,0.22,0.14,'sine',0);
-      tone(311,247,0.30,0.13,'sine',0.21);
-      tone(247,165,0.55,0.12,'sine',0.52); },
+      const t0=ctx.currentTime;
+      const o=ctx.createOscillator(); o.type='sawtooth';
+      o.frequency.setValueAtTime(196,t0);
+      o.frequency.exponentialRampToValueAtTime(82,t0+0.95);
+      const vib=ctx.createOscillator(); vib.frequency.value=5.2;
+      const vg=ctx.createGain(); vg.gain.value=6;
+      vib.connect(vg); vg.connect(o.frequency); vib.start(t0); vib.stop(t0+1.1);
+      const og=ctx.createGain();
+      og.gain.setValueAtTime(0.0001,t0);
+      og.gain.exponentialRampToValueAtTime(0.20,t0+0.06);
+      og.gain.exponentialRampToValueAtTime(0.001,t0+1.05);
+      o.connect(og); og.connect(bus); o.start(t0); o.stop(t0+1.1);
+      tone(98,49,1.0,0.12,'sine',0.1); },
     /* 雷声远滚：棕色噪声低频轰鸣 + 次声扫频，多层延迟模拟远滚 */
     thunder(intensity){ if(muted||!ac())return;
       const t0=ctx.currentTime, iv=clamp(intensity||1,0.3,1.2);
@@ -2073,6 +2083,35 @@ const AudioFX=(()=>{
       const seq=[1568,1976,2349,2637,3136];
       seq.forEach((f,i)=>tone(f,f,0.16,0.12,'sine',i*0.05));
       tone(4186,4186,0.4,0.10,'sine',seq.length*0.05); },
+    /* v0.3.97 新纪录结算专属号角：上行三音长号角 + 高亮泛音 */
+    horn(){ if(muted||!ac())return;
+      const seq=[[196,0.28],[262,0.30],[349,0.34]];
+      seq.forEach(([f,dl])=>tone(f,f,0.55,0.20,'sawtooth',dl));
+      tone(392,392,0.85,0.14,'sine',0.62);
+      tone(523,523,0.75,0.10,'sine',0.62); },
+    /* v0.3.97 暂停/继续 UI 提示音：pause 降 / resume 升 */
+    ui(kind){ if(muted||!ac())return;
+      if(kind==='pause'){ tone(660,440,0.12,0.10,'sine'); }
+      else { tone(440,660,0.12,0.10,'sine'); } },
+    /* v0.3.97 菜单 hover 细微滴答：极短高频 */
+    tick(){ if(muted||!ac())return;
+      tone(1800,1400,0.03,0.05,'sine'); },
+    /* v0.3.97 全部成就达成「鲸界传说」主题曲：8 秒长鲸歌（低音序列 + 琶音循环） */
+    legend(){ if(muted||!ac())return;
+      const t0=ctx.currentTime;
+      /* 低音长鲸歌基座 */
+      const bassSeq=[65.4,82.4,98,110,82.4,98,65.4];
+      bassSeq.forEach((f,i)=>tone(f,f*1.5,1.1,0.18,'sine',i*0.9));
+      /* 琶音循环（宫商角徵羽） */
+      const arp=[523,659,784,1047,880,784,659,523];
+      arp.forEach((f,i)=>tone(f,f,0.5,0.10,'triangle',i*0.45));
+      /* 高音飘移鲸鸣 */
+      tone(1568,2093,1.8,0.08,'sine',3.2);
+      tone(1047,1568,1.6,0.07,'sine',4.6);
+      /* 收尾亮和弦 */
+      tone(262,262,2.4,0.10,'sine',6.2);
+      tone(392,392,2.4,0.08,'sine',6.2);
+      tone(523,523,2.2,0.08,'sine',6.2); },
     /* v0.3.4 加速：噪声呼啸 + 高频滑升 */
     boost(){ if(muted||!ac())return;
       const t0=ctx.currentTime;
@@ -2252,15 +2291,23 @@ function setMode(m){
   },360);
 }
 btnPlay.addEventListener('click',()=>setMode('play'));
+/* v0.3.97 菜单 hover 细微滴答：主按钮/难度/关卡按钮悬停 */
+['btnPlay','btnRetry','btnNext','btnShare','btnJump','achBtn','lbClear'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('mouseenter',()=>AudioFX.tick());
+});
+document.querySelectorAll('.dbtn,#levelPick button').forEach(el=>el.addEventListener('mouseenter',()=>AudioFX.tick()));
 
 /* v0.3.4 暂停菜单：冻结玩法 + 继续 / 重新开始 / 退出关卡 */
 let paused=false;
 const pauseMenuEl=document.getElementById('pauseMenu');
 function openPause(){ if(mode!=='play')return; paused=true; pauseMenuEl.classList.add('show');
+  AudioFX.ui('pause');   // v0.3.97 暂停提示音
   document.body.classList.add('paused');   // v0.3.95 暂停色调
   document.getElementById('pmStats').textContent=   // v0.3.9 暂停即见当前进度；v0.3.24 加成就进度
     `难度 ${diff().label} · 第 ${level}/${MAX_LEVEL} 关 ${levelName()} · 剩余 ${Math.ceil(challenge.timeLeft)} 秒 · 收集 ${score}/${TOTAL} · 鲸币 ${coinCount}/${coinTotal}${(()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return ' · 全星 '+f+'/'+MAX_LEVEL;})()}${bestOf()?' · 本难度最佳 '+fmtT(bestOf().time):''} · 🏆 ${achGot.length}/${ACHS.length}`; }
-function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); document.body.classList.remove('paused'); }   // v0.3.95 移除暂停色调
+function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); document.body.classList.remove('paused');
+  AudioFX.ui('resume'); }   // v0.3.97 继续提示音（含移除暂停色调）
 function togglePause(){ if(mode!=='play')return; paused?closePause():openPause(); }
 document.getElementById('pmResume').addEventListener('click',()=>closePause());
 document.getElementById('pmRestart').addEventListener('click',()=>{ closePause(); resetChallenge(); });
@@ -2459,6 +2506,8 @@ function award(id){
   achGot.push(id); newAch.push(a);
   try{ localStorage.setItem('ww-ach-v1',JSON.stringify(achGot)); }catch(_){}
   toast('🏆 成就达成：'+a.label); AudioFX.pickup();
+  /* v0.3.97 全部成就达成「鲸界传说」主题曲 */
+  if(achGot.length===ACHS.length){ setTimeout(()=>{ AudioFX.legend(); toast('🌠 鲸界传说 · 全部成就达成！'); },600); }
 }
 /* v0.3.10 成就墙：预览模式随时查看收集进度 */
 /* v0.3.94 成就进度查询：未达成显示当前/目标（累计类） */
@@ -2723,6 +2772,7 @@ function finishChallenge(win){
       if(runTotalUsed>=1 && (!prev || runTotalUsed<prev.time)){
         BEST[diffKey]={time:runTotalUsed, stars};
         rmBest.textContent='新纪录！ 总用时 '+fmtT(runTotalUsed)+' · '+('★'.repeat(stars));
+        AudioFX.horn();   // v0.3.97 新纪录结算专属号角
         try{ localStorage.setItem('ww-best-v3',JSON.stringify(BEST)); }catch(_){}
         renderDiffBest();
       } else if(prev){
