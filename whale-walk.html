@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.42</title>
+<title>鲸步 WHALE WALK · v0.3.43</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1859,6 +1859,12 @@ const AudioFX=(()=>{
       tone(2093,2093,0.65,0.10,'sine',seq.length*0.09+0.06);
       tone(262,262,0.95,0.12,'sine',0.02);
       tone(392,392,0.95,0.10,'sine',0.02); },
+    /* 鲸歌：低音上行 + 回响，通关专属 */
+    whaleCall(){ if(muted||!ac())return;
+      tone(294,588,0.34,0.16,'sine',0);
+      tone(392,784,0.42,0.15,'sine',0.20);
+      tone(523,1046,0.55,0.14,'sine',0.44);
+      tone(196,392,0.95,0.10,'sine',0.08); },
     /* 雷声远滚：棕色噪声低频轰鸣 + 次声扫频，多层延迟模拟远滚 */
     thunder(intensity){ if(muted||!ac())return;
       const t0=ctx.currentTime, iv=clamp(intensity||1,0.3,1.2);
@@ -2368,7 +2374,7 @@ function finishChallenge(win){
       } else rmBest.textContent='';
       btnNext.style.display='none';
     }
-    if(!celebrated){ celebrated=true; cheerT=1; spawnCelebrate(); AudioFX.celebrate(); showCelebrateBanner(); orbitT=2.2; }   // v0.3.22 环视庆祝
+    if(!celebrated){ celebrated=true; cheerT=1; spawnCelebrate(); AudioFX.whaleCall(); AudioFX.celebrate(); showCelebrateBanner(); orbitT=2.2; }   // v0.3.22 环视庆祝
   } else {
     shareSnap={kind:'fail',diff:diff().label,level,score,total:TOTAL};
     rmTitle.textContent='时间到…';
@@ -2660,7 +2666,7 @@ function update(dt){
         if(score===TOTAL){
           if(challenge.active) finishChallenge(true);
           else { toast('全部光点收集完成！鲸鱼尾为你摆动 🐳'); P.tailJ.rotation.y=0.5;
-            if(!celebrated){ celebrated=true; cheerT=1; spawnCelebrate(); AudioFX.celebrate(); showCelebrateBanner(); } } }
+            if(!celebrated){ celebrated=true; cheerT=1; spawnCelebrate(); AudioFX.whaleCall(); AudioFX.celebrate(); showCelebrateBanner(); } } }
         else if(score%6===0) toast(`已收集 ${score} 个光点`);
         if(TOTAL-score===3) toast('还剩最后 3 个光点！');   // v0.3.27 冲刺提醒
         /* 连击 + 时间奖励 */
