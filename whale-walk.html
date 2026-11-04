@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.08</title>
+<title>鲸步 WHALE WALK · v0.4.09</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -109,6 +109,12 @@
     opacity:0;transition:opacity .2s;}
   #resHud.on{opacity:1;}
   #resHud.gold{color:#FFD25A;text-shadow:0 0 12px rgba(255,210,90,.9);}
+  /* v0.4.09 镜面回响指示 */
+  #mirrorHud{position:fixed;top:88px;left:50%;transform:translateX(-50%) translateX(120px);z-index:11;pointer-events:none;
+    font-size:13px;font-weight:800;letter-spacing:2px;color:#E0B8FF;opacity:0;transition:opacity .3s;
+    text-shadow:0 0 10px rgba(200,140,255,.8);}
+  #mirrorHud.on{opacity:1;animation:mirrorBreath 2.2s ease-in-out infinite;}
+  @keyframes mirrorBreath{50%{opacity:.55}}
   /* ---------- 屏幕红闪（受击） ---------- */
   #redflash{position:fixed;inset:0;z-index:30;pointer-events:none;background:radial-gradient(ellipse at center,
     rgba(255,40,40,0) 40%,rgba(255,30,30,.55) 100%);opacity:0;transition:opacity .15s;}
@@ -459,6 +465,7 @@
 <div id="lvBanner"><div class="lv-t" id="lvBannerT">第 2 关</div><div class="lv-s">更多光点 · 更短时间</div></div>
 <div id="combo"><span id="comboTxt"></span><i id="comboBar"><b></b></i></div>
 <div id="resHud"><span id="resTxt"></span></div>
+<div id="mirrorHud">🪞 镜面回响 · 左右反转</div>
 <div id="redflash"></div>
 <div id="sGlow"></div>
 <div id="boostglow"></div>
@@ -2584,6 +2591,8 @@ function diff(){ return DIFFS[diffKey]; }
 }
 /* 关卡：每完成一关进下一关，光点更多、时间更短 */
 const MAX_LEVEL=9;
+/* v0.4.09 镜面回响：隐藏关第 9 关专属机制——左右操作反转 */
+let mirrorOn=false;
 /* v0.3.23 章节命名：每关一个名字，开局横幅与结算标题使用；v0.3.88 第9关隐藏关「鲸落之地」 */
 const LEVEL_NAMES=['霓虹初醒','雨幕疾行','霓虹深渊','雷暴中心','暴雨终章','永夜鲸歌','深海回响','星海鲸梦','鲸落之地'];
 const levelName=()=>LEVEL_NAMES[Math.min(level,LEVEL_NAMES.length)-1]||('第 '+level+' 关');
@@ -2733,7 +2742,8 @@ const ACHS=[
   {id:'midnight',    icon:'🌙', label:'午夜鲸歌 · 晚上 22-24 点通关一关'},
   {id:'combo24',     icon:'⚡', label:'连击大师二段 · 单关最高连击 x24'},
   {id:'echo10',      icon:'📡', label:'回响鲸歌 · 单关用回声定位收集 10 个光点'},
-  {id:'rewind5',     icon:'⏳', label:'时之鲸 · 单关时光回溯累计恢复 5 秒'}
+  {id:'rewind5',     icon:'⏳', label:'时之鲸 · 单关时光回溯累计恢复 5 秒'},
+  {id:'mirrored',    icon:'🪞', label:'镜中鲸 · 在镜面回响下通关第 9 关'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -2973,7 +2983,10 @@ function startChallenge(){
   echoPick=0;   // v0.4.06 回声定位计数重置
   lvDodge=0; lvDj=0;   // v0.3.12 单关操作统计
   challenge.recentLoss=0; lvRewind=0;   // v0.4.08 时光回溯记账重置
-  showLevelBanner('第 '+level+' 关 · '+levelName(), diff().label+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点');   // v0.3.23 开局章节横幅
+  mirrorOn=(level===9);   // v0.4.09 镜面回响：仅隐藏关第 9 关生效
+  const mirrorHudEl=document.getElementById('mirrorHud');
+  if(mirrorHudEl) mirrorHudEl.classList.toggle('on',mirrorOn);
+  showLevelBanner('第 '+level+' 关 · '+levelName(), diff().label+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点'+(mirrorOn?' · ⚠ 左右反转':''));   // v0.3.23 开局章节横幅
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
   timerNum.textContent=Math.ceil(challenge.timeLeft);
   levelTimeUsed=0;
@@ -3108,6 +3121,7 @@ function finishChallenge(win){
       /* v0.3.88 第 9 关隐藏关「鲸落之地」全通 */
       shareSnap={kind:'final',diff:diff().label,time:fmtT(runTotalUsed),coins:runCoins,rings:runRings};
       award('whalefall');   // v0.3.88 第9关专属成就
+      if(mirrorOn) award('mirrored');   // v0.4.09 镜面回响通关成就
       CLEARED[diffKey]=true;
       try{ localStorage.setItem('ww-cleardiff-v1',JSON.stringify(CLEARED)); }catch(_){}
       if(CLEARED.easy&&CLEARED.normal&&CLEARED.hard&&CLEARED.extreme) award('m4');
@@ -3317,6 +3331,7 @@ function update(dt){
     if(keys.KeyA||keys.ArrowLeft)ix+=1; if(keys.KeyD||keys.ArrowRight)ix-=1;
     ix+=joyState.x; iz+=-joyState.y;
     if(gp){ ix+=gp.x; iz+=-gp.y; }
+    if(mirrorOn) ix=-ix;   // v0.4.09 镜面回响：左右反转（横移轴统一反转，摇杆/手柄/键盘一致）
   }
   const run=keys.ShiftLeft||keys.ShiftRight;
   let mx=0,mz=0;
@@ -4316,7 +4331,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.18 雨势钩子 */
   rainMesh, gpLatch:()=>gpJumpLatch,
   /* v0.3.21 鲸鱼门环钩子 */
-  whaleGate};
+  whaleGate,
+  /* v0.4.09 镜面回响钩子 */
+  mirrorOn:()=>mirrorOn};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
