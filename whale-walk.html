@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.33</title>
+<title>鲸步 WHALE WALK · v0.3.34</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2171,7 +2171,8 @@ const ACHS=[
   {id:'perfect',  icon:'🛡', label:'雨夜舞者 · 单关无伤通关'},
   {id:'dodge5',   icon:'🌀', label:'雨夜游侠 · 单关躲过 5 次冲锋'},
   {id:'dj10',     icon:'⭐', label:'空中舞者 · 单关二段跳 10 次'},
-  {id:'halftime', icon:'⏱', label:'游刃有余 · 单关剩余过半时间通关'}
+  {id:'halftime', icon:'⏱', label:'游刃有余 · 单关剩余过半时间通关'},
+  {id:'l6',       icon:'🐋', label:'永夜鲸歌 · 通关第 6 关'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -2323,6 +2324,7 @@ function finishChallenge(win){
       : {kind:'win',diff:diff().label,level,stars,time:fmtT(levelTimeUsed)};
     if(level===1) award('first');             // v0.3.8 成就
     if(level>=MAX_LEVEL) award('allclear');
+    if(level>=6) award('l6');
     if(!challenge.tookHit) award('perfect');
     if(lvDodge>=5) award('dodge5');           // v0.3.12
     if(lvDj>=10) award('dj10');
