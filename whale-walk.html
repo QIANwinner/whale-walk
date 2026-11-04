@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.01</title>
+<title>鲸步 WHALE WALK · v0.4.02</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -573,6 +573,9 @@
 <script type="module">
 import * as THREE from 'three';
 
+/* v0.4.02 画质档全局（提前声明供场景初始化使用）：ww-quality 低/中/高 */
+let qScale=1; try{ const q=localStorage.getItem('ww-quality')||'mid'; qScale=q==='low'?0.6:q==='high'?1.2:1; }catch(_){}
+
 /* =====================================================================
  *  调色板与工具
  * ===================================================================== */
@@ -616,7 +619,9 @@ addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.up
 const sun = new THREE.DirectionalLight(0x9FB8FF, 0.5);
 sun.position.set(24, 40, 18);
 sun.castShadow = true;
-sun.shadow.mapSize.set(IS_TOUCH?1024:2048, IS_TOUCH?1024:2048);
+/* v0.4.02 阴影贴图 2048→1024（低画质档）：低画质减半内存/采样 */
+const SHADOW_MAP = (IS_TOUCH||qScale<=0.6) ? 1024 : 2048;
+sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
 sun.shadow.camera.left=-40; sun.shadow.camera.right=40;
 sun.shadow.camera.top=40; sun.shadow.camera.bottom=-40;
 sun.shadow.camera.far=90; sun.shadow.bias=-0.0006;
@@ -1222,18 +1227,27 @@ function place(minR,maxR){ // 采样一个位置：避开出生点
     return {x,z};
   }
 }
-/* 远天际线剪影：一圈暗楼 + 顶部红色警示灯 */
-for(let i=0;i<16;i++){
-  const a=i/16*Math.PI*2+0.3;
-  const r=118+rnd()*24;
-  const x=Math.cos(a)*r, z=Math.sin(a)*r;
-  const h=26+rnd()*30;
-  const m=new THREE.Mesh(new THREE.BoxGeometry(15+rnd()*12,h,10+rnd()*9),
-    new THREE.MeshBasicMaterial({color:0x0A1220}));
-  m.position.set(x,h*0.5-2,z); m.rotation.y=rnd()*Math.PI; scene.add(m);
-  const b=new THREE.Mesh(new THREE.SphereGeometry(0.5,8,6),
-    new THREE.MeshBasicMaterial({color:0xFF3B30}));
-  b.position.set(x,h-1.5,z); scene.add(b);
+/* v0.4.02 远景天际线剪影：InstancedMesh 合并（1 次 draw call，替代 16 楼 + 16 灯） */
+{
+  const nB=16;
+  const bInst=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),
+    new THREE.MeshBasicMaterial({color:0x0A1220}), nB);
+  const lInst=new THREE.InstancedMesh(new THREE.SphereGeometry(0.5,8,6),
+    new THREE.MeshBasicMaterial({color:0xFF3B30}), nB);
+  const M=new THREE.Matrix4(), Q=new THREE.Quaternion(), S=new THREE.Vector3(), P=new THREE.Vector3(), E=new THREE.Euler();
+  for(let i=0;i<nB;i++){
+    const a=i/nB*Math.PI*2+0.3;
+    const r=118+rnd()*24;
+    const x=Math.cos(a)*r, z=Math.sin(a)*r;
+    const h=26+rnd()*30;
+    const w=15+rnd()*12, d=10+rnd()*9;
+    P.set(x,h*0.5-2,z); E.set(0,rnd()*Math.PI,0); Q.setFromEuler(E); S.set(w,h,d);
+    M.compose(P,Q,S); bInst.setMatrixAt(i,M);
+    P.set(x,h-1.5,z); E.set(0,0,0); Q.identity(); S.set(1,1,1);
+    M.compose(P,Q,S); lInst.setMatrixAt(i,M);
+  }
+  bInst.instanceMatrix.needsUpdate=true; lInst.instanceMatrix.needsUpdate=true;
+  scene.add(bInst); scene.add(lInst);
 }
 /* 低空雨雾湿气团 */
 const clouds=[];
@@ -1316,9 +1330,12 @@ function addSpire(tower,h){
     new THREE.MeshBasicMaterial({color:0xFF3B30}));
   beacon.position.y=h/2+3.3; tower.add(beacon);
 }
-/* 不透明广告屏：drawFn 在 512×(512h/w) canvas 作画（参照原图的亮屏） */
+/* 不透明广告屏：drawFn 在 512×(512h/w) canvas 作画（参照原图的亮屏）
+   v0.4.02 低画质纹理减半（512→256，显存/采样减半） */
+const BB_SCALE = qScale<=0.6 ? 0.5 : 1;
 function billboard(w,h,drawFn){
-  const c=document.createElement('canvas'); c.width=512; c.height=Math.max(64,Math.round(512*h/w));
+  const cw=Math.max(128,Math.round(512*BB_SCALE));
+  const c=document.createElement('canvas'); c.width=cw; c.height=Math.max(64,Math.round(cw*h/w));
   const g=c.getContext('2d'); drawFn(g,c.width,c.height);
   const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4;
   return new THREE.Mesh(new THREE.PlaneGeometry(w,h),
@@ -1631,23 +1648,38 @@ const mistPts=new THREE.Points(mistGeo,new THREE.PointsMaterial({color:0x9FE0FF,
   transparent:true,opacity:0.30,blending:THREE.AdditiveBlending,depthWrite:false}));
 mistPts.frustumCulled=false; scene.add(mistPts);
 /* ---- 雨丝（相机跟随线段流） ---- */
-const RAIN_N=520;
+/* v0.4.02 雨丝降采样：RAIN_N 动态（低画质 520→260），rebuildRainBuf 重建几何 */
+let RAIN_N=520;
 const rainGeo=new THREE.BufferGeometry();
-{
-  const pos=new Float32Array(RAIN_N*6);
-  for(let i=0;i<RAIN_N;i++){
+let rainVel=new Float32Array(RAIN_N);
+function buildRainBuf(n){
+  RAIN_N=n;
+  const pos=new Float32Array(n*6);
+  for(let i=0;i<n;i++){
     const x=(Math.random()*2-1)*40, y=Math.random()*26, z=(Math.random()*2-1)*40;
     pos[i*6]=x;   pos[i*6+1]=y;     pos[i*6+2]=z;
     pos[i*6+3]=x+0.12; pos[i*6+4]=y-1.6; pos[i*6+5]=z+0.05;
   }
   rainGeo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  rainVel=new Float32Array(n);
+  for(let i=0;i<n;i++) rainVel[i]=24+Math.random()*16;
 }
+buildRainBuf(qScale<=0.6?260:520);   // v0.4.02 低画质减半
 const rainMesh=new THREE.LineSegments(rainGeo,
   new THREE.LineBasicMaterial({color:0x8FC8FF,transparent:true,opacity:0.26,
     blending:THREE.AdditiveBlending,depthWrite:false}));
 rainMesh.frustumCulled=false; scene.add(rainMesh);
-const rainVel=new Float32Array(RAIN_N);
-for(let i=0;i<RAIN_N;i++) rainVel[i]=24+Math.random()*16;
+/* v0.4.02 画质应用：雨丝缓冲重建（低 260 / 高 520）+ 阴影贴图降档（1024/2048） */
+function applyRainQuality(){
+  const target=qScale<=0.6?260:520;
+  if(target!==RAIN_N) buildRainBuf(target);
+  const L=(typeof level==='number'&&level>0)?level:1;
+  rainMesh.geometry.setDrawRange(0, 2*Math.min(RAIN_N, Math.round((300+L*44)*qScale)));
+}
+function applyShadowQuality(){
+  const m=(IS_TOUCH||qScale<=0.6)?1024:2048;
+  if(sun.shadow.mapSize.x!==m){ sun.shadow.mapSize.set(m,m); if(sun.shadow.map) sun.shadow.map.dispose(); sun.shadow.map=null; }
+}
 function updateRain(dt,cam){
   const p=rainGeo.attributes.position.array;
   for(let i=0;i<RAIN_N;i++){
@@ -2278,8 +2310,7 @@ const AudioFX=(()=>{
 let vibOn=true; try{ vibOn=localStorage.getItem('ww-vib')!=='0'; }catch(_){}
 /* v0.3.98 触觉强度滑条（弱/中/强）：ww-vibstr '0.5'/'1'/'1.6' */
 let vibStr=1; try{ vibStr=parseFloat(localStorage.getItem('ww-vibstr')||'1')||1; }catch(_){}
-/* v0.3.98 画质档（低/中/高）：ww-quality，雨丝/粒子缩放 */
-let qScale=1; try{ const q=localStorage.getItem('ww-quality')||'mid'; qScale=q==='low'?0.6:q==='high'?1.2:1; }catch(_){}
+/* qScale 已在模块顶部声明并初始化（v0.4.02），此处不重复声明 */
 function buzz(ms){ try{
   if(!vibOn) return;
   ms=Math.round(ms*vibStr);   // v0.3.98 触觉强度缩放
@@ -3100,9 +3131,9 @@ document.getElementById('lbClear').addEventListener('click',()=>{
 });
 renderLB();
 
-/* 拾取光环粒子池 */
+/* 拾取光环粒子池（v0.4.02 扩充 8→12，复用取最闲） */
 const fxPool=[];
-for(let i=0;i<8;i++){
+for(let i=0;i<12;i++){
   const m=new THREE.Mesh(new THREE.RingGeometry(0.10,0.16,20),
     new THREE.MeshBasicMaterial({color:C.neon,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));
   m.rotation.x=-Math.PI/2; m.visible=false; scene.add(m); fxPool.push({m,life:0});
@@ -3116,7 +3147,7 @@ const starPool=[];
       if(i===0)s.moveTo(px,py); else s.lineTo(px,py); }
     s.closePath(); return s; })();
   const starGeo=new THREE.ShapeGeometry(starShape);
-  for(let i=0;i<10;i++){
+  for(let i=0;i<16;i++){
     const m=new THREE.Mesh(starGeo,new THREE.MeshBasicMaterial({color:0xFFE08A,transparent:true,
       opacity:0,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
     m.visible=false; scene.add(m);
@@ -3124,11 +3155,11 @@ const starPool=[];
   }
 }
 function burst(pos){
-  const f=fxPool.find(f=>f.life<=0)||fxPool[0];
+  const f=fxPool.find(f=>f.life<=0)||fxPool.reduce((a,b)=>a.life<b.life?a:b);
   f.m.position.copy(pos); f.life=1; f.m.visible=true;
-  /* v0.3.91 星形爆散：3 星向四周飞散 + 自旋 */
-  for(let i=0;i<3;i++){
-    const s=starPool.find(x=>x.life<=0); if(!s)break;
+  /* v0.3.91 星形爆散：4 星向四周飞散 + 自旋（v0.4.02 取最闲星粒） */
+  for(let i=0;i<4;i++){
+    const s=starPool.reduce((a,b)=>a.life<b.life?a:b);
     s.m.position.copy(pos);
     s.m.position.y+=0.1;
     s.life=1; s.m.visible=true;
@@ -3947,8 +3978,9 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
   q.value=qv; q.addEventListener('change',()=>{
     qScale=q.value==='low'?0.6:q.value==='high'?1.2:1;
     try{ localStorage.setItem('ww-quality',q.value); }catch(_){}
-    /* v0.3.98 画质切换只改雨丝密度，不重置关卡 */
-    rainMesh.geometry.setDrawRange(0, 2*Math.min(RAIN_N, Math.round((300+level*44)*qScale)));
+    /* v0.4.02 画质切换：重建雨丝缓冲（低 260/高 520）+ 阴影贴图降档，不重置关卡 */
+    applyRainQuality();
+    if(typeof applyShadowQuality==='function') applyShadowQuality();
     toast('画质：'+(q.value==='low'?'低':q.value==='high'?'高':'中')); AudioFX.tick(); });
   const fb=document.getElementById('setFps'), fpsEl=document.getElementById('fps');
   let fpsOn=false; try{ fpsOn=localStorage.getItem('ww-fps')==='1'; }catch(_){}
