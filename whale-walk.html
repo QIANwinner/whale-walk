@@ -3,12 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.94</title>
+<title>鲸步 WHALE WALK · v0.3.95</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
   #app{position:fixed;inset:0;}
   canvas{display:block;touch-action:none;}
+  /* v0.3.95 全屏色调分档：预览/挑战/暂停/结算不同画布色调 */
+  #app canvas{transition:filter .5s ease;}
+  body.paused #app canvas{filter:brightness(.78) saturate(.85);}
+  body.playing #app canvas{filter:brightness(1);}
   /* ---------- HUD ---------- */
   .hud{position:fixed;z-index:10;color:#fff;pointer-events:none;text-shadow:0 1px 6px rgba(10,20,60,.55);}
   /* v0.3.9 刘海屏安全区：固定定位元素避让刘海与手势条 */
@@ -29,7 +33,12 @@
     box-shadow:0 0 18px rgba(47,167,232,.28);}
   #hudHint{bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);font-size:12px;opacity:.9;
     background:rgba(14,20,48,.45);padding:8px 16px;border-radius:999px;backdrop-filter:blur(4px);white-space:nowrap;}
-  #hudQian{bottom:calc(14px + env(safe-area-inset-bottom,0px));right:calc(18px + env(safe-area-inset-right,0px));font-size:12px;font-weight:700;letter-spacing:3px;color:#BFE4FF;}
+  #hudQian{bottom:calc(14px + env(safe-area-inset-bottom,0px));right:calc(18px + env(safe-area-inset-right,0px));font-size:12px;font-weight:700;letter-spacing:3px;color:#BFE4FF;
+    /* v0.3.95 QIAN 霓虹呼吸：仅预览模式脉动发光 */
+    transition:text-shadow .3s;}
+  body:not(.playing) #hudQian{animation:qianNeon 2.6s ease-in-out infinite;}
+  @keyframes qianNeon{0%,100%{text-shadow:0 0 4px rgba(127,212,255,.4);opacity:.7}
+    50%{text-shadow:0 0 14px rgba(53,224,255,.95),0 0 4px rgba(53,224,255,.8);opacity:1;color:#E8F7FF;}}
   #verTag{position:fixed;bottom:calc(34px + env(safe-area-inset-bottom,0px));right:calc(18px + env(safe-area-inset-right,0px));z-index:11;font-size:10px;letter-spacing:1px;color:#BFE4FF;opacity:.4;}
   #metaLine{position:fixed;bottom:calc(56px + env(safe-area-inset-bottom,0px));right:calc(18px + env(safe-area-inset-right,0px));z-index:11;font-size:10px;letter-spacing:1px;color:#9FC6E8;opacity:.6;}
   body.playing #metaLine{display:none;}
@@ -251,6 +260,10 @@
     padding:11px 30px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;
     box-shadow:0 6px 20px rgba(30,95,216,.5);margin-left:10px;}
   #btnNext:hover{transform:translateY(-1px);box-shadow:0 8px 26px rgba(30,95,216,.65);}
+  /* v0.3.95 按钮按下 3D 下压反馈：主按钮 active 下压缩 */
+  #btnPlay:active,#btnRetry:active,#btnNext:active,#btnShare:active,#btnJump:active{
+    transform:translateX(-50%) translateY(1px) scale(.96);box-shadow:0 2px 8px rgba(0,47,167,.4);}
+  #btnRetry:active,#btnNext:active,#btnShare:active,#btnJump:active{transform:translateY(1px) scale(.96);}
   /* v0.3.9 复制成绩按钮 */
   #btnShare{background:rgba(127,212,255,.12);color:#BFE4FF;border:1px solid rgba(127,212,255,.45);
     border-radius:999px;padding:11px 24px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;
@@ -2233,9 +2246,10 @@ btnPlay.addEventListener('click',()=>setMode('play'));
 let paused=false;
 const pauseMenuEl=document.getElementById('pauseMenu');
 function openPause(){ if(mode!=='play')return; paused=true; pauseMenuEl.classList.add('show');
+  document.body.classList.add('paused');   // v0.3.95 暂停色调
   document.getElementById('pmStats').textContent=   // v0.3.9 暂停即见当前进度；v0.3.24 加成就进度
     `难度 ${diff().label} · 第 ${level}/${MAX_LEVEL} 关 ${levelName()} · 剩余 ${Math.ceil(challenge.timeLeft)} 秒 · 收集 ${score}/${TOTAL} · 鲸币 ${coinCount}/${coinTotal}${(()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return ' · 全星 '+f+'/'+MAX_LEVEL;})()}${bestOf()?' · 本难度最佳 '+fmtT(bestOf().time):''} · 🏆 ${achGot.length}/${ACHS.length}`; }
-function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); }
+function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); document.body.classList.remove('paused'); }   // v0.3.95 移除暂停色调
 function togglePause(){ if(mode!=='play')return; paused?closePause():openPause(); }
 document.getElementById('pmResume').addEventListener('click',()=>closePause());
 document.getElementById('pmRestart').addEventListener('click',()=>{ closePause(); resetChallenge(); });
@@ -2254,6 +2268,7 @@ let score=0; let TOTAL=orbs.length;
 const clock=new THREE.Clock();
 let elapsed=0;
 let blinkT=0, cheerT=0;   // 眨眼计时 / 欢呼计时
+let tailWagLeft=0, tailWagT=0;   // v0.3.95 胜利鲸尾摆动剩余次数/计时
 const boostglowEl=document.getElementById('boostglow');
 const spherePos=new THREE.Vector3();
 /* v0.3.10 连击辉光：零分配颜色复用 */
@@ -2595,6 +2610,7 @@ function finishChallenge(win){
   challenge.active=false; challenge.done=win; challenge.failed=!win;
   levelTimeUsed=levelCfg().time-challenge.timeLeft;
   const stars=win?starsFor(challenge.timeLeft):0;
+  if(win) tailWagLeft=stars;   // v0.3.95 胜利鲸尾摆动次数 = 星级
   const rmRank=document.getElementById('rmRank');
   if(win){
     document.getElementById('btnRetry').textContent='再来一局';
@@ -3015,6 +3031,13 @@ function update(dt){
   /* ---- 尾巴 ---- */
   P.tailJ.rotation.y=Math.sin(t*2.4)*0.16*(1+swing*1.4)+Math.sin(ph)*0.06*swing;
   P.tailJ.rotation.x=Math.sin(ph*2+0.8)*0.06*swing - 0.02 + Math.sin(t*1.3)*0.03;
+  /* v0.3.95 胜利鲸尾摆动：按星级次数摆动（每次 0.5s 大幅摆） */
+  if(tailWagLeft>0){
+    tailWagT+=dt;
+    const wgt=Math.sin(tailWagT*10)*0.9*Math.min(1,tailWagT*4)*(tailWagLeft?1:0);
+    P.tailJ.rotation.y+=wgt;
+    if(tailWagT>0.55){ tailWagT=0; tailWagLeft--; }
+  }
   P.flukeG.rotation.z=Math.sin(t*1.6)*0.12;
 
   /* ---- 头发 / 耳 / 裙 摆动 ---- */
@@ -3125,8 +3148,9 @@ function update(dt){
   whaleGate.userData.tor.rotation.z+=dt*0.3;
   whaleGate.userData.tor2.rotation.z-=dt*0.2;
   whaleGate.userData.whale.material.opacity=0.55+0.25*Math.sin(t*2.1);
-  /* 雨 & 飞车 */
-  updateRain(dt,camera.position);
+  /* 雨 & 飞车（v0.3.95 受击时雨幕局部减速：hitStop 期间雨速 ×0.5） */
+  const rainSlow=(hitStop>0)?0.5:1;
+  updateRain(dt*rainSlow,camera.position);
   if(mode==='play') updatePuddle(dt);   // v0.3.91 地面雨滴涟漪（仅游玩时）
   rainMesh.material.opacity=0.26+(lightningT>0?lightningT*0.5:0);   // v0.3.27 闪电时雨丝增亮
   drone.position.x+=dt*6;
