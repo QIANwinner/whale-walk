@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.99</title>
+<title>鲸步 WHALE WALK · v0.4.00</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -360,8 +360,12 @@
     padding:30px 36px;text-align:center;box-shadow:0 0 44px rgba(255,210,90,.25);min-width:270px;max-width:88vw;}
   #achBox .ab-t{font-size:24px;font-weight:900;color:#FFD25A;letter-spacing:3px;}
   #achBox .ab-s{font-size:12px;color:#BFE4FF;opacity:.85;margin:6px 0 10px;letter-spacing:1px;}
-  #achBar{height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;margin:0 0 14px;}
+  #achBar{height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;margin:0 0 10px;}
   #achBar b{display:block;height:100%;width:0%;background:linear-gradient(90deg,#FFD25A,#FF9D3A);box-shadow:0 0 10px rgba(255,210,90,.7);transition:width .4s ease;}
+  /* v0.4.00 成就搜索框 */
+  #achSearch{width:100%;box-sizing:border-box;background:rgba(14,22,48,.9);border:1px solid rgba(127,212,255,.4);
+    border-radius:8px;padding:6px 12px;font-size:12px;color:#BFE4FF;font-family:inherit;margin-bottom:10px;outline:none;}
+  #achSearch:focus{border-color:rgba(53,224,255,.8);}
   #achLegend{display:none;margin-top:10px;font-size:13px;color:#FFD25A;letter-spacing:2px;font-weight:800;text-shadow:0 0 14px rgba(255,210,90,.8);}
   .ach-row{display:flex;align-items:center;gap:10px;text-align:left;padding:7px 4px;font-size:13px;color:#EAF4FF;}
   .ach-row .ic{font-size:20px;}
@@ -382,6 +386,22 @@
   #tutOk{background:linear-gradient(90deg,#002FA7,#1E5FD8);color:#fff;border:none;border-radius:999px;
     padding:9px 30px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:2px;
     box-shadow:0 5px 16px rgba(0,47,167,.5);font-family:inherit;}
+  #tutPage{font-size:11px;color:#8FC8FF;opacity:.8;margin-right:10px;letter-spacing:1px;}
+  /* v0.4.00 语言选择弹窗 */
+  #langModal{position:fixed;inset:0;z-index:46;display:none;align-items:center;justify-content:center;
+    background:rgba(6,10,26,.82);backdrop-filter:blur(6px);}
+  #langModal.show{display:flex;}
+  #langBox{background:rgba(10,16,38,.96);border:1px solid rgba(127,212,255,.45);border-radius:22px;
+    padding:32px 44px;text-align:center;box-shadow:0 0 44px rgba(47,167,232,.35);}
+  #langBox .lm-t{font-size:22px;font-weight:900;color:#7FD4FF;letter-spacing:2px;
+    text-shadow:0 0 14px rgba(53,224,255,.7);}
+  #langBox .lm-s{font-size:12px;color:#BFE4FF;opacity:.8;margin:10px 0 22px;letter-spacing:1px;}
+  .lm-btns{display:flex;gap:14px;justify-content:center;}
+  .lm-btns button{background:linear-gradient(90deg,#002FA7,#1E5FD8);color:#fff;border:none;border-radius:999px;
+    padding:11px 36px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:2px;font-family:inherit;
+    box-shadow:0 5px 18px rgba(0,47,167,.5);transition:transform .12s;}
+  .lm-btns button:hover{transform:translateY(-1px);}
+  .lm-btns button:active{transform:scale(.96);}
 </style>
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js" } }
@@ -471,17 +491,40 @@
 <div id="fps"></div>
 <div id="tut">
   <div class="tt">散步指南</div>
-  <div class="tr" id="tutMove"></div>
-  <div class="tr"><b>跳跃</b>：空格 / 跳跃按钮，空中可二段跳（360° 旋体）</div>
-  <div class="tr"><b>躲避</b>：无人机双哔预警后会直线冲锋，横移躲开</div>
-  <div class="tr"><b>目标</b>：限时收集全部光点，金色鲸币与穿环送时间</div>
-  <div class="ta"><button id="tutOk">知道了</button></div>
+  <div id="tutBase">
+    <div class="tr" id="tutMove"></div>
+    <div class="tr"><b>跳跃</b>：空格 / 跳跃按钮，空中可二段跳（360° 旋体）</div>
+    <div class="tr"><b>躲避</b>：无人机双哔预警后会直线冲锋，横移躲开</div>
+    <div class="tr"><b>目标</b>：限时收集全部光点，金色鲸币与穿环送时间</div>
+  </div>
+  <!-- v0.4.00 教程两页：连击 / 道具 -->
+  <div id="tutCombo" class="tut-page" style="display:none">
+    <div class="tr"><b>连击</b>：连续收集提升 COMBO，x3 起每级 +2 秒；窗口随关卡延长，极限难度加成 1.25×</div>
+    <div class="tr"><b>辉光</b>：COMBO x8 后角色金色轮廓持续发光</div>
+  </div>
+  <div id="tutItem" class="tut-page" style="display:none">
+    <div class="tr"><b>道具</b>：🛡护盾 / 🧲磁铁 / ⚡加速 / 🌀子弹时间 / 🧊时间冻结 / 💰双倍鲸币</div>
+    <div class="tr"><b>新玩法</b>：🪙金色鲸币 +3 秒 · 💫穿环 +2 秒 · 跳顶无人机可消灭 +2 秒</div>
+  </div>
+  <div class="ta"><span id="tutPage">1/3</span><button id="tutOk">下一页</button></div>
+</div>
+<!-- v0.4.00 首次启动语言选择（中/英） -->
+<div id="langModal">
+  <div id="langBox">
+    <div class="lm-t">🌐 选择语言 · Choose Language</div>
+    <div class="lm-s">语言偏好仅本地保存 · Preference saved locally</div>
+    <div class="lm-btns">
+      <button id="langZh">中文</button>
+      <button id="langEn">English</button>
+    </div>
+  </div>
 </div>
 <div id="achModal">
   <div id="achBox">
     <div class="ab-t">成就墙</div>
     <div class="ab-s">鲸步旅途的里程碑 · QIAN</div>
     <div id="achBar"><b id="achBarFill"></b></div>
+    <input id="achSearch" type="text" placeholder="搜索成就…" autocomplete="off">
     <div id="achList"></div>
     <div id="achLegend">🌠 鲸界传说 · 全部成就达成</div>
     <button id="achClose">关闭</button>
@@ -2529,6 +2572,17 @@ function renderLevelPick(){
     if(i===9 && !locked) b.classList.add('hidden9');   // v0.3.88 隐藏关金色角标
     if(i<=8 && !locked && hiddenUnlocked() && (STARS[i]||0)>0) b.classList.add('extreme9');   // v0.3.89 已极限全通关卡角标
     b.addEventListener('click',()=>{ startLevel=i; renderLevelPick(); toast('起始关卡：第 '+i+' 关'); });
+    /* v0.4.00 长按预览该关：600ms 长按显示关卡横幅信息（独立计算，不依赖全局 level） */
+    let lpT=null;
+    b.addEventListener('pointerdown',()=>{ lpT=setTimeout(()=>{
+      if(locked) return;
+      startLevel=i; renderLevelPick();
+      const pOrbs=(diffKey==='easy'?22:diffKey==='hard'?28:24)+(i-1)*4;
+      const pTime=diffKey==='normal'?Math.max(28,Math.round(78-(i-1)*7.2)):Math.max(28,Math.round(diff().time-(i-1)*8));
+      showLevelBanner('第 '+i+' 关 · '+(LEVEL_NAMES[i-1]||('第 '+i+' 关')), '预览 · '+pOrbs+' 光点 · 时间 '+pTime+' 秒 · '+diff().label);
+      toast('👁 预览第 '+i+' 关（长按）');
+    },600); });
+    ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>{ if(lpT){clearTimeout(lpT); lpT=null;} }));
     levelPickEl.appendChild(b);
   }
 }
@@ -2598,13 +2652,16 @@ const ACH_PROG={
   allStars:()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return f+'/'+MAX_LEVEL;},
   m4:()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c+'/4';}
 };
+/* v0.4.00 成就墙搜索过滤 */
+let achQuery='';
 function renderAch(){
   const list=document.getElementById('achList');
-  list.innerHTML=ACHS.map(a=>{
+  const q=achQuery.trim().toLowerCase();
+  list.innerHTML=ACHS.filter(a=>!q||a.label.toLowerCase().includes(q)||a.icon.includes(q)).map(a=>{
     const got=achGot.includes(a.id);
     const prog=!got&&ACH_PROG[a.id]?ACH_PROG[a.id]():'';
     return `<div class="ach-row ${got?'got':'lock'}"><span class="ic">${a.icon}</span><span>${a.label}${got?'':'（未达成'+(prog?' · '+prog:'')+'）'}</span></div>`;
-  }).join('');
+  }).join('') || '<div style="opacity:.6;text-align:center;padding:8px">无匹配成就</div>';
   document.getElementById('achCount').textContent=achGot.length+'/'+ACHS.length;
   const fill=document.getElementById('achBarFill');   // v0.3.58 成就进度条
   if(fill) fill.style.width=(achGot.length/ACHS.length*100).toFixed(1)+'%';
@@ -2612,16 +2669,43 @@ function renderAch(){
   if(lg) lg.style.display = achGot.length>=ACHS.length?'block':'none';
   if(typeof updateLegend==='function') updateLegend();   // v0.3.72 主界面同步
 }
+document.getElementById('achSearch').addEventListener('input',e=>{ achQuery=e.target.value; renderAch(); });
 document.getElementById('btnAch').addEventListener('click',()=>{ renderAch(); document.getElementById('achModal').classList.add('show'); });
 document.getElementById('achClose').addEventListener('click',()=>document.getElementById('achModal').classList.remove('show'));
 /* v0.3.20 新手引导：首次进入挑战模式显示，localStorage 标记后不再打扰 */
 function showTutIfFirst(){
   try{ if(localStorage.getItem('ww-tut-v1')==='1') return; }catch(_){}
   document.getElementById('tutMove').innerHTML = (isTouch?'<b>移动</b>：左摇杆，右侧拖动转视角':'<b>移动</b>：WASD / 方向键，Shift 奔跑');
+  tutP=1; tutRender();   // v0.4.00 教程从第 1 页开始
   document.getElementById('tut').classList.add('show');
   try{ localStorage.setItem('ww-tut-v1','1'); }catch(_){}
 }
-document.getElementById('tutOk').addEventListener('click',()=>document.getElementById('tut').classList.remove('show'));
+/* v0.4.00 教程分页：基础 → 连击 → 道具 */
+let tutP=1;
+const tutOkBtn=document.getElementById('tutOk');
+function tutRender(){
+  document.getElementById('tutBase').style.display=tutP===1?'':'none';
+  document.getElementById('tutCombo').style.display=tutP===2?'':'none';
+  document.getElementById('tutItem').style.display=tutP===3?'':'none';
+  document.getElementById('tutPage').textContent=tutP+'/3';
+  tutOkBtn.textContent=tutP===3?'知道了':'下一页';
+}
+tutOkBtn.addEventListener('click',()=>{
+  if(tutP<3){ tutP++; tutRender(); AudioFX.tick(); }
+  else document.getElementById('tut').classList.remove('show');
+});
+document.getElementById('tut').addEventListener('pointerdown',()=>AudioFX.tick());
+/* v0.4.00 首次启动语言选择：仅本地存储偏好（双语切换见 #76） */
+{
+  const lm=document.getElementById('langModal');
+  try{
+    if(!localStorage.getItem('ww-lang')) lm.classList.add('show');
+  }catch(_){}
+  const pick=l=>{ try{ localStorage.setItem('ww-lang',l); }catch(_){}
+    lm.classList.remove('show'); AudioFX.tick(); toast(l==='zh'?'已选择中文':'Language: English'); };
+  document.getElementById('langZh').addEventListener('click',()=>pick('zh'));
+  document.getElementById('langEn').addEventListener('click',()=>pick('en'));
+}
 /* 雷声 + 闪电 */
 let thunderT=12;
 const lightningEl=document.getElementById('lightning');
@@ -2903,11 +2987,11 @@ function resetChallenge(){
 let shareSnap=null;
 function shareText(){ if(!shareSnap)return '';
   const u=location.href;
-  /* v0.3.99 四难度进度：CLEARED 计数 */
+  /* v0.3.99 四难度进度：CLEARED 计数；v0.4.00 中文标点版本 */
   const c4=()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c;};
-  if(shareSnap.kind==='win') return `🐳 鲸步 WHALE WALK · ${shareSnap.diff} · 第${shareSnap.level}关 ${shareSnap.stars}★ 评级${shareSnap.rank} · 用时 ${shareSnap.time} · 四难度 ${c4()}/4\n${u}`;
-  if(shareSnap.kind==='final') return `🐳 鲸步 WHALE WALK · ${shareSnap.diff} · ${MAX_LEVEL}关全通！总用时 ${shareSnap.time} · 鲸币 ${shareSnap.coins} · 穿环 ${shareSnap.rings} · 四难度 ${c4()}/4\n${u}`;
-  return `🐳 鲸步 WHALE WALK · ${shareSnap.diff} · 第${shareSnap.level}关 时间到 · 收集 ${shareSnap.score}/${shareSnap.total}\n${u}`; }
+  if(shareSnap.kind==='win') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 ${shareSnap.stars}★（评级：${shareSnap.rank}） · 用时：${shareSnap.time} · 四难度通关：${c4()}/4\n${u}`;
+  if(shareSnap.kind==='final') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · ${MAX_LEVEL}关全通！总用时：${shareSnap.time} · 鲸币：${shareSnap.coins} · 穿环：${shareSnap.rings} · 四难度通关：${c4()}/4\n${u}`;
+  return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 时间到 · 收集：${shareSnap.score}/${shareSnap.total}\n${u}`; }
 document.getElementById('btnShare').addEventListener('click',()=>{
   const t=shareText(); if(!t)return;
   const fallback=()=>{ const ta=document.createElement('textarea');
