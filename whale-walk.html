@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.93</title>
+<title>鲸步 WHALE WALK · v0.3.94</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1783,6 +1783,11 @@ function clearPowerups(){
 const coins=[], coinGroup=new THREE.Group(); scene.add(coinGroup);
 const rings=[], ringGroup=new THREE.Group(); scene.add(ringGroup);
 const bouncePads=[], boostStrips=[];
+/* v0.3.94 弹跳落点预测圈：跳跃/弹跳时地面显示预计落点圆圈 */
+const landPred=new THREE.Mesh(new THREE.RingGeometry(0.32,0.42,24),
+  new THREE.MeshBasicMaterial({color:0x7FE4FF,transparent:true,opacity:0,side:THREE.DoubleSide,
+    depthWrite:false,blending:THREE.AdditiveBlending}));
+landPred.rotation.x=-Math.PI/2; landPred.visible=false; scene.add(landPred);
 let coinCount=0, coinTotal=3, boostT=0, ringCount=0, ringTotal=0;
 const coinNumEl=document.getElementById('coinNum');
 const coinGeo=new THREE.CylinderGeometry(0.22,0.22,0.06,24);
@@ -2430,11 +2435,22 @@ function award(id){
   toast('🏆 成就达成：'+a.label); AudioFX.pickup();
 }
 /* v0.3.10 成就墙：预览模式随时查看收集进度 */
+/* v0.3.94 成就进度查询：未达成显示当前/目标（累计类） */
+const ACH_PROG={
+  orb150:()=>Math.min(ORB,150)+'/150',
+  coin30:()=>Math.min(COIN,30)+'/30',
+  clears10:()=>Math.min(CLEARS,10)+'/10',
+  combo8:()=>'单关达成', combo12:()=>'单关达成', combo16:()=>'单关达成', combo24:()=>'单关达成',
+  dodge5:()=>'单关达成', dj10:()=>'单关达成',
+  allStars:()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return f+'/'+MAX_LEVEL;},
+  m4:()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c+'/4';}
+};
 function renderAch(){
   const list=document.getElementById('achList');
   list.innerHTML=ACHS.map(a=>{
     const got=achGot.includes(a.id);
-    return `<div class="ach-row ${got?'got':'lock'}"><span class="ic">${a.icon}</span><span>${a.label}${got?'':'（未达成）'}</span></div>`;
+    const prog=!got&&ACH_PROG[a.id]?ACH_PROG[a.id]():'';
+    return `<div class="ach-row ${got?'got':'lock'}"><span class="ic">${a.icon}</span><span>${a.label}${got?'':'（未达成'+(prog?' · '+prog:'')+'）'}</span></div>`;
   }).join('');
   document.getElementById('achCount').textContent=achGot.length+'/'+ACHS.length;
   const fill=document.getElementById('achBarFill');   // v0.3.58 成就进度条
@@ -2655,7 +2671,7 @@ function finishChallenge(win){
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 最高连击 x'+(challenge.comboMax||0)
-        +'<br>本局净得分 <b>'+(score+Math.round((challenge.comboBonus||0)+challenge.timeLeft))+'</b> 分'
+        +'<br>本局净得分 <b id="rmNetScore">0</b> 分'
         +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)+'）'   // v0.3.89
         +(stars<3?'<br>下次快 '+fmtT(levelCfg().time*0.42-challenge.timeLeft)+' 即可 3★':'')
         +(level<8?'<br>下一关：'+(level+1)+' '+LEVEL_NAMES[level]+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
@@ -2704,6 +2720,16 @@ function finishChallenge(win){
     btnNext.style.display='none';
   }
   rmEl.classList.add('show');
+  /* v0.3.94 结算净得分数字滚动动画 */
+  {
+    const ns=document.getElementById('rmNetScore');
+    if(ns&&challenge.done&&!challenge.failed){
+      const target=score+Math.round((challenge.comboBonus||0)+challenge.timeLeft);
+      let cur=0; const step=Math.max(1,Math.ceil(target/40));
+      const iv=setInterval(()=>{ cur=Math.min(target,cur+step); ns.textContent=cur;
+        if(cur>=target) clearInterval(iv); },28);
+    }
+  }
 }
 function nextLevel(){ level++; retainPending=null; startChallenge(); }   // v0.3.89 胜利进下一关清保留
 btnNext.addEventListener('click',nextLevel);
@@ -2961,6 +2987,14 @@ function update(dt){
     P.armR.sh.rotation.z = -0.52-swing*0.06 - ch*(2.5+wave);
     P.armL.sh.rotation.x = -0.2*ch; P.armR.sh.rotation.x = -0.2*ch;
     P.armL.elbow.rotation.z = 0.26+0.45*ch; P.armR.elbow.rotation.z = -0.26-0.45*ch;
+  }
+  /* v0.3.94 磁吸时手臂微张：磁铁道具生效期间双臂外展迎接光点 */
+  if(powerState.magnet>0 && cheerT<=0){
+    const mag=Math.min(1,powerState.magnet/2);
+    P.armL.sh.rotation.z=0.52+swing*0.06+mag*0.55;
+    P.armR.sh.rotation.z=-0.52-swing*0.06-mag*0.55;
+    P.armL.sh.rotation.x=-0.25*mag; P.armR.sh.rotation.x=-0.25*mag;
+    P.armL.elbow.rotation.z=0.26+mag*0.3; P.armR.elbow.rotation.z=-0.26-mag*0.3;
   }
   /* 全身 bob + 前倾 */
   P.body.position.y=Math.abs(Math.sin(ph))*0.03*swing + (st.grounded?0:0.02);
@@ -3284,6 +3318,15 @@ function update(dt){
     bp.scale.y=lerp(bp.scale.y,1,1-Math.pow(0.02,dt));
     u.rim.material.opacity=0.45+0.3*Math.sin(t*4+bp.position.z);
   }
+  /* v0.3.94 弹跳落点预测圈：跳跃/弹跳中显示落点（沿朝向预测） */
+  if(mode==='play' && st.airT>0){
+    landPred.visible=true;
+    const fx=Math.sin(st.yaw), fz=Math.cos(st.yaw);
+    const lx=girl.position.x+fx*st.speed*0.35, lz=girl.position.z+fz*st.speed*0.35;   // 沿朝向预测
+    landPred.position.set(lx,terrainH(lx,lz)+0.05,lz);
+    landPred.material.opacity=0.35+0.2*Math.sin(t*6);
+    landPred.scale.setScalar(0.85+0.15*Math.sin(t*6));
+  } else landPred.visible=false;
 
   /* ---- 雷声远滚 + 闪电 ---- */
   if(mode==='play' && challenge.active){
@@ -3607,10 +3650,18 @@ function renderLoop(){
   if(fpsN>=60){ if(fpsAcc/fpsN>1/30 && mode==='play') autoDegrade(); fpsAcc=0; fpsN=0; }
 }
 renderer.setAnimationLoop(renderLoop);
-/* 移除 loader（首帧渲染后） */
-requestAnimationFrame(()=>requestAnimationFrame(()=>{
-  document.getElementById('loader').classList.add('off');
-}));
+/* v0.3.94 加载页分阶段文案：拼装 → 装雨 → 点灯（每 0.5s 一阶段） */
+{
+  const msg=document.querySelector('#loader .msg');
+  const phases=['正在拼装蓝鲸女仆…','正在装点雨幕…','正在点亮霓虹…'];
+  let pi=0;
+  const iv=setInterval(()=>{ pi++; if(pi<phases.length&&msg) msg.textContent=phases[pi]; },500);
+  const off=()=>{ clearInterval(iv); };
+  /* 移除 loader（首帧渲染后） */
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    document.getElementById('loader').classList.add('off');
+  }));
+}
 /* ---- 自查调试钩子（不参与游戏逻辑） ---- */
 window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, audio:AudioFX, mm:drawMinimap,
   challenge, patrolDrones, powerUps, platforms, powerState, levelCfg,
