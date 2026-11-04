@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.95</title>
+<title>鲸步 WHALE WALK · v0.3.96</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1931,7 +1931,7 @@ const AudioFX=(()=>{
     o.connect(og); og.connect(bus); o.start(t0); o.stop(t0+dur+0.02);
   }
   /* 短音：起跳 / 拾取琶音 */
-  function tone(f0,f1,dur,vol,type,delay){
+  function tone(f0,f1,dur,vol,type,delay,pan){
     if(muted||!ac())return;
     const t0=ctx.currentTime+(delay||0);
     const o=ctx.createOscillator(); o.type=type||'triangle';
@@ -1941,8 +1941,15 @@ const AudioFX=(()=>{
     g.gain.setValueAtTime(0.0001,t0);
     g.gain.exponentialRampToValueAtTime(vol,t0+0.015);
     g.gain.exponentialRampToValueAtTime(0.0008,t0+dur);
-    o.connect(g); g.connect(bus); o.start(t0); o.stop(t0+dur+0.03);
+    /* v0.3.96 立体声：pan!=0 时经 StereoPanner 分左右（预警双哔左右声道） */
+    if(pan&&ctx.createStereoPanner){
+      const p=ctx.createStereoPanner(); p.pan.value=pan;
+      o.connect(g); g.connect(p); p.connect(bus);
+    } else { o.connect(g); g.connect(bus); }
+    o.start(t0); o.stop(t0+dur+0.03);
   }
+  /* v0.3.96 五声音阶统一表（宫商角徵羽）：pickup/ring 等复用 */
+  const PENTA=[523,587,659,784,880];
   /* ---- 雨声底噪：粉噪 + 低通双层，持续环境音（跟随 M 静音） ---- */
   let rainGain=null, rainLFO=null;
   let rainLevel=0.05;
@@ -1970,13 +1977,15 @@ const AudioFX=(()=>{
   }
   function setRain(v){ if(rainGain) rainGain.gain.setTargetAtTime(v, ctx.currentTime, 0.3); }
   return {
+    /* v0.3.96 背景雨声随进度渐强：0-1 进度映射到雨量（0.04→0.11 基础 → 渐强） */
+    rain(p){ if(rainGain) rainGain.gain.setTargetAtTime(Math.min(0.14, 0.05+p*0.09), ctx.currentTime, 0.4); },
     foot(run){ nSteps++; thump(run?120:170,run?0.090:0.075,run?0.40:0.24,true);
                tone(run?150:210,run?70:95,0.07,run?0.14:0.10,'sine'); },
     jump(){ tone(300,660,0.15,0.16); },
     land(v){ thump(Math.max(55,90-v*4),0.13,Math.min(0.5,0.22+v*0.05),true); },
-    /* v0.3.19 五声音阶拾取音：连击沿宫商角徵羽爬音，10 连升八度 */
-    pickup(cb){ nPick++; const scale=[523,587,659,784,880]; const k=Math.max(0,cb||0);
-      const f=scale[k%5]*(k>=10?2:1);
+    /* v0.3.19 五声音阶拾取音：连击沿宫商角徵羽爬音，10 连升八度；v0.3.96 统一用 PENTA 表 */
+    pickup(cb){ nPick++; const k=Math.max(0,cb||0);
+      const f=PENTA[k%5]*(k>=10?2:1);
       tone(f,f,0.12,0.14,'sine');
       tone(f*1.33,f*1.33,0.14,0.12,'sine',0.06); },
     /* 全收集庆祝：上行琶音 + 亮和弦 */
@@ -2034,22 +2043,24 @@ const AudioFX=(()=>{
     coin(){ if(muted||!ac())return;
       tone(988,988,0.09,0.13,'sine');
       tone(1319,1319,0.22,0.15,'sine',0.07); },
-    /* v0.3.4 穿环：上行三连琶音 */
+    /* v0.3.4 穿环：三连琶音；v0.3.96 上行 5 度（523→784→1174） */
     ring(){ if(muted||!ac())return;
       tone(523,523,0.10,0.12,'triangle');
       tone(784,784,0.10,0.13,'triangle',0.07);
-      tone(1047,1047,0.24,0.15,'triangle',0.14); },
+      tone(1174,1174,0.24,0.15,'triangle',0.14); },
     /* v0.3.4 弹跳：快速上扬滑音 */
+    /* v0.3.4 弹跳；v0.3.96 落地软音：低频 thump + 短促软着地 */
     bounce(){ if(muted||!ac())return;
-      tone(180,620,0.16,0.18,'square',0.02); },
+      thump(85,0.20,0.22,true);
+      tone(180,620,0.16,0.16,'square',0.02); },
     /* v0.3.5 二段跳：双音上扬 */
     djump(){ if(muted||!ac())return;
       tone(520,980,0.12,0.15,'triangle');
       tone(760,1240,0.12,0.10,'sine',0.05); },
-    /* v0.3.11 无人机预警双哔 + 冲刺呼啸 */
+    /* v0.3.11 无人机预警双哔；v0.3.96 分左右声道（左哔→右哔） */
     warn(){ if(muted||!ac())return;
-      tone(1250,1250,0.06,0.12,'square');
-      tone(1250,1250,0.06,0.12,'square',0.11); },
+      tone(1250,1250,0.06,0.12,'square',0,-0.7);
+      tone(1250,1250,0.06,0.12,'square',0.11,0.7); },
     dashWhiz(){ if(muted||!ac())return;
       tone(900,240,0.28,0.12,'sawtooth'); },
     /* v0.3.85 撞车专属：低频金属冲击（区别于落地/无人机），音调区分 */
@@ -2542,6 +2553,7 @@ function setupLevel(){
   tintTarget.copy(_tintC);   // v0.3.92 关卡色调渐变：设目标，update 连续 lerp
   /* v0.3.18 雨势随关卡增强：激活雨丝段数 300+44×level（drawRange 控制顶点数=段数×2） */
   rainMesh.geometry.setDrawRange(0, 2*Math.min(RAIN_N, 300+level*44));
+  AudioFX.rain(0);   // v0.3.96 关卡开始重置背景雨量
 }
 function startChallenge(){
   setupLevel();
@@ -3104,6 +3116,7 @@ function update(dt){
         blinkT=1;   // 收集时眨一下眼
         burst(o.position);
         AudioFX.pickup(challenge.combo+1);   // v0.3.8 连击音高递进
+        AudioFX.rain(score/(TOTAL||1));   // v0.3.96 背景雨声随收集进度渐强
         buzz(12);   // v0.3.3 收集光点轻振动
         if(score===TOTAL){
           if(challenge.active) finishChallenge(true);
