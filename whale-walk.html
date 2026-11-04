@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.91</title>
+<title>鲸步 WHALE WALK · v0.3.92</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -93,6 +93,9 @@
   #redflash{position:fixed;inset:0;z-index:30;pointer-events:none;background:radial-gradient(ellipse at center,
     rgba(255,40,40,0) 40%,rgba(255,30,30,.55) 100%);opacity:0;transition:opacity .15s;}
   #redflash.on{opacity:1;transition:none;}
+  /* v0.3.92 低时间/低血全屏红色呼吸（常驻脉动，非受击闪） */
+  #redflash.breath{opacity:1;transition:none;animation:redBreath 1.6s ease-in-out infinite;}
+  @keyframes redBreath{0%,100%{opacity:.35}50%{opacity:.75}}
   #sGlow{position:fixed;inset:0;z-index:29;pointer-events:none;opacity:0;transition:opacity .4s;
     background:radial-gradient(ellipse at center,rgba(255,215,110,0) 52%,rgba(255,215,110,.4) 100%);}
   #sGlow.on{opacity:1;}
@@ -2033,6 +2036,11 @@ const AudioFX=(()=>{
       tone(140,55,0.30,0.26,'sawtooth');
       tone(90,38,0.34,0.22,'square',0.03);
       tone(1800,300,0.10,0.10,'sawtooth',0.01); },
+    /* v0.3.92 S 评级专属：高音琶音头（在鲸歌前奏出） */
+    sRank(){ if(muted||!ac())return;
+      const seq=[1568,1976,2349,2637,3136];
+      seq.forEach((f,i)=>tone(f,f,0.16,0.12,'sine',i*0.05));
+      tone(4186,4186,0.4,0.10,'sine',seq.length*0.05); },
     /* v0.3.4 加速：噪声呼啸 + 高频滑升 */
     boost(){ if(muted||!ac())return;
       const t0=ctx.currentTime;
@@ -2484,7 +2492,7 @@ function showLevelBanner(title,sub){
 /* 每关布置：光点 / 无人机 / 飞车 / 清道具 */
 /* v0.3.15 关卡氛围梯度：雾色/天幕随关卡由冷蓝渐入深紫 */
 const LEVEL_TINTS=[0x0A1122,0x0C0F26,0x0E0D2A,0x100C2C,0x120A24,0x140A28,0x160A2C,0x18082E];
-const _tintC=new THREE.Color();
+const _tintC=new THREE.Color(), tintTarget=new THREE.Color();   // v0.3.92 色调渐变目标
 function setupLevel(){
   const cfg=levelCfg();
   placeOrbs(cfg.orbs, cfg.high);
@@ -2497,8 +2505,7 @@ function setupLevel(){
   thunderT=rand(cfg.thunderMin,cfg.thunderMax);
   puTimer=Math.max(2.5, rand(4,7)-(level-1)*0.3);
   _tintC.setHex(LEVEL_TINTS[Math.min(level,LEVEL_TINTS.length)-1]);
-  scene.fog.color.copy(_tintC);
-  scene.background.copy(_tintC);
+  tintTarget.copy(_tintC);   // v0.3.92 关卡色调渐变：设目标，update 连续 lerp
   /* v0.3.18 雨势随关卡增强：激活雨丝段数 300+44×level（drawRange 控制顶点数=段数×2） */
   rainMesh.geometry.setDrawRange(0, 2*Math.min(RAIN_N, 300+level*44));
 }
@@ -2577,6 +2584,7 @@ function finishChallenge(win){
     rmRank.textContent=rank;
     if(rank==='S'){
       award('srank');   // v0.3.53 S 评级成就
+      AudioFX.sRank();   // v0.3.92 S 评级专属高音琶音
       const sg=document.getElementById('sGlow');   // v0.3.74 S 评级金色辉光
       if(sg){ sg.classList.add('on'); setTimeout(()=>sg.classList.remove('on'),2400); }
     }
@@ -2802,7 +2810,7 @@ function update(dt){
   const t=elapsed;
 
   /* ---- 相机 ---- */
-  if(mode==='preview'&&!dragging){ camS.tYaw+=dt*0.22; }
+  if(mode==='preview'&&!dragging){ camS.tYaw+=dt*0.22; camS.tPitch=0.30+Math.sin(t*0.35)*0.02; camS.tDist=3.0+Math.sin(t*0.23)*0.12; }   // v0.3.92 主界面轻微运镜（俯仰/距离呼吸）
   if(orbitT>0){ orbitT-=dt; camS.tYaw+=dt*3.0; }   // v0.3.22 过关庆祝环视（绕角色一圈半）
   camS.yaw=lerpAngle(camS.yaw,camS.tYaw,1-Math.pow(0.0001,dt));
   camS.pitch=lerp(camS.pitch,camS.tPitch,1-Math.pow(0.0001,dt));
@@ -2819,6 +2827,10 @@ function update(dt){
     camera.position.y+=(Math.random()-0.5)*0.10;
     camera.position.z+=(Math.random()-0.5)*0.14; }
   camera.lookAt(_vTgt);
+  /* v0.3.92 关卡色调渐变：fog/background 连续 lerp 到目标色调（切关不跳变） */
+  const tintLerp=1-Math.pow(0.06,dt);
+  scene.fog.color.lerp(tintTarget,tintLerp);
+  scene.background.lerp(tintTarget,tintLerp);
   const sp01=clamp(st.speed/5.1,0,1);
   /* v0.3.2 FOV 阈值更新：仅在变化明显时重算投影矩阵，避免每帧开销 */
   /* v0.3.91 相机 fov 随速度平滑：速度低通滤波消除分段抖动，fov 连续插值 */
@@ -3323,6 +3335,8 @@ function update(dt){
     if(tl!==timerNum._last){ timerNum.textContent=tl; timerNum._last=tl; }
     timerEl.classList.toggle('danger', tl<=15);
     timerEl.classList.toggle('critical', tl<=5);   // v0.3.47 最后 5 秒告急脉冲
+    /* v0.3.92 低时间全屏红色呼吸：≤15s 常驻脉动（受击闪之上） */
+    redEl.classList.toggle('breath', tl<=15 && challenge.active);
     /* v0.3.4 濒危引导：≤10s 提示一次 + 小地图导航增强 */
     if(tl<=10 && !challenge.danger){ challenge.danger=true; toast('⏱ 时间紧张！跟随金色导航冲刺'); }
     }
@@ -3525,20 +3539,23 @@ function drawMinimap(){
 /* 全收集庆祝：3D 彩色粒子爆开 + 横幅 */
 let celebrateFx=null, celebrated=false;
 function spawnCelebrate(){
-  const N=64;
+  const N=96;   // v0.3.92 加大粒子 + 两波爆裂
   const pos=new Float32Array(N*3), col=new Float32Array(N*3), vel=[];
   const palette=[[1,0.42,0.85],[0.36,0.92,1],[1,0.76,0.32],[0.5,1,0.62],[1,0.52,0.4],[0.72,0.62,1]];
   for(let i=0;i<N;i++){
     pos[i*3]=girl.position.x; pos[i*3+1]=girl.position.y+0.95; pos[i*3+2]=girl.position.z;
-    const a=Math.random()*Math.PI*2, b=(Math.random()*Math.PI)-Math.PI/2, sp=2.2+Math.random()*2.8;
-    vel.push([Math.cos(a)*Math.cos(b)*sp, Math.sin(b)*sp+2.4, Math.sin(a)*Math.cos(b)*sp]);
+    /* v0.3.92 第二波（i>=64）更高更慢，形成烟花二次爆裂 */
+    const second=i>=64;
+    const a=Math.random()*Math.PI*2, b=(Math.random()*Math.PI)-Math.PI/2;
+    const sp=second?(1.2+Math.random()*1.8):(2.2+Math.random()*2.8);
+    vel.push([Math.cos(a)*Math.cos(b)*sp, Math.sin(b)*sp+(second?3.6:2.4), Math.sin(a)*Math.cos(b)*sp]);
     const c=palette[(Math.random()*palette.length)|0];
     col[i*3]=c[0]; col[i*3+1]=c[1]; col[i*3+2]=c[2];
   }
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(pos,3));
   g.setAttribute('color',new THREE.BufferAttribute(col,3));
-  const m=new THREE.Points(g,new THREE.PointsMaterial({size:0.17,vertexColors:true,
+  const m=new THREE.Points(g,new THREE.PointsMaterial({size:0.18,vertexColors:true,
     transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));
   m.frustumCulled=false; scene.add(m);
   celebrateFx={m,vel,t:0};
