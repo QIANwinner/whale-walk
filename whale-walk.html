@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.97</title>
+<title>鲸步 WHALE WALK · v0.3.98</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -305,6 +305,36 @@
   #pmResume{background:linear-gradient(90deg,#002FA7,#1E5FD8);color:#fff;box-shadow:0 6px 20px rgba(0,47,167,.5);}
   #pmRestart{background:rgba(53,224,255,.12);color:#35E0FF;border:1px solid rgba(53,224,255,.5);}
   #pmExit{background:rgba(255,90,90,.10);color:#FF7A7A;border:1px solid rgba(255,90,90,.45);}
+  /* ---------- v0.3.98 设置面板 ---------- */
+  #btnSet{position:fixed;top:calc(148px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));z-index:11;
+    display:none;background:rgba(10,16,38,.6);border:1px solid rgba(53,224,255,.5);color:#7FE4FF;
+    border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;
+    backdrop-filter:blur(3px);font-family:inherit;-webkit-tap-highlight-color:transparent;}
+  body:not(.playing) #btnSet{display:block;}
+  #settingsModal{position:fixed;inset:0;z-index:44;display:none;align-items:center;justify-content:center;
+    background:rgba(6,10,26,.78);backdrop-filter:blur(6px);}
+  #settingsModal.show{display:flex;}
+  #settingsBox{background:rgba(10,16,38,.96);border:1px solid rgba(53,224,255,.45);border-radius:22px;
+    padding:28px 34px;box-shadow:0 0 44px rgba(53,224,255,.3);min-width:300px;max-height:82vh;overflow-y:auto;}
+  #settingsBox .st{font-size:24px;font-weight:900;color:#7FE4FF;letter-spacing:3px;
+    text-shadow:0 0 14px rgba(53,224,255,.7);}
+  #settingsBox .ss{font-size:12px;color:#BFE4FF;opacity:.8;margin:4px 0 18px;letter-spacing:1px;}
+  .set-sec{margin:14px 0 4px;padding:12px 14px;background:rgba(14,22,48,.6);border-radius:12px;
+    border:1px solid rgba(127,212,255,.18);}
+  .set-sec-title{font-size:12px;font-weight:800;color:#FFD25A;letter-spacing:1px;margin-bottom:8px;}
+  .set-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;font-size:13px;color:#BFE4FF;}
+  .set-row input[type=range]{width:110px;accent-color:#35E0FF;}
+  .set-row select{background:rgba(14,22,48,.9);color:#BFE4FF;border:1px solid rgba(127,212,255,.4);
+    border-radius:8px;padding:4px 8px;font-size:12px;font-family:inherit;}
+  .set-row button{background:rgba(53,224,255,.12);color:#7FE4FF;border:1px solid rgba(53,224,255,.5);
+    border-radius:999px;padding:4px 14px;font-size:12px;cursor:pointer;font-family:inherit;}
+  .set-row button.off{opacity:.45;}
+  #setClose{display:block;margin:18px auto 0;background:linear-gradient(90deg,#002FA7,#1E5FD8);color:#fff;
+    border:none;border-radius:999px;padding:9px 34px;font-size:14px;font-weight:800;cursor:pointer;
+    letter-spacing:2px;font-family:inherit;}
+  #fps{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:calc(14px + env(safe-area-inset-left,0px));z-index:12;
+    display:none;font-size:11px;font-family:monospace;color:#8FC8FF;opacity:.85;pointer-events:none;}
+  #fps.on{display:block;}
   /* ---------- v0.3.10 成就墙 ---------- */
   #btnAch{position:fixed;top:calc(186px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));z-index:11;
     display:none;background:rgba(10,16,38,.6);border:1px solid rgba(255,210,90,.45);color:#FFD25A;
@@ -425,6 +455,8 @@
   </div>
 </div>
 <button id="btnAch">🏆 成就 <span id="achCount">0/5</span></button>
+<button id="btnSet">⚙ 设置</button>
+<div id="fps"></div>
 <div id="tut">
   <div class="tt">散步指南</div>
   <div class="tr" id="tutMove"></div>
@@ -441,6 +473,31 @@
     <div id="achList"></div>
     <div id="achLegend">🌠 鲸界传说 · 全部成就达成</div>
     <button id="achClose">关闭</button>
+  </div>
+</div>
+<div id="settingsModal">
+  <div id="settingsBox">
+    <div class="st">设置</div>
+    <div class="ss">鲸步个性化 · QIAN</div>
+    <div class="set-sec">
+      <div class="set-sec-title">🎵 音频</div>
+      <div class="set-row"><span>雨声</span><input type="range" id="setRain" min="0" max="100" value="33"></div>
+      <div class="set-row"><span>音效</span><input type="range" id="setVol" min="0" max="100" value="80"></div>
+      <div class="set-row"><span>震动</span><button id="setVib">开</button></div>
+    </div>
+    <div class="set-sec">
+      <div class="set-sec-title">🎨 画面</div>
+      <div class="set-row"><span>画质</span><select id="setQuality">
+        <option value="low">低</option><option value="mid" selected>中</option><option value="high">高</option></select></div>
+      <div class="set-row"><span>帧率显示</span><button id="setFps">关</button></div>
+    </div>
+    <div class="set-sec">
+      <div class="set-sec-title">🎮 操控</div>
+      <div class="set-row"><span>陀螺仪</span><button id="setGyro">关</button></div>
+      <div class="set-row"><span>触觉强度</span><select id="setVibStr">
+        <option value="0.5">弱</option><option value="1" selected>中</option><option value="1.6">强</option></select></div>
+    </div>
+    <button id="setClose">保存并关闭</button>
   </div>
 </div>
 
@@ -2150,8 +2207,13 @@ const AudioFX=(()=>{
 /* v0.3.3 触觉反馈：移动端振动（iOS 不支持则静默）+ 音效开关统一入口 */
 /* v0.3.82 震动开关：ww-vib（'0'=关） */
 let vibOn=true; try{ vibOn=localStorage.getItem('ww-vib')!=='0'; }catch(_){}
+/* v0.3.98 触觉强度滑条（弱/中/强）：ww-vibstr '0.5'/'1'/'1.6' */
+let vibStr=1; try{ vibStr=parseFloat(localStorage.getItem('ww-vibstr')||'1')||1; }catch(_){}
+/* v0.3.98 画质档（低/中/高）：ww-quality，雨丝/粒子缩放 */
+let qScale=1; try{ const q=localStorage.getItem('ww-quality')||'mid'; qScale=q==='low'?0.6:q==='high'?1.2:1; }catch(_){}
 function buzz(ms){ try{
   if(!vibOn) return;
+  ms=Math.round(ms*vibStr);   // v0.3.98 触觉强度缩放
   if(navigator.vibrate) navigator.vibrate(ms);
   /* v0.3.24 手柄双马达震动（无手柄/不支持则静默） */
   const gp=[...(navigator.getGamepads?navigator.getGamepads():[])].find(g=>g&&g.connected&&g.vibrationActuator);
@@ -2601,7 +2663,7 @@ function setupLevel(){
   _tintC.setHex(LEVEL_TINTS[Math.min(level,LEVEL_TINTS.length)-1]);
   tintTarget.copy(_tintC);   // v0.3.92 关卡色调渐变：设目标，update 连续 lerp
   /* v0.3.18 雨势随关卡增强：激活雨丝段数 300+44×level（drawRange 控制顶点数=段数×2） */
-  rainMesh.geometry.setDrawRange(0, 2*Math.min(RAIN_N, 300+level*44));
+  rainMesh.geometry.setDrawRange(0, 2*Math.min(RAIN_N, Math.round((300+level*44)*qScale)));   // v0.3.98 画质缩放雨丝
   AudioFX.rain(0);   // v0.3.96 关卡开始重置背景雨量
 }
 function startChallenge(){
@@ -3661,6 +3723,69 @@ function drawMinimap(){
       syncVib(); toast(vibOn?'震动已开启':'震动已关闭'); });
   }
 }
+/* =====================================================================
+ *  v0.3.98 设置面板集中化：音频/画面/操控（画质/FPS/陀螺仪/触觉）
+ * ===================================================================== */
+let settingsOpen=false;
+const settingsEl=document.getElementById('settingsModal');
+function openSettings(){ if(settingsOpen)return; settingsOpen=true; settingsEl.classList.add('show'); AudioFX.tick(); }
+function closeSettings(){ settingsOpen=false; settingsEl.classList.remove('show'); AudioFX.ui('resume'); }
+document.getElementById('btnSet').addEventListener('click',openSettings);
+document.getElementById('setClose').addEventListener('click',closeSettings);
+settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSettings(); });
+/* 音频：雨声/音效/震动（与 #rainCtrl 共享 localStorage 状态） */
+{
+  const sr=document.getElementById('setRain'), sv=document.getElementById('setVol');
+  try{ const s=parseFloat(localStorage.getItem('ww-rain')); if(!isNaN(s)) sr.value=Math.round(s/0.15*100); }catch(_){}
+  try{ const s=parseFloat(localStorage.getItem('ww-vol')); if(!isNaN(s)) sv.value=Math.round(s*100); }catch(_){}
+  sr.addEventListener('input',()=>{ const v=AudioFX.setRainLevel(sr.value/100*0.15);
+    try{ localStorage.setItem('ww-rain',String(v)); }catch(_){} });
+  sv.addEventListener('input',()=>{ const v=AudioFX.setVolume(sv.value/100);
+    try{ localStorage.setItem('ww-vol',String(v)); }catch(_){} });
+  const vb=document.getElementById('setVib');
+  const syncV=()=>{ vb.textContent=vibOn?'开':'关'; vb.classList.toggle('off',!vibOn); }; syncV();
+  vb.addEventListener('click',()=>{ vibOn=!vibOn; try{ localStorage.setItem('ww-vib',vibOn?'1':'0'); }catch(_){}
+    syncV(); AudioFX.tick(); toast(vibOn?'震动已开启':'震动已关闭'); });
+}
+/* 画面：画质档 / FPS 显示 */
+{
+  const q=document.getElementById('setQuality'), qv=localStorage.getItem('ww-quality')||'mid';
+  q.value=qv; q.addEventListener('change',()=>{
+    qScale=q.value==='low'?0.6:q.value==='high'?1.2:1;
+    try{ localStorage.setItem('ww-quality',q.value); }catch(_){}
+    /* v0.3.98 画质切换只改雨丝密度，不重置关卡 */
+    rainMesh.geometry.setDrawRange(0, 2*Math.min(RAIN_N, Math.round((300+level*44)*qScale)));
+    toast('画质：'+(q.value==='low'?'低':q.value==='high'?'高':'中')); AudioFX.tick(); });
+  const fb=document.getElementById('setFps'), fpsEl=document.getElementById('fps');
+  let fpsOn=false; try{ fpsOn=localStorage.getItem('ww-fps')==='1'; }catch(_){}
+  const syncF=()=>{ fb.textContent=fpsOn?'开':'关'; fb.classList.toggle('off',!fpsOn); fpsEl.classList.toggle('on',fpsOn); }; syncF();
+  fb.addEventListener('click',()=>{ fpsOn=!fpsOn; try{ localStorage.setItem('ww-fps',fpsOn?'1':'0'); }catch(_){}
+    syncF(); AudioFX.tick(); });
+  /* FPS 统计：每 0.5s 更新 */
+  window.__wwFps={frames:0,last:performance.now()};
+  window.__wwFpsTick=()=>{ const F=window.__wwFps; F.frames++;
+    const now=performance.now(), d=now-F.last;
+    if(d>=500){ fpsEl.textContent=(F.frames/d*1000).toFixed(0)+' FPS'; F.frames=0; F.last=now; } };
+}
+/* 操控：陀螺仪 / 触觉强度 */
+{
+  const gb=document.getElementById('setGyro');
+  let gyroOn=false; try{ gyroOn=localStorage.getItem('ww-gyro')==='1'; }catch(_){}
+  const syncG=()=>{ gb.textContent=gyroOn?'开':'关'; gb.classList.toggle('off',!gyroOn); }; syncG();
+  gb.addEventListener('click',()=>{ gyroOn=!gyroOn; try{ localStorage.setItem('ww-gyro',gyroOn?'1':'0'); }catch(_){}
+    syncG(); AudioFX.tick(); toast(gyroOn?'陀螺仪已开启':'陀螺仪已关闭'); });
+  const vs=document.getElementById('setVibStr'), vsv=localStorage.getItem('ww-vibstr')||'1';
+  vs.value=vsv; vs.addEventListener('change',()=>{ vibStr=parseFloat(vs.value)||1;
+    try{ localStorage.setItem('ww-vibstr',String(vibStr)); }catch(_){} AudioFX.tick(); });
+  /* 陀螺仪视角：deviceorientation → 水平偏航（仅 play 且开启） */
+  let gyroBase=null;
+  window.addEventListener('deviceorientation',e=>{
+    if(!gyroOn||mode!=='play'||!e.gamma&&!e.beta) return;
+    if(gyroBase===null) gyroBase=e.gamma||0;
+    const off=((e.gamma||0)-gyroBase);
+    camS.tYaw+=off*0.0015; gyroBase=e.gamma||0;   // 微调偏航
+  },true);
+}
 /* 小地图：滚轮缩放 / 拖动平移 / 双击复位 */
 {
   const mmEl=document.getElementById('minimap');
@@ -3733,6 +3858,7 @@ function renderLoop(){
   if(!paused) update(dt);            // v0.3.4 暂停时冻结玩法
   renderer.render(scene,camera);
   if(++mmFrame%3===0) drawMinimap();
+  if(window.__wwFpsTick) window.__wwFpsTick();   // v0.3.98 FPS 显示
   fpsAcc+=dt; fpsN++;
   if(fpsN>=60){ if(fpsAcc/fpsN>1/30 && mode==='play') autoDegrade(); fpsAcc=0; fpsN=0; }
 }
