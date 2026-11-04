@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.92</title>
+<title>鲸步 WHALE WALK · v0.3.93</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -82,6 +82,9 @@
   #timer.critical .t{color:#FF2D2D;animation:timerBlink .22s steps(2) infinite;text-shadow:0 0 22px rgba(255,45,45,.95);}
   #timer.critical #timerProgFill{background:linear-gradient(90deg,#FF3B3B,#FFB03A);}
   #timer.critical{border-color:rgba(255,45,45,.85);box-shadow:0 0 24px rgba(255,45,45,.45);}
+  /* v0.3.93 时间条 critical 红色描边脉动 */
+  #timer.critical #timerProg{border:1px solid rgba(255,45,45,.9);animation:progPulse .4s ease-in-out infinite;}
+  @keyframes progPulse{0%,100%{box-shadow:0 0 4px rgba(255,45,45,.4)}50%{box-shadow:0 0 14px rgba(255,45,45,.9)}}
   @keyframes timerBlink{50%{opacity:.35;}}
   #combo{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:11;pointer-events:none;
     font-size:20px;font-weight:900;color:#FFD25A;letter-spacing:2px;text-shadow:0 0 14px rgba(255,210,90,.8),0 1px 8px rgba(10,20,60,.8);
@@ -3162,9 +3165,10 @@ function update(dt){
       bodyMat.emissive.setHex(0x5A0A06);
       aimGrp.visible=true; aimPlane.material.opacity=0.20;
     } else { bodyMat.emissive.setHex(0x000000); aimGrp.visible=false; }
-    /* 扫描环旋转 + 信标闪（windup 急闪 + 扫描环脉冲放大） */
+    /* 扫描环旋转 + 信标闪（windup 急闪 + 扫描环脉冲放大；v0.3.93 机灯闪烁随接近玩家加快） */
     d.grp.userData.scan.rotation.z+=dt*(d.mode==='windup'?6:1.5);
-    const blink=d.mode==='windup'?Math.sin(d.t*34):Math.sin(d.ph*8);
+    const closeRate=d.mode==='windup'?34:8+Math.min(14,26/(1+dist*0.5));   // 距玩家越近闪烁越快
+    const blink=d.mode==='windup'?Math.sin(d.t*34):Math.sin(d.ph*closeRate);
     d.grp.userData.beacon.material.color.setHex(blink>0?0xFF3B30:0x7A1512);
     d.grp.userData.scan.material.opacity=0.30+0.18*Math.sin(d.ph*4)+(d.mode==='windup'?0.15:0);
     d.grp.userData.scan.scale.setScalar(d.mode==='windup'?1+Math.sin(d.t*26)*0.18:1);
@@ -3427,11 +3431,18 @@ function drawMinimap(){
     const p=W2S(r.position.x,r.position.z);
     g.beginPath(); g.arc(p.x,p.y,5.5+(Math.sin(elapsed*3.4)+1)*1.2,0,Math.PI*2); g.stroke();
   }
-  /* 巡逻无人机（红点 + 真实警戒圈，半径 9 世界单位） */
+  /* 巡逻无人机（红点 + 真实警戒圈，半径 9 世界单位；v0.3.93 危险脉冲放大） */
   for(const d of patrolDrones){
     const p=W2S(d.grp.position.x,d.grp.position.z);
-    g.fillStyle=(d.mode==='windup'||d.mode==='dash')?'#FFB04A':'#FF5A5A';   // v0.3.11 蓄力/冲锋转橙预警
+    const threat=(d.mode==='windup'||d.mode==='dash');
+    g.fillStyle=threat?'#FFB04A':'#FF5A5A';   // v0.3.11 蓄力/冲锋转橙预警
     g.beginPath(); g.arc(p.x,p.y,3.5,0,Math.PI*2); g.fill();
+    /* v0.3.93 危险脉冲：威胁时放大红色脉冲环 */
+    if(threat){
+      const pu=(Math.sin(elapsed*9)+1)/2;
+      g.strokeStyle='rgba(255,90,90,0.8)'; g.lineWidth=2;
+      g.beginPath(); g.arc(p.x,p.y,5+pu*5,0,Math.PI*2); g.stroke();
+    }
     const wr=9*mmS*mmScale;
     g.strokeStyle='rgba(255,90,90,0.35)'; g.lineWidth=1;
     g.setLineDash([4,4]);
