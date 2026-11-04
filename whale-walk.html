@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.43</title>
+<title>鲸步 WHALE WALK · v0.3.45</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2178,6 +2178,7 @@ const ACHS=[
   {id:'first',    icon:'🐳', label:'初次散步 · 完成第 1 关'},
   {id:'allclear', icon:'🏆', label:'一鼓作气 · 通关全部关卡'},
   {id:'coins',    icon:'🪙', label:'满贯鲸币 · 单关收齐全部鲸币'},
+  {id:'rings',    icon:'💫', label:'穿环大师 · 单关穿过全部光环'},
   {id:'combo8',   icon:'⚡', label:'连击大师 · 单关 COMBO x8'},
   {id:'combo12',  icon:'🌩', label:'雷暴舞者 · 单关最高连击 x12'},
   {id:'perfect',  icon:'🛡', label:'雨夜舞者 · 单关无伤通关'},
@@ -2350,6 +2351,7 @@ function finishChallenge(win){
     if(lvDj>=10) award('dj10');
     if(challenge.timeLeft>=levelCfg().time/2) award('halftime');
     if((challenge.comboMax||0)>=12) award('combo12');
+    if(ringCount>=ringTotal && ringTotal>0) award('rings'); // v0.3.44 穿环大师
     if(level<MAX_LEVEL){
       rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
@@ -2456,7 +2458,7 @@ function update(dt){
     camera.position.y+=(Math.random()-0.5)*0.10;
     camera.position.z+=(Math.random()-0.5)*0.14; }
   camera.lookAt(_vTgt);
-  const sp01=clamp(st.speed/3.4,0,1);
+  const sp01=clamp(st.speed/5.1,0,1);
   /* v0.3.2 FOV 阈值更新：仅在变化明显时重算投影矩阵，避免每帧开销 */
   const tgtFov=64+sp01*6;
   if(Math.abs(camera.fov-tgtFov)>0.01){ camera.fov=lerp(camera.fov,tgtFov,0.08); camera.updateProjectionMatrix(); }
@@ -2490,7 +2492,7 @@ function update(dt){
   }
   const mLen=Math.hypot(mx,mz);
   const boost=(powerState.speed>0)?1.5:(boostT>0?2.2:1);   // 加速道具 / v0.3.4 加速带
-  const target=(mLen>0.01)?(run?3.4:1.9)*(mLen)*boost:0;
+  const target=(mLen>0.01)?(run?5.1:3.4)*(mLen)*boost:0;
   st.speed=lerp(st.speed,target,1-Math.pow(0.002,dt));
   if(mLen>0.01){ mx/=mLen||1; mz/=mLen||1; }
   const dirYaw=(mLen>0.01)?Math.atan2(mx,mz):st.yaw;
