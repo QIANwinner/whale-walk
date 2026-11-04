@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.3.59</title>
+<title>鲸步 WHALE WALK · v0.3.61</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2119,7 +2119,7 @@ let paused=false;
 const pauseMenuEl=document.getElementById('pauseMenu');
 function openPause(){ if(mode!=='play')return; paused=true; pauseMenuEl.classList.add('show');
   document.getElementById('pmStats').textContent=   // v0.3.9 暂停即见当前进度；v0.3.24 加成就进度
-    `难度 ${diff().label} · 第 ${level}/${MAX_LEVEL} 关 ${levelName()} · 剩余 ${Math.ceil(challenge.timeLeft)} 秒 · 收集 ${score}/${TOTAL} · 鲸币 ${coinCount}/${coinTotal} · 🏆 ${achGot.length}/${ACHS.length}`; }
+    `难度 ${diff().label} · 第 ${level}/${MAX_LEVEL} 关 ${levelName()} · 剩余 ${Math.ceil(challenge.timeLeft)} 秒 · 收集 ${score}/${TOTAL} · 鲸币 ${coinCount}/${coinTotal}${bestOf()?' · 本难度最佳 '+fmtT(bestOf().time):''} · 🏆 ${achGot.length}/${ACHS.length}`; }
 function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); }
 function togglePause(){ if(mode!=='play')return; paused?closePause():openPause(); }
 document.getElementById('pmResume').addEventListener('click',()=>closePause());
@@ -2249,7 +2249,8 @@ const ACHS=[
   {id:'l6',       icon:'🐋', label:'永夜鲸歌 · 通关第 6 关'},
   {id:'l8',       icon:'🌌', label:'星海鲸梦 · 通关第 8 关'},
   {id:'extreme',  icon:'🔥', label:'极限征服 · 以极限难度通关任意关卡'},
-  {id:'srank',    icon:'👑', label:'完美鲸跃 · 单关拿到 S 评级'}
+  {id:'srank',    icon:'👑', label:'完美鲸跃 · 单关拿到 S 评级'},
+  {id:'extremeAll', icon:'🌠', label:'极限大师 · 以极限难度通关全部关卡'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -2438,6 +2439,7 @@ function finishChallenge(win){
       showLevelBanner('第 '+(level+1)+' 关', '更多光点 · 更短时间 · '+diff().label);
     } else {
       shareSnap={kind:'final',diff:diff().label,time:fmtT(runTotalUsed),coins:runCoins,rings:runRings};
+      if(diffKey==='extreme') award('extremeAll');   // v0.3.60 极限大师
       rmTitle.textContent='🏆 全部通关！';
       rmInfo.innerHTML=MAX_LEVEL+'关总用时 <b>'+fmtT(runTotalUsed)+'</b><br>难度 '+diff().label+' · 鲸币 '+runCoins+' · 穿环 '+runRings
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
