@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.25</title>
+<title>鲸步 WHALE WALK · v0.4.26</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -4285,6 +4285,7 @@ const MM_C=mmCv.width/2, MM_R=95, mmS=mmCv.width/(MM_R*2)*0.92;
 let mmScale=1, mmPanX=0, mmPanZ=0;   // 小地图缩放 / 平移
 function drawMinimap(){
   const g=mmCacheCtx, R=mmCv.width/2-4;   // v0.4.03 画到离屏缓存
+  const cb=document.body.classList.contains('colorblind');   // v0.4.26 色弱形状提示开关
   const W2S=(x,z)=>({x:MM_C+(x-(girl.position.x+mmPanX))*mmS*mmScale,
                      y:MM_C-(z-(girl.position.z+mmPanZ))*mmS*mmScale});   // +z 朝上，支持缩放/平移
   g.clearRect(0,0,mmCv.width,mmCv.height);
@@ -4313,11 +4314,13 @@ function drawMinimap(){
     g.save(); g.translate(p.x,p.y); g.rotate(Math.PI/4);
     g.fillRect(-3.2,-3.2,6.4,6.4); g.restore();
   }
-  /* v0.3.31 弹跳垫（青色圆点） */
+  /* v0.3.31 弹跳垫（青色圆点；v0.4.26 色弱模式用形状编码：就绪=空心环 / 冷却=实心方块，配合 v0.4.24 冷却反馈） */
   for(const bp of bouncePads){
-    const p=W2S(bp.position.x,bp.position.z);
-    g.fillStyle='rgba(53,224,255,0.85)';
-    g.beginPath(); g.arc(p.x,p.y,3.4,0,Math.PI*2); g.fill();
+    const p=W2S(bp.position.x,bp.position.z), cooling=bp.userData.cool>0;
+    g.strokeStyle='rgba(53,224,255,0.9)'; g.fillStyle='rgba(53,224,255,0.85)'; g.lineWidth=1.6;
+    if(cb && cooling){ g.beginPath(); g.rect(p.x-3.4,p.y-3.4,6.8,6.8); g.fill(); }
+    else if(cb){ g.beginPath(); g.arc(p.x,p.y,3.8,0,Math.PI*2); g.stroke(); }
+    else { g.beginPath(); g.arc(p.x,p.y,3.4,0,Math.PI*2); g.fill(); }
   }
   /* v0.3.31 加速带（青白短横线） */
   g.strokeStyle='rgba(160,245,255,0.85)'; g.lineWidth=2;
@@ -4345,20 +4348,29 @@ function drawMinimap(){
     const p=W2S(r.position.x,r.position.z);
     g.beginPath(); g.arc(p.x,p.y,5.5+(Math.sin(elapsed*3.4)+1)*1.2,0,Math.PI*2); g.stroke();
   }
-  /* v0.4.12 鲸语碎片（紫色菱形点） */
+  /* v0.4.12 鲸语碎片（紫色菱形点；v0.4.26 色弱模式改用三角形 ▲ 与道具菱形区分） */
   g.fillStyle='#C9A8FF';
   for(const f of frags){
     if(!f.userData.alive) continue;
     const p=W2S(f.position.x,f.position.z);
-    g.save(); g.translate(p.x,p.y); g.rotate(Math.PI/4);
-    g.fillRect(-2.8,-2.8,5.6,5.6); g.restore();
+    if(cb){
+      g.beginPath(); g.moveTo(p.x,p.y-4); g.lineTo(p.x+3.6,p.y+3.2); g.lineTo(p.x-3.6,p.y+3.2); g.closePath(); g.fill();
+    } else {
+      g.save(); g.translate(p.x,p.y); g.rotate(Math.PI/4);
+      g.fillRect(-2.8,-2.8,5.6,5.6); g.restore();
+    }
   }
   /* 巡逻无人机（红点 + 真实警戒圈，半径 9 世界单位；v0.3.93 危险脉冲放大；v0.4.16 精英紫亮大点） */
   for(const d of patrolDrones){
     const p=W2S(d.grp.position.x,d.grp.position.z);
     const threat=(d.mode==='windup'||d.mode==='dash');
     g.fillStyle=d.elite?'#FF4FD8':(threat?'#FFB04A':'#FF5A5A');
-    g.beginPath(); g.arc(p.x,p.y,3.5,0,Math.PI*2); g.fill();
+    if(cb && threat){   // v0.4.26 色弱模式：威胁用三角 ▲ 而非仅靠红色
+      const s=4.6;
+      g.beginPath(); g.moveTo(p.x,p.y-s); g.lineTo(p.x+s,p.y+s*0.8); g.lineTo(p.x-s,p.y+s*0.8); g.closePath(); g.fill();
+    } else {
+      g.beginPath(); g.arc(p.x,p.y,3.5,0,Math.PI*2); g.fill();
+    }
     /* v0.3.93 危险脉冲：威胁时放大红色脉冲环 */
     if(threat){
       const pu=(Math.sin(elapsed*9)+1)/2;
@@ -4411,7 +4423,10 @@ function drawMinimap(){
       g.setLineDash([]);
       g.fillStyle=`rgba(${navCol},0.95)`;
       g.save(); g.translate(p.x-Math.cos(ang)*10,p.y-Math.sin(ang)*10); g.rotate(ang);
-      g.beginPath(); g.moveTo(danger?9:7,0); g.lineTo(-3,5); g.lineTo(-3,-5); g.closePath(); g.fill(); g.restore();
+      g.beginPath(); g.moveTo(danger?9:7,0); g.lineTo(-3,5); g.lineTo(-3,-5); g.closePath();
+      g.fill();
+      if(cb && danger){ g.strokeStyle='rgba(255,255,255,0.95)'; g.lineWidth=1.4; g.stroke(); }   // v0.4.26 色弱模式白描边
+      g.restore();
     }
   }
   /* 角色箭头（按朝向） */
@@ -4787,8 +4802,18 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
     shakeAmp=0; shakeT=0; const p0=camera.position.clone(); update(0.016); const p1=camera.position.clone();
     const drift=p1.distanceTo(p0);
     shakeAmp=amp; shakeT=0.35; const q0=p1.clone(); update(0.016); const q1=camera.position.clone();
-    const total=q1.distanceTo(q0); shakeAmp=was; shakeT=0;
-    return {drift, total, shake:Math.max(0,total-drift)}; }};
+    const total=q1.distanceTo(q0);     shakeAmp=was; shakeT=0;
+    return {drift, total, shake:Math.max(0,total-drift)}; },
+  /* v0.4.26 无障碍：色弱形状提示钩子 */
+  mmColorblind:()=>document.body.classList.contains('colorblind'),
+  padShape:(i)=>{ const bp=bouncePads[i]; if(!bp)return null;
+    return (bp.userData.cool>0)?'square':'ring'; },
+  fragShape:()=>document.body.classList.contains('colorblind')?'triangle':'diamond',
+  droneShape:(i)=>{ const d=patrolDrones[i]; if(!d)return null;
+    return (d.mode==='windup'||d.mode==='dash')?'triangle':'circle'; },
+  /* v0.4.26 验收钩子补充：暴露无人机数组与重绘接口 */
+  patrolDrones:()=>patrolDrones,
+  mm:()=>drawMinimap()};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
