@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.32</title>
+<title>鲸步 WHALE WALK · v0.4.33</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3353,8 +3353,8 @@ function finishChallenge(win){
     if(all3) award('allStars');
     rmRank.style.display='block';
     { const rw=document.getElementById('rmRankWhy'); if(rw) rw.style.display=(rank==='S')?'block':'none'; }   // v0.3.75
-    /* v0.3.89 排行榜：本关净得分入榜 */
-    lbAdd(T(diff().label), level, score+Math.round((challenge.comboBonus||0)+challenge.timeLeft), stars);
+    /* v0.3.89 排行榜：本关净得分入榜；v0.4.33 返回名次（提示在下方 rmBest 赋值处合并，避免被覆盖） */
+    const lbRank=lbAdd(T(diff().label), level, score+Math.round((challenge.comboBonus||0)+challenge.timeLeft), stars);
     runTotalUsed+=levelTimeUsed; runCoins+=coinCount; runRings+=ringCount;
     /* v0.3.25 星星逐个弹出 */
     rmStars.innerHTML='★★★☆☆☆'.slice(0,stars*2).split('').map((s,i)=>
@@ -3414,7 +3414,9 @@ function finishChallenge(win){
         +(level<8?'<br>下一关：'+(level+1)+' '+T(LEVEL_NAMES[level])+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
           :(hiddenUnlocked()?'<br>隐藏关解锁：第 9 关 · '+T(LEVEL_NAMES[8]):'<br>故事全通！隐藏关需极限难度通关第 8 关解锁'))
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+T(a.label)).join(' · '):'');
-      rmBest.textContent='';
+      rmBest.textContent = lbRank>0
+        ? (lbRank<=3 ? '🏆 本机排行榜第 '+lbRank+' 名！' : '本机排行榜第 '+lbRank+' 名')
+        : '';
       btnNext.style.display='inline-block';
       showLevelBanner('第 '+(level+1)+' 关', '更多光点 · 更短时间 · '+T(diff().label));
     } else {
@@ -3582,7 +3584,10 @@ function lbAdd(diffLabel, levelNo, score, stars){
   leaderboard.sort((a,b)=>b.score-a.score);
   leaderboard=leaderboard.slice(0,LB_MAX);
   try{ localStorage.setItem('ww-lb-v1',JSON.stringify(leaderboard)); }catch(_){}
+  /* v0.4.33 返回名次（1 起；未进前十返回 0）供结算提示 */
+  const idx=leaderboard.indexOf(rec);
   renderLB();
+  return idx<0?0:idx+1;
 }
 function renderLB(){
   const list=document.getElementById('lbList'); if(!list)return;
@@ -4329,9 +4334,11 @@ function update(dt){
     if(challenge.combo>=2 && elapsed-challenge.lastPick<comboWindow()){
       comboEl.classList.add('on');
       comboTxtEl.textContent='COMBO x'+challenge.combo;
+      /* v0.4.33 连击越高字越大（2.0 缩放封顶，断连归位） */
+      comboEl.style.transform='translateX(-50%) scale('+(1+Math.min(challenge.combo,16)*0.03).toFixed(3)+')';
       const left=Math.max(0,1-(elapsed-challenge.lastPick)/comboWindow());
       comboBarEl.style.width=(left*100).toFixed(1)+'%';   // v0.3.49 连击剩余时间条
-    } else comboEl.classList.remove('on');
+    } else { comboEl.classList.remove('on'); comboEl.style.transform=''; }
     /* v0.4.07 鲸歌共鸣：收集点亮城市霓虹（主/侧广告牌 + 门环），连击≥8 呼吸脉动 */
     if(resPulse>0) resPulse=Math.max(0,resPulse-dt*1.8);
     const resHot=challenge.active&&challenge.combo>=8;
@@ -4899,6 +4906,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   whalePod,
   /* v0.4.17 导航箭头钩子 */
   navArrows,
+  /* v0.4.33 连击显示钩子 */
+  comboEl:()=>comboEl,
   /* v0.4.24 弹跳垫冷却可视化钩子 */
   padVisual:(i)=>{ const bp=bouncePads[i]; if(!bp)return null;
     const u=bp.userData, pm=bp.children[0].material;
