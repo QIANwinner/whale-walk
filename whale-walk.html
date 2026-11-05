@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.33</title>
+<title>鲸步 WHALE WALK · v0.4.34</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -199,6 +199,16 @@
     -webkit-tap-highlight-color:transparent;}
   #btnEndless:hover{transform:translateY(-1px);border-color:rgba(255,210,90,.9);}
   body:not(.playing) #btnEndless{display:block;}
+  /* ---------- v0.4.34 每日挑战面板 ---------- */
+  #dailyQuest{position:fixed;left:calc(18px + env(safe-area-inset-left,0px));bottom:calc(176px + env(safe-area-inset-bottom,0px));z-index:15;
+    display:none;background:rgba(10,16,38,.72);border:1px solid rgba(127,212,255,.4);border-radius:14px;
+    padding:10px 16px;color:#EAF4FF;font-size:12px;line-height:1.9;letter-spacing:1px;
+    backdrop-filter:blur(4px);pointer-events:none;}
+  body:not(.playing) #dailyQuest{display:block;}
+  #dailyQuest .dq-t{font-weight:800;color:#7FD4FF;letter-spacing:2px;margin-bottom:2px;}
+  #dailyQuest .dq-t span{font-size:10px;opacity:.7;}
+  #dailyQuest .dq-row.done{color:#7FE4A8;text-decoration:line-through;opacity:.75;}
+  #dailyQuest .dq-p{color:#FFD25A;font-weight:800;float:right;margin-left:12px;}
   /* ---------- 虚拟摇杆 ---------- */
   #joy{position:fixed;left:calc(26px + env(safe-area-inset-left,0px));bottom:calc(70px + env(safe-area-inset-bottom,0px));width:118px;height:118px;border-radius:50%;z-index:12;
     background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.25);display:none;}
@@ -559,6 +569,12 @@
   </div>
 </div>
 <button id="btnAch">🏆 成就 <span id="achCount">0/5</span></button>
+<div id="dailyQuest">
+  <div class="dq-t">📅 每日挑战 <span id="dqDate"></span></div>
+  <div class="dq-row" id="dqOrb">🔵 收集 30 个光点 <span class="dq-p"></span></div>
+  <div class="dq-row" id="dqClear">🏁 通关 3 关 <span class="dq-p"></span></div>
+  <div class="dq-row" id="dqFrag">🎶 集齐 2 次鲸语碎片 <span class="dq-p"></span></div>
+</div>
 <button id="btnSet">⚙ 设置</button>
 <div id="fps"></div>
 <div id="tut">
@@ -2722,6 +2738,35 @@ document.addEventListener('visibilitychange',()=>{
   else { AudioFX.resume(); clock.getDelta(); renderer.setAnimationLoop(renderLoop); }
 });
 
+/* =====================================================================
+ *  v0.4.34 每日挑战任务：收集 30 光点 / 通关 3 关 / 集齐 2 次碎片
+ *  ww-daily-quest-v1 = {date, orb, clear, frag}，跨天自动重置
+ * ===================================================================== */
+const DQ_KEYS={orb:30, clear:3, frag:2};
+let DQ={date:'', orb:0, clear:0, frag:0};
+try{
+  const today=new Date().toISOString().slice(0,10);
+  const raw=JSON.parse(localStorage.getItem('ww-daily-quest-v1')||'null');
+  DQ=(raw&&raw.date===today)?raw:{date:today, orb:0, clear:0, frag:0};
+}catch(_){ DQ={date:new Date().toISOString().slice(0,10), orb:0, clear:0, frag:0}; }
+function dqSave(){ try{ localStorage.setItem('ww-daily-quest-v1',JSON.stringify(DQ)); }catch(_){} }
+function dqBump(key, n){
+  DQ[key]=Math.min((DQ[key]||0)+n, DQ_KEYS[key]);
+  dqSave(); renderDQ();
+  if(DQ[key]===DQ_KEYS[key]) toast('📅 每日挑战完成！('+key.toUpperCase()+')');
+}
+function renderDQ(){
+  const el=document.getElementById('dqDate');
+  if(!el) return;
+  el.textContent=DQ.date||'';
+  const rows=[['dqOrb','orb'],['dqClear','clear'],['dqFrag','frag']];
+  rows.forEach(([id,key])=>{
+    const row=document.getElementById(id); if(!row) return;
+    row.querySelector('.dq-p').textContent=DQ[key]+' / '+DQ_KEYS[key];
+    row.classList.toggle('done', DQ[key]>=DQ_KEYS[key]);
+  });
+}
+
 /* 相机轨道输入（拖拽 / 滚轮 / 双指） */
 const camS={yaw:Math.PI, pitch:0.30, dist:3.0, tYaw:Math.PI, tPitch:0.30, tDist:3.0};
 let dragging=false,lastX=0,lastY=0,pinchD=0;
@@ -3349,6 +3394,7 @@ function finishChallenge(win){
     if(oldStars<3 && stars>=3) toast(TF('star3',{n:level}));   // v0.3.83 首次3星提示
     CLEARS++; try{ localStorage.setItem('ww-clears-v1',String(CLEARS)); }catch(_){} metaLine();   // v0.3.81 通关计数
     if(CLEARS>=10) award('clears10');
+    dqBump('clear',1);   // v0.4.34 每日挑战
     let all3=true; for(let i=1;i<=MAX_LEVEL;i++) if((STARS[i]||0)<3){ all3=false; break; }
     if(all3) award('allStars');
     rmRank.style.display='block';
@@ -3923,6 +3969,7 @@ function update(dt){
         score++; scoreEl.textContent=`${score} / ${TOTAL}`;
         ORB++; try{ localStorage.setItem('ww-orbtotal-v1',String(ORB)); }catch(_){}   // v0.3.77 累计光点
         if(ORB>=150) award('orb150');
+        dqBump('orb',1);   // v0.4.34 每日挑战
         /* v0.4.06 回响鲸歌：回声定位生效期间收集累计 10 光点 */
         if(powerState.echo>0){ echoPick++; if(echoPick>=10) award('echo10'); }
         scoreEl.classList.remove('pop'); void scoreEl.offsetWidth; scoreEl.classList.add('pop');   // v0.3.16 收集弹跳
@@ -4211,6 +4258,7 @@ function update(dt){
           AudioFX.whaleChord();
           toast(T('fragAll'));
           award('frag3');
+          dqBump('frag',1);   // v0.4.34 每日挑战
         } else toast(TF('fragOne',{a:fragCount,b:fragTotal}));
       }
     }
@@ -4799,6 +4847,7 @@ girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0,
 scoreEl.textContent=`0 / ${TOTAL}`;
 setMode('preview');
 renderAch();   // v0.3.10 初始成就计数
+renderDQ();   // v0.4.34 初始每日挑战面板
 
 /* v0.3.2 小地图降频：每 3 帧重绘一次（约 20Hz），砍掉每帧 2D 画布开销 */
 let mmFrame=0;
@@ -4945,7 +4994,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   mmView:()=>({mmScale,mmPanX,mmPanZ}),
   setMMView:(s,x,z)=>{ mmScale=s; mmPanX=x; mmPanZ=z; saveMM(); },
   achFilter:()=>achFilter,
-  mm:()=>drawMinimap()};
+  mm:()=>drawMinimap(),
+  /* v0.4.34 每日挑战钩子 */
+  DQ:()=>DQ, dqBump, renderDQ};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
