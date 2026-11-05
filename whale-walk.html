@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.21</title>
+<title>鲸步 WHALE WALK · v0.4.22</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2436,6 +2436,10 @@ const AudioFX=(()=>{
       tone(1250,1250,0.06,0.12,'square',0.11,0.7); },
     dashWhiz(){ if(muted||!ac())return;
       tone(900,240,0.28,0.12,'sawtooth'); },
+    /* v0.4.22 无人机蓄力升调预警：0.55s 内音高线性爬升，凭听觉判断蓄力进度 */
+    lock(){ if(muted||!ac())return;
+      tone(620,1480,0.55,0.11,'sawtooth');
+      tone(1240,2960,0.55,0.05,'sine'); },
     /* v0.3.85 撞车专属：低频金属冲击（区别于落地/无人机），音调区分 */
     crash(){ if(muted||!ac())return;
       tone(140,55,0.30,0.26,'sawtooth');
@@ -3946,7 +3950,7 @@ function update(dt){
     /* 状态机（v0.3.11：chase 逼近→windup 蓄力 0.55s→dash 直线冲锋 0.45s→cool 回落 2.2s）
        冲锋方向在蓄力结束时锁定，玩家横移即可躲开——给走位留奖励 */
     if(d.mode==='patrol' && dist<9 && mode==='play') d.mode='chase';
-    else if(d.mode==='chase' && dist<5.5){ d.mode='windup'; d.t=0; AudioFX.warn(); }
+    else if(d.mode==='chase' && dist<5.5){ d.mode='windup'; d.t=0; AudioFX.warn(); AudioFX.lock(); }
     else if(d.mode==='chase' && dist>16) d.mode='return';
     else if(d.mode==='windup'){ d.t+=dt;
       if(d.t>0.55){ d.mode='dash'; d.t=0; AudioFX.dashWhiz();
