@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.20</title>
+<title>鲸步 WHALE WALK · v0.4.21</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -130,6 +130,13 @@
     background:radial-gradient(ellipse at center, rgba(53,224,255,0) 55%, rgba(53,224,255,.35) 100%);
     opacity:0;transition:opacity .12s;}
   #boostglow.on{opacity:1;}
+  /* ---------- v0.4.21 无人机威胁方向指示（屏幕边缘红箭头指向袭来方向） ---------- */
+  #droneWarn{position:fixed;left:0;top:0;width:100%;height:100%;z-index:32;pointer-events:none;
+    opacity:0;transition:opacity .12s;}
+  #droneWarn.on{opacity:1;}
+  #droneWarn .arr{position:absolute;left:50%;top:50%;width:38px;height:38px;margin:-19px 0 0 -19px;
+    will-change:transform;}
+  #droneWarn .arr svg{display:block;filter:drop-shadow(0 0 6px rgba(255,60,40,.9));}
   /* ---------- 结果弹窗 ---------- */
   #resultModal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);z-index:40;
     background:rgba(10,16,38,.92);border:1px solid rgba(127,212,255,.4);border-radius:20px;
@@ -489,6 +496,7 @@
 <div id="resHud"><span id="resTxt"></span></div>
 <div id="mirrorHud">🪞 镜面回响 · 左右反转</div>
 <div id="redflash"></div>
+<div id="droneWarn"><div class="arr"><svg viewBox="0 0 24 24" width="38" height="38"><path d="M12 2 L20 21 L12 15.5 L4 21 Z" fill="#ff4438" stroke="#5a0a06" stroke-width="1.4"/></svg></div></div>
 <div id="sGlow"></div>
 <div id="boostglow"></div>
 <div id="resultModal">
@@ -2676,6 +2684,7 @@ document.querySelectorAll('.dbtn,#levelPick button').forEach(el=>el.addEventList
 let paused=false;
 const pauseMenuEl=document.getElementById('pauseMenu');
 function openPause(){ if(mode!=='play')return; paused=true; pauseMenuEl.classList.add('show');
+  droneWarnEl.classList.remove('on');   // v0.4.21 暂停时收起威胁指示
   AudioFX.ui('pause');   // v0.3.97 暂停提示音
   document.body.classList.add('paused');   // v0.3.95 暂停色调
   document.getElementById('pmStats').textContent=   // v0.3.9 暂停即见当前进度；v0.3.24 加成就进度
@@ -3178,6 +3187,34 @@ function hitDrone(d){
   challenge.tookHit=true;   // v0.3.8 无伤成就判定（护盾抵消不算）
   AudioFX.land(0.7); buzz(45);
   toast('被巡逻无人机击中！ -'+DRONE_PENALTY+' 秒');
+}
+/* ---- v0.4.21 无人机威胁方向指示：最近威胁不在视野内时，屏幕边缘红箭头指向袭来方向 ---- */
+const droneWarnEl=document.getElementById('droneWarn');
+function updateDroneWarn(){
+  if(paused || mode!=='play' || !challenge.active || !patrolDrones.length){ droneWarnEl.classList.remove('on'); return; }
+  let near=null, nd=1e9;
+  for(const d of patrolDrones){
+    const dist=Math.hypot(girl.position.x-d.grp.position.x, girl.position.z-d.grp.position.z);
+    if(dist<nd){ nd=dist; near=d; }
+  }
+  if(!near || nd>14){ droneWarnEl.classList.remove('on'); return; }
+  const m=near.mode;
+  if(!(m==='chase'||m==='windup'||m==='dash')){ droneWarnEl.classList.remove('on'); return; }
+  /* 相对相机前向的角度（0=正前/屏幕上方，>0=右侧） */
+  const dx=near.grp.position.x-girl.position.x, dz=near.grp.position.z-girl.position.z;
+  const fX=-Math.sin(camS.yaw), fZ=-Math.cos(camS.yaw);
+  const rX=-Math.cos(camS.yaw), rZ=Math.sin(camS.yaw);
+  const fwd=dx*fX+dz*fZ, right=dx*rX+dz*rZ;
+  const ang=Math.atan2(right,fwd);
+  /* 前方视野内（±~33°）且够近→本体可见，不显示箭头 */
+  if(fwd>0 && Math.abs(ang)<0.58 && nd<9){ droneWarnEl.classList.remove('on'); return; }
+  const R=Math.min(innerWidth,innerHeight)*0.40;
+  droneWarnEl.querySelector('.arr').style.transform=
+    'rotate('+ang+'rad) translateY(-'+R.toFixed(1)+'px)';
+  const danger=(m==='windup'||m==='dash')?1:0.62;
+  const pulse=0.5+0.5*Math.sin(performance.now()*0.012*(m==='windup'?1.8:1));
+  droneWarnEl.style.opacity=String((0.42+0.5*pulse)*danger);
+  droneWarnEl.classList.add('on');
 }
 function finishChallenge(win){
   challenge.active=false; challenge.done=win; challenge.failed=!win;
@@ -3975,6 +4012,9 @@ function update(dt){
        && Math.abs(girl.position.y-g.position.y)<1.6) hitDrone(d);
   }
 
+  /* v0.4.21 威胁方向指示（在无人机循环后每帧更新） */
+  updateDroneWarn();
+
   /* ---- 道具：生成 / 浮动 / 拾取 / 磁铁时长 ---- */
   if(mode==='play' && challenge.active){
     puTimer-=dt;
@@ -4673,6 +4713,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   ringCount:()=>ringCount, ringTotal:()=>ringTotal, levelSet:(v)=>{level=v;},   // v0.3.6 测试钩子
   /* v0.3.4 暂停菜单 */
   paused:()=>paused, openPause, closePause, togglePause,
+  /* v0.4.21 无人机威胁方向指示 */
+  updateDroneWarn, droneWarnVisible:()=>droneWarnEl.classList.contains('on'),
+  droneWarnAngle:()=>droneWarnEl.querySelector('.arr').style.transform,
   /* v0.3.7 闪电联动与测试钩子 */
   towerMats, lightning:lightningFlash,
   /* v0.3.8 成就钩子 */
