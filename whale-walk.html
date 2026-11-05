@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.42</title>
+<title>鲸步 WHALE WALK · v0.4.43</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -1731,6 +1731,33 @@ function streetLamp(x,z){
   props.add(g);
 }
 streetLamp(-8,24); streetLamp(8,36); streetLamp(-8,52); streetLamp(8,66);
+/* v0.4.43 街边自动贩卖机 ×3：霓虹发光面板 + 碰撞体，充实街道层次 */
+const vendingMachines=[];
+{
+  const cols=[0xFF4FD8,0x35E0FF,0xFFB04A];
+  [[-10.2,18,1],[10.2,44,-1],[-10.2,58,1]].forEach(([x,z,side],i)=>{
+    const g=new THREE.Group();
+    g.position.set(x,terrainH(x,z),z);
+    g.rotation.y=side>0?Math.PI/2:-Math.PI/2;
+    const body=new THREE.Mesh(new THREE.BoxGeometry(1.1,1.9,0.75),
+      new THREE.MeshToonMaterial({color:0x0E1524,gradientMap:TOON}));
+    body.position.y=0.95; body.castShadow=true; g.add(body);
+    /* 发光面板（正面） */
+    const panel=new THREE.Mesh(new THREE.PlaneGeometry(0.82,1.3),
+      new THREE.MeshBasicMaterial({color:cols[i],transparent:true,opacity:0.85,
+        blending:THREE.AdditiveBlending,depthWrite:false}));
+    panel.position.set(0,1.05,side>0?-0.39:0.39);
+    panel.rotation.y=side>0?0:Math.PI;
+    g.add(panel);
+    /* 顶部灯带 */
+    const strip=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.08,0.78),
+      new THREE.MeshBasicMaterial({color:cols[i]}));
+    strip.position.y=1.94; g.add(strip);
+    obstacles.push({x,z,r:0.75});
+    vendingMachines.push({g,panel,ph:i*2.1});
+    props.add(g);
+  });
+}
 /* 广场霓虹光柱（沿街） */
 for(let i=0;i<6;i++){ const p=place(6,70);
   makePylon(p.x,p.z,[0x35E0FF,0xFF4FD8,0xFFB04A][i%3]); pylonPts.push(p); }
@@ -4060,6 +4087,10 @@ function update(dt){
     s.m.material.opacity=Math.max(0,s.life)*0.9;
     s.m.scale.setScalar(0.7+0.5*s.life);
     if(s.life<=0)s.m.visible=false; } }
+  /* v0.4.43 贩卖机面板呼吸 */
+  for(const v of vendingMachines){
+    v.panel.material.opacity=0.7+0.25*Math.sin(t*2.4+v.ph);
+  }
   /* 云 */
   for(const c of clouds){ c.position.x+=dt*0.4; if(c.position.x>150)c.position.x=-150; }
   /* v0.4.17 地面导航光箭头：沿方向铺向最近存活光点 */
@@ -4995,6 +5026,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   whalePod,
   /* v0.4.17 导航箭头钩子 */
   navArrows,
+  /* v0.4.43 贩卖机钩子 */
+  vendingMachines,
   /* v0.4.33 连击显示钩子 */
   comboEl:()=>comboEl,
   /* v0.4.24 弹跳垫冷却可视化钩子 */
