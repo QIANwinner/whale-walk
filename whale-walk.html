@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.36</title>
+<title>鲸步 WHALE WALK · v0.4.37</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -565,6 +565,7 @@
     <div class="pm-t" data-i18n="pauseTitle">已暂停</div>
     <div class="pm-s" data-i18n="pauseSub">鲸步稍作休息 · QIAN</div>
     <div class="pm-stats" id="pmStats"></div>
+    <div class="pm-stats" id="pmDaily"></div>
     <button class="pm-btn" id="pmResume" data-i18n="resume">继续散步</button>
     <button class="pm-btn" id="pmRestart" data-i18n="restart">重新开始</button>
     <button class="pm-btn" id="pmExit" data-i18n="exit">退出关卡</button>
@@ -2840,8 +2841,11 @@ function openPause(){ if(mode!=='play')return; paused=true; pauseMenuEl.classLis
   droneWarnEl.classList.remove('on');   // v0.4.21 暂停时收起威胁指示
   AudioFX.ui('pause');   // v0.3.97 暂停提示音
   document.body.classList.add('paused');   // v0.3.95 暂停色调
-  document.getElementById('pmStats').textContent=   // v0.3.9 暂停即见当前进度；v0.3.24 加成就进度
-    `难度 ${T(diff().label)} · 第 ${level}/${MAX_LEVEL} 关 ${levelName()} · 剩余 ${Math.ceil(challenge.timeLeft)} 秒 · 收集 ${score}/${TOTAL} · 鲸币 ${coinCount}/${coinTotal}${(()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return ' · 全星 '+f+'/'+MAX_LEVEL;})()}${bestOf()?' · 本难度最佳 '+fmtT(bestOf().time):''} · 🏆 ${achGot.length}/${ACHS.length} · 布局 #${daySeed()}${mirrorOn?' · 🪞镜像日':''}`; }
+  document.getElementById('pmStats').textContent=   // v0.3.9 暂停即见当前进度；v0.3.24 加成就进度；v0.4.30 加布局编号
+    `难度 ${T(diff().label)} · 第 ${level}/${MAX_LEVEL} 关 ${levelName()} · 剩余 ${Math.ceil(challenge.timeLeft)} 秒 · 收集 ${score}/${TOTAL} · 鲸币 ${coinCount}/${coinTotal}${(()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return ' · 全星 '+f+'/'+MAX_LEVEL;})()}${bestOf()?' · 本难度最佳 '+fmtT(bestOf().time):''} · 🏆 ${achGot.length}/${ACHS.length} · 布局 #${daySeed()}${mirrorOn?' · 🪞镜像日':''}`;
+  /* v0.4.37 暂停也见每日挑战进度 */
+  document.getElementById('pmDaily').textContent=
+    `📅 每日 ${DQ.orb}/${DQ_KEYS.orb} 光点 · ${DQ.clear}/${DQ_KEYS.clear} 通关 · ${DQ.frag}/${DQ_KEYS.frag} 碎片${(DQ.bonus?' · 奖励待领':'')}`; }
 function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); document.body.classList.remove('paused');
   AudioFX.ui('resume'); }   // v0.3.97 继续提示音（含移除暂停色调）
 function togglePause(){ if(mode!=='play')return; paused?closePause():openPause(); }
