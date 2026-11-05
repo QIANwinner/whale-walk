@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.37</title>
+<title>鲸步 WHALE WALK · v0.4.38</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2757,7 +2757,12 @@ function dqBump(key, n){
   DQ[key]=Math.min((DQ[key]||0)+n, DQ_KEYS[key]);
   /* v0.4.35 三任务全达标 → 一次性奖励标记（下一局开局 +5 秒） */
   const allDone=Object.keys(DQ_KEYS).every(k=>(DQ[k]||0)>=DQ_KEYS[k]);
-  if(allDone && !DQ.bonus){ DQ.bonus=1; toast('📅 每日挑战全部完成！明日开局 +5 秒'); }
+  if(allDone && !DQ.bonus){ DQ.bonus=1;
+    /* v0.4.38 完成仪式：金色辉光 + 鲸歌 + 全城共鸣（复用 S 评级辉光资产） */
+    const sg=document.getElementById('sGlow');
+    if(sg){ sg.classList.add('on'); setTimeout(()=>sg.classList.remove('on'),2400); }
+    AudioFX.whaleCall(); resPulse=1;
+    setTimeout(()=>toast('📅 每日挑战全部完成！明日开局 +5 秒'),320); }
   dqSave(); renderDQ();
   if(DQ[key]===DQ_KEYS[key]) toast('📅 每日挑战完成！('+key.toUpperCase()+')');
 }
