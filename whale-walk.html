@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.39</title>
+<title>鲸步 WHALE WALK · v0.4.40</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3481,6 +3481,7 @@ function finishChallenge(win){
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 道具 ×'+lvPU+' · 最高连击 x'+(challenge.comboMax||0)
         +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
+        +'<br>📅 每日任务 · 光点 '+DQ.orb+'/'+DQ_KEYS.orb+' · 通关 '+DQ.clear+'/'+DQ_KEYS.clear+' · 碎片 '+DQ.frag+'/'+DQ_KEYS.frag   // v0.4.40 每日任务进度
         +'<br>本局净得分 <b id="rmNetScore">0</b> 分'
         +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)+'）'   // v0.3.89
         +rmBarsHtml()   // v0.4.28 结算收集率可视化进度条
@@ -3666,7 +3667,7 @@ function lbAdd(diffLabel, levelNo, score, stars){
 function renderLB(){
   const list=document.getElementById('lbList'); if(!list)return;
   list.innerHTML=leaderboard.length
-    ? leaderboard.map((r,i)=>`<div class="lb-row"><span>${i+1}. ${r.diff} 第${r.level}关 · ${r.stars}★</span><b>${r.score} 分</b></div>`).join('')
+    ? leaderboard.map((r,i)=>`<div class="lb-row"><span>${i+1}. ${r.diff} 第${r.level}关 · ${r.stars}★${r.t?' · '+new Date(r.t).toLocaleDateString('zh-CN'):''}</span><b>${r.score} 分</b></div>`).join('')
     : '<div style="opacity:.6">暂无记录，通关后自动保存</div>';
 }
 document.getElementById('lbClear').addEventListener('click',()=>{
