@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.30</title>
+<title>鲸步 WHALE WALK · v0.4.31</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2659,10 +2659,13 @@ addEventListener('keydown',e=>{ keys[e.code]=true;  if(e.code==='KeyP'&&mode==='
   if(mode==='preview' && e.code>='Digit1' && e.code<='Digit9'){   // v0.3.69 数字键1-9快选解锁关卡；v0.3.88 第9关需隐藏解锁
     const n=+e.code.slice(-1);
     if(!lvLocked(n)){ startLevel=n; renderLevelPick(); toast(TF('lvStart',{n})); } }
-  /* v0.3.26 结算弹窗按 Enter 空格 = 确认按钮（下一关优先于再来一局） */
+  /* v0.3.26 结算弹窗按 Enter 空格 = 确认按钮（下一关优先于再来一局）；v0.4.31 暂停中 Enter/Space = 继续 */
   if((e.code==='Enter'||e.code==='Space') && rmEl.classList.contains('show')){
     e.preventDefault();
     (btnNext.style.display!=='none'?btnNext:document.getElementById('btnRetry')).click();
+  }
+  if((e.code==='Enter'||e.code==='Space') && paused){
+    e.preventDefault(); closePause(); return;
   }
   if(e.code==='KeyM') applyMute();
   /* v0.4.01 快捷键：T 隐藏 HUD / C 打开设置 / 0 重置进度（二次确认） */
@@ -3527,7 +3530,7 @@ function makeScoreCard(){
   if(shareSnap.kind==='final') lines.push('🏆 全部 '+MAX_LEVEL+' 关通关');
   lines.forEach((s,i)=>g.fillText(s, 36, 246+i*26));
   g.fillStyle='rgba(191,228,255,.6)'; g.font='600 12px sans-serif';
-  g.fillText(new Date().toLocaleDateString('zh-CN')+' · QIAN', 36, H-32);
+  g.fillText(new Date().toLocaleDateString('zh-CN')+' · 布局 #'+daySeed()+' · QIAN', 36, H-32);
   g.fillText('qianwinner.github.io/whale-walk', W-270, H-32);
   return cv.toDataURL('image/png');
 }
@@ -3551,9 +3554,10 @@ function shareText(){ if(!shareSnap)return '';
   /* v0.4.04 安全：外部 URL 一律 https（分享链接强制 https） */
   const safe=safeURL(u);
   const c4=()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c;};
-  if(shareSnap.kind==='win') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 ${shareSnap.stars}★（评级：${shareSnap.rank}） · 用时：${shareSnap.time} · 四难度通关：${c4()}/4\n${safe}`;
-  if(shareSnap.kind==='final') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · ${MAX_LEVEL}关全通！总用时：${shareSnap.time} · 鲸币：${shareSnap.coins} · 穿环：${shareSnap.rings} · 四难度通关：${c4()}/4\n${safe}`;
-  return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 时间到 · 收集：${shareSnap.score}/${shareSnap.total}\n${safe}`; }
+  const lb=' · 布局 #'+daySeed();   // v0.4.31 每日布局编号（同日同图可对比）
+  if(shareSnap.kind==='win') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 ${shareSnap.stars}★（评级：${shareSnap.rank}） · 用时：${shareSnap.time} · 四难度通关：${c4()}/4${lb}\n${safe}`;
+  if(shareSnap.kind==='final') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · ${MAX_LEVEL}关全通！总用时：${shareSnap.time} · 鲸币：${shareSnap.coins} · 穿环：${shareSnap.rings} · 四难度通关：${c4()}/4${lb}\n${safe}`;
+  return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 时间到 · 收集：${shareSnap.score}/${shareSnap.total}${lb}\n${safe}`; }
 document.getElementById('btnShare').addEventListener('click',()=>{
   const t=shareText(); if(!t)return;
   const fallback=()=>{ const ta=document.createElement('textarea');
