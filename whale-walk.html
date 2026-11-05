@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.28</title>
+<title>鲸步 WHALE WALK · v0.4.29</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -423,6 +423,14 @@
   #achSearch{width:100%;box-sizing:border-box;background:rgba(14,22,48,.9);border:1px solid rgba(127,212,255,.4);
     border-radius:8px;padding:6px 12px;font-size:12px;color:#BFE4FF;font-family:inherit;margin-bottom:10px;outline:none;}
   #achSearch:focus{border-color:rgba(53,224,255,.8);}
+  /* v0.4.29 成就墙筛选标签 */
+  #achTabs{display:flex;gap:6px;margin:8px 0;justify-content:center;}
+  .atab{background:rgba(14,22,48,.9);border:1px solid rgba(127,212,255,.4);color:#BFE4FF;
+    border-radius:999px;padding:5px 16px;font-size:12px;font-weight:700;cursor:pointer;
+    letter-spacing:1px;font-family:inherit;transition:all .15s;}
+  .atab:hover{border-color:rgba(53,224,255,.8);}
+  .atab.on{background:linear-gradient(90deg,#002FA7,#1E5FD8);border-color:transparent;color:#fff;
+    box-shadow:0 3px 10px rgba(0,47,167,.5);}
   #achLegend{display:none;margin-top:10px;font-size:13px;color:#FFD25A;letter-spacing:2px;font-weight:800;text-shadow:0 0 14px rgba(255,210,90,.8);}
   .ach-row{display:flex;align-items:center;gap:10px;text-align:left;padding:7px 4px;font-size:13px;color:#EAF4FF;}
   .ach-row .ic{font-size:20px;}
@@ -589,6 +597,7 @@
     <div class="ab-s" data-i18n="achSub">鲸步旅途的里程碑 · QIAN</div>
     <div id="achBar"><b id="achBarFill"></b></div>
     <input id="achSearch" type="text" placeholder="搜索成就…" autocomplete="off">
+    <div id="achTabs"><button class="atab on" data-f="all">全部</button><button class="atab" data-f="got">已达成</button><button class="atab" data-f="lock">未达成</button></div>
     <div id="achList"></div>
     <div id="achLegend">🌠 鲸界传说 · 全部成就达成</div>
     <button id="achClose">关闭</button>
@@ -3032,12 +3041,17 @@ const ACH_PROG={
   allStars:()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return f+'/'+MAX_LEVEL;},
   m4:()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c+'/4';}
 };
-/* v0.4.00 成就墙搜索过滤 */
+/* v0.4.00 成就墙搜索过滤；v0.4.29 状态筛选标签（all/got/lock） */
 let achQuery='';
+let achFilter='all';
 function renderAch(){
   const list=document.getElementById('achList');
   const q=achQuery.trim().toLowerCase();
-  list.innerHTML=ACHS.filter(a=>!q||T(a.label).toLowerCase().includes(q)||a.icon.includes(q)).map(a=>{
+  list.innerHTML=ACHS.filter(a=>{
+    if(achFilter==='got'&&!achGot.includes(a.id)) return false;
+    if(achFilter==='lock'&&achGot.includes(a.id)) return false;
+    return !q||T(a.label).toLowerCase().includes(q)||a.icon.includes(q);
+  }).map(a=>{
     const got=achGot.includes(a.id);
     const prog=!got&&ACH_PROG[a.id]?ACH_PROG[a.id]():'';
     return `<div class="ach-row ${got?'got':'lock'}"><span class="ic">${a.icon}</span><span>${T(a.label)}${got?'':'（'+T('achLock')+(prog?' · '+prog:'')+'）'}</span></div>`;
@@ -3050,6 +3064,11 @@ function renderAch(){
   if(typeof updateLegend==='function') updateLegend();   // v0.3.72 主界面同步
 }
 document.getElementById('achSearch').addEventListener('input',e=>{ achQuery=e.target.value; renderAch(); });
+document.querySelectorAll('#achTabs .atab').forEach(b=>b.addEventListener('click',()=>{
+  achFilter=b.dataset.f;
+  document.querySelectorAll('#achTabs .atab').forEach(x=>x.classList.toggle('on',x===b));
+  renderAch();
+}));
 document.getElementById('btnAch').addEventListener('click',()=>{ renderAch(); document.getElementById('achModal').classList.add('show'); });
 document.getElementById('achClose').addEventListener('click',()=>document.getElementById('achModal').classList.remove('show'));
 /* v0.3.20 新手引导：首次进入挑战模式显示，localStorage 标记后不再打扰 */
@@ -4350,6 +4369,13 @@ const mmCache=document.createElement('canvas'); mmCache.width=mmCv.width; mmCach
 const mmCacheCtx=mmCache.getContext('2d');
 const MM_C=mmCv.width/2, MM_R=95, mmS=mmCv.width/(MM_R*2)*0.92;
 let mmScale=1, mmPanX=0, mmPanZ=0;   // 小地图缩放 / 平移
+/* v0.4.29 小地图视图持久化：缩放/平移状态存 ww-mmview，刷新与重开保持 */
+try{
+  const mv=JSON.parse(localStorage.getItem('ww-mmview')||'null');
+  if(mv){ mmScale=clamp(+mv.s||1,0.6,2.4); mmPanX=+mv.x||0; mmPanZ=+mv.z||0; }
+}catch(_){}
+const saveMM=()=>{ try{ localStorage.setItem('ww-mmview',
+  JSON.stringify({s:mmScale,x:mmPanX,z:mmPanZ})); }catch(_){} };
 function drawMinimap(){
   const g=mmCacheCtx, R=mmCv.width/2-4;   // v0.4.03 画到离屏缓存
   const cb=document.body.classList.contains('colorblind');   // v0.4.26 色弱形状提示开关
@@ -4703,15 +4729,15 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
   mmEl.style.pointerEvents='auto'; mmEl.style.cursor='grab';
   let drag=null;
   mmEl.addEventListener('wheel',e=>{ e.preventDefault();
-    mmScale=Math.max(0.6,Math.min(2.4,mmScale*(e.deltaY>0?0.88:1.14))); },{passive:false});
+    mmScale=Math.max(0.6,Math.min(2.4,mmScale*(e.deltaY>0?0.88:1.14))); saveMM(); },{passive:false});
   mmEl.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY};
     mmEl.style.cursor='grabbing'; try{mmEl.setPointerCapture(e.pointerId);}catch(_){} });
   mmEl.addEventListener('pointermove',e=>{ if(!drag)return;
     const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY;
-    mmPanX-=dx/(mmS*mmScale); mmPanZ+=dy/(mmS*mmScale); });
+    mmPanX-=dx/(mmS*mmScale); mmPanZ+=dy/(mmS*mmScale); saveMM(); });
   const endDrag=()=>{ drag=null; mmEl.style.cursor='grab'; };
   mmEl.addEventListener('pointerup',endDrag); mmEl.addEventListener('pointercancel',endDrag);
-  mmEl.addEventListener('dblclick',()=>{ mmScale=1; mmPanX=0; mmPanZ=0; });
+  mmEl.addEventListener('dblclick',()=>{ mmScale=1; mmPanX=0; mmPanZ=0; saveMM(); });
 }
 /* 全收集庆祝：3D 彩色粒子爆开 + 横幅 */
 let celebrateFx=null, celebrated=false;
@@ -4892,6 +4918,10 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
     return (d.mode==='windup'||d.mode==='dash')?'triangle':'circle'; },
   /* v0.4.26 验收钩子补充：暴露无人机数组与重绘接口 */
   patrolDrones:()=>patrolDrones,
+  /* v0.4.29 小地图视图与成就筛选钩子 */
+  mmView:()=>({mmScale,mmPanX,mmPanZ}),
+  setMMView:(s,x,z)=>{ mmScale=s; mmPanX=x; mmPanZ=z; saveMM(); },
+  achFilter:()=>achFilter,
   mm:()=>drawMinimap()};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
