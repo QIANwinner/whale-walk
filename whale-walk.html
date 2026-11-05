@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.23</title>
+<title>鲸步 WHALE WALK · v0.4.24</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -4144,12 +4144,21 @@ function update(dt){
   /* 加速带冲刺倒计时 */
   boostglowEl.classList.toggle('on', boostT>0);
   if(boostT>0){ boostT-=dt; if(boostT<=0) boostT=0; }
-  /* 弹跳垫冷却 + 回弹 + 光环脉冲 */
+  /* 弹跳垫冷却 + 回弹 + 光环脉冲 + v0.4.24 冷却再武装反馈 */
   for(const bp of bouncePads){
     const u=bp.userData;
     if(u.cool>0) u.cool-=dt;
     bp.scale.y=lerp(bp.scale.y,1,1-Math.pow(0.02,dt));
     u.rim.material.opacity=0.45+0.3*Math.sin(t*4+bp.position.z);
+    /* v0.4.24 冷却视觉：冷却期垫转暗青灰，末段 25%（cool<0.2）脉冲提醒即将再武装 */
+    const pm=bp.children[0].material;
+    if(u.cool>0){
+      if(u.cool<0.2) pm.emissive.setHex((Math.sin(t*30)>0)?0x1E7FD8:0x0A2A38);
+      else pm.emissive.setHex(0x0A2A38);
+      pm.emissiveIntensity=0.35;
+    } else {
+      pm.emissive.setHex(0x1E7FD8); pm.emissiveIntensity=0.9;
+    }
   }
   /* v0.3.94 弹跳落点预测圈：跳跃/弹跳中显示落点（沿朝向预测） */
   if(mode==='play' && st.airT>0){
@@ -4758,7 +4767,11 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.4.14 远海鲸群钩子 */
   whalePod,
   /* v0.4.17 导航箭头钩子 */
-  navArrows};
+  navArrows,
+  /* v0.4.24 弹跳垫冷却可视化钩子 */
+  padVisual:(i)=>{ const bp=bouncePads[i]; if(!bp)return null;
+    const u=bp.userData, pm=bp.children[0].material;
+    return {cool:u.cool, emissive:pm.emissive.getHex(), intensity:pm.emissiveIntensity}; }};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
