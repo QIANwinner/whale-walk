@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.34</title>
+<title>鲸步 WHALE WALK · v0.4.35</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -699,7 +699,7 @@ const I18N={
     ach_whalefall:'鲸落之地 · 通关隐藏关第 9 关', ach_morning:'晨风鲸语 · 上午 6-9 点通关一关', ach_midnight:'午夜鲸歌 · 晚上 22-24 点通关一关',
     ach_combo24:'连击大师二段 · 单关最高连击 x24', ach_echo10:'回响鲸歌 · 单关用回声定位收集 10 个光点', ach_rewind5:'时之鲸 · 单关时光回溯累计恢复 5 秒',
     ach_mirrored:'镜中鲸 · 在镜面回响下通关第 9 关', ach_frag3:'鲸语通 · 单关集齐全部鲸语碎片', ach_hunter:'猎鲸者 · 踏灭精英无人机',
-    ach_endless5:'无尽鲸歌 · 无尽模式连续通关 5 关',
+    ach_frag15:'鲸语收藏家 · 累计收集 15 片鲸语碎片', ach_endless5:'无尽鲸歌 · 无尽模式连续通关 5 关',
     /* ---- v0.4.27 文案收拢：动态 toast / 拼接文案 key（含 {占位符}） ---- */
     sndOn:'音效已开启 🔊', sndOff:'音效已关闭 🔇', padConn:'🎮 手柄已连接',
     lvStart:'起始关卡：第 {n} 关', lvPreview:'👁 预览第 {n} 关（长按）', lvFallback:'第 {n} 关',
@@ -2752,6 +2752,9 @@ try{
 function dqSave(){ try{ localStorage.setItem('ww-daily-quest-v1',JSON.stringify(DQ)); }catch(_){} }
 function dqBump(key, n){
   DQ[key]=Math.min((DQ[key]||0)+n, DQ_KEYS[key]);
+  /* v0.4.35 三任务全达标 → 一次性奖励标记（下一局开局 +5 秒） */
+  const allDone=Object.keys(DQ_KEYS).every(k=>(DQ[k]||0)>=DQ_KEYS[k]);
+  if(allDone && !DQ.bonus){ DQ.bonus=1; toast('📅 每日挑战全部完成！明日开局 +5 秒'); }
   dqSave(); renderDQ();
   if(DQ[key]===DQ_KEYS[key]) toast('📅 每日挑战完成！('+key.toUpperCase()+')');
 }
@@ -2958,6 +2961,9 @@ let CLEARED={}; try{ CLEARED=JSON.parse(localStorage.getItem('ww-cleardiff-v1')|
 let ORB=0, COIN=0;
 try{ ORB=parseInt(localStorage.getItem('ww-orbtotal-v1')||'0',10)||0; }catch(_){}
 try{ COIN=parseInt(localStorage.getItem('ww-cointotal-v1')||'0',10)||0; }catch(_){}
+/* v0.4.35 累计鲸语碎片（跨关持久化） */
+let FRAGT=0;
+try{ FRAGT=parseInt(localStorage.getItem('ww-fragtotal-v1')||'0',10)||0; }catch(_){}
 /* v0.3.81 累计散步/通关次数 */
 let RUNS=0, CLEARS=0;
 try{ RUNS=parseInt(localStorage.getItem('ww-runs-v1')||'0',10)||0; }catch(_){}
@@ -3060,6 +3066,7 @@ const ACHS=[
   {id:'mirrored',    icon:'🪞', label:'ach_mirrored'},
   {id:'frag3',       icon:'🎶', label:'ach_frag3'},
   {id:'hunter',      icon:'🎯', label:'ach_hunter'},
+  {id:'frag15',      icon:'🎼', label:'ach_frag15'},
   {id:'endless5',    icon:'♾', label:'ach_endless5'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
@@ -3088,7 +3095,8 @@ const ACH_PROG={
   combo8:()=>T('achPer'), combo12:()=>T('achPer'), combo16:()=>T('achPer'), combo24:()=>T('achPer'),
   dodge5:()=>T('achPer'), dj10:()=>T('achPer'),
   allStars:()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return f+'/'+MAX_LEVEL;},
-  m4:()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c+'/4';}
+  m4:()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c+'/4';},
+  frag15:()=>Math.min(FRAGT,15)+'/15'
 };
 /* v0.4.00 成就墙搜索过滤；v0.4.29 状态筛选标签（all/got/lock） */
 let achQuery='';
@@ -3277,7 +3285,12 @@ function startChallenge(){
   }
   challenge.active=true; challenge.done=false; challenge.failed=false;
   challenge.timeLeft=levelCfg().time; challenge.combo=0; challenge.lastPick=-99;
+  /* v0.4.35 每日挑战全达标奖励：一次性 +5 秒（在 startTime 赋值之后生效） */
   challenge.startTime=levelCfg().time;
+  if(DQ.bonus){ DQ.bonus=0; dqSave();
+    challenge.startTime=levelCfg().time+5;
+    challenge.timeLeft=challenge.startTime;
+    toast('📅 每日挑战奖励！本局 +5 秒'); }
   challenge.invuln=0; challenge.flashT=0; challenge.danger=false; rmEl.classList.remove('show');
   challenge.ready=1.2;   // v0.3.17 开局缓冲：1.2s 内不计时且免伤
   challenge.tookHit=false; challenge.comboMax=0; newAch=[];   // v0.3.8 成就判定状态
@@ -4247,6 +4260,9 @@ function update(dt){
       if(dd<1.2 && Math.abs(girl.position.y+0.9-f.position.y)<1.3){
         u.alive=false; fragGroup.remove(f); frags.splice(i,1);
         fragCount++;
+        /* v0.4.35 累计碎片 + frag15 成就 */
+        FRAGT++; try{ localStorage.setItem('ww-fragtotal-v1',String(FRAGT)); }catch(_){}
+        if(FRAGT>=15) award('frag15');
         const fragNumEl=document.getElementById('fragNum');
         if(fragNumEl) fragNumEl.textContent=`${fragCount} / ${fragTotal}`;
         challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+1);
