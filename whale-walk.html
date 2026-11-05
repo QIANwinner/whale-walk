@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.27</title>
+<title>鲸步 WHALE WALK · v0.4.28</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -156,6 +156,16 @@
     100%{transform:scale(1) rotate(0);opacity:1}}
   #resultModal .rm-info{font-size:14px;color:#BFE4FF;line-height:1.7;margin-bottom:14px;}
   #resultModal .rm-best{font-size:12px;color:#8FC8FF;opacity:.85;margin-bottom:12px;}
+  /* v0.4.28 结算收集率可视化：三条迷你进度条（光点/鲸币/穿环，+碎片条件性） */
+  #resultModal .rm-bars{margin:10px 0 2px;padding:8px 10px;background:rgba(10,20,44,.5);
+    border:1px solid rgba(127,212,255,.18);border-radius:10px;}
+  #resultModal .rm-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:#9FD8FF;margin:4px 0;}
+  #resultModal .rm-bar-lab{width:38px;flex:none;text-align:right;opacity:.85;font-weight:600;}
+  #resultModal .rm-bar-tr{flex:1;height:8px;border-radius:4px;background:rgba(120,200,255,.13);
+    overflow:hidden;border:1px solid rgba(120,200,255,.25);}
+  #resultModal .rm-bar-fi{display:block;height:100%;border-radius:4px;
+    background:linear-gradient(90deg,#1E7FD8,#4BE0FF);box-shadow:0 0 8px rgba(75,224,255,.5);}
+  #resultModal .rm-bar-num{flex:none;width:66px;text-align:right;font-variant-numeric:tabular-nums;opacity:.9;}
   /* v0.3.89 排行榜 */
   #lbWrap{background:rgba(10,16,34,.6);border:1px solid rgba(127,212,255,.25);border-radius:12px;
     padding:10px 14px;margin-bottom:12px;max-height:180px;overflow-y:auto;}
@@ -649,6 +659,8 @@ const I18N={
     langZh:'中文', langEn:'English', langSaved:'语言已切换',
     /* ---- v0.4.27 文案收拢：对象 label key（en 不添加，回退中文） ---- */
     puShield:'护盾', puMagnet:'磁铁', puSpeed:'加速', puSlow:'子弹时间', puFreeze:'时间冻结', puDouble:'双倍鲸币', puEcho:'回声定位', puRewind:'时光回溯',
+    /* ---- v0.4.28 结算收集率短标签（en 不添加，回退中文） ---- */
+    orbShort:'光点', coinShort:'鲸币', ringShort:'穿环', fragShort:'碎片',
     diffEasy:'简单', diffNormal:'普通', diffHard:'困难', diffExtreme:'极限',
     lvl1:'霓虹初醒', lvl2:'雨幕疾行', lvl3:'霓虹深渊', lvl4:'雷暴中心', lvl5:'暴雨终章', lvl6:'永夜鲸歌', lvl7:'深海回响', lvl8:'星海鲸梦', lvl9:'鲸落之地',
     ach_first:'初次散步 · 完成第 1 关', ach_allclear:'一鼓作气 · 通关全部关卡', ach_coins:'满贯鲸币 · 单关收齐全部鲸币',
@@ -2856,6 +2868,18 @@ const resHudEl=document.getElementById('resHud'), resTxtEl=document.getElementBy
 const rmEl=document.getElementById('resultModal'), rmTitle=document.getElementById('rmTitle');
 const rmStars=document.getElementById('rmStars'), rmInfo=document.getElementById('rmInfo');
 const rmBest=document.getElementById('rmBest');
+/* v0.4.28 结算收集率进度条：生成一条迷你进度条 HTML（label 名称 / cur 当前 / total 总数） */
+function rmBar(label,cur,total){ if(!total||total<=0) return '';
+  const p=Math.max(0,Math.min(100,cur/total*100));
+  return '<div class="rm-bar"><span class="rm-bar-lab">'+label+'</span>'
+    +'<span class="rm-bar-tr"><i class="rm-bar-fi" style="width:'+p.toFixed(1)+'%"></i></span>'
+    +'<span class="rm-bar-num">'+cur+'/'+total+'</span></div>'; }
+function rmBarsHtml(){ return '<div class="rm-bars">'
+  +rmBar(T('orbShort'),score,TOTAL)
+  +rmBar(T('coinShort'),coinCount,coinTotal)
+  +rmBar(T('ringShort'),ringCount,ringTotal)
+  +(fragTotal>0?rmBar(T('fragShort'),fragCount,fragTotal):'')
+  +'</div>'; }
 const challenge={active:false, timeLeft:0, combo:0, lastPick:-99,
   invuln:0, done:false, failed:false, flashT:0, best:null, startTime:0, danger:false, ready:0, recentLoss:0};
 /* v0.3.50 最佳成绩按难度分开记录（ww-best-v3）；旧 ww-best-v2 自动迁移到当前难度 */
@@ -3362,6 +3386,7 @@ function finishChallenge(win){
         +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
         +'<br>本局净得分 <b id="rmNetScore">0</b> 分'
         +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)+'）'   // v0.3.89
+        +rmBarsHtml()   // v0.4.28 结算收集率可视化进度条
         +(stars<3?'<br>下次快 '+fmtT(levelCfg().time*0.42-challenge.timeLeft)+' 即可 3★':'')
         +(level<8?'<br>下一关：'+(level+1)+' '+T(LEVEL_NAMES[level])+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
           :(hiddenUnlocked()?'<br>隐藏关解锁：第 9 关 · '+T(LEVEL_NAMES[8]):'<br>故事全通！隐藏关需极限难度通关第 8 关解锁'))
@@ -3415,7 +3440,8 @@ function finishChallenge(win){
     } else {
     rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关<br>最高连击 x'+(challenge.comboMax||0)
       +(fragTotal?' · 鲸语碎片 '+fragCount+'/'+fragTotal:'')+' · 道具 ×'+lvPU
-      +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次':'');
+      +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次':'')
+      +rmBarsHtml();   // v0.4.28 结算收集率可视化进度条（失败也显示，看还差多少）
     }
     rmBest.textContent = bestOf()?('本难度最佳 总用时 '+fmtT(bestOf().time)):'';
     btnNext.style.display='none';
@@ -4853,6 +4879,14 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   T, TF, I18N,
   strCount:()=>Object.keys(I18N.zh).length,
   strKeys:()=>Object.keys(I18N.zh),
+  /* v0.4.28 翻译访问钩子：供验收读取词典与语言切换 */
+  T, getLang:()=>LANG, setLang:(v)=>{LANG=v;},
+  /* v0.4.28 结算收集率钩子：返回当前条形结构 + 宽度探针（确定性验证用） */
+  rmBars:()=>{ const h=rmBarsHtml(); const m=[...h.matchAll(/width:([\d.]+)%/g)].map(x=>parseFloat(x[1]));
+    return {ok:h.includes('rm-bars'), count:(h.match(/class="rm-bar"/g)||[]).length, widths:m,
+      labels:[...h.matchAll(/rm-bar-lab">([^<]+)</g)].map(x=>x[1])}; },
+  rmBarProbe:(cur,total)=>{ const h=rmBar('P',cur,total); const m=h.match(/width:([\d.]+)%/);
+    return {width:m?parseFloat(m[1]):null, expected:total>0?cur/total*100:0, empty:total<=0}; },
   fragShape:()=>document.body.classList.contains('colorblind')?'triangle':'diamond',
   droneShape:(i)=>{ const d=patrolDrones[i]; if(!d)return null;
     return (d.mode==='windup'||d.mode==='dash')?'triangle':'circle'; },
