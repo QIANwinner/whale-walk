@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.41</title>
+<title>鲸步 WHALE WALK · v0.4.42</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -141,7 +141,8 @@
   #resultModal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);z-index:40;
     background:rgba(10,16,38,.92);border:1px solid rgba(127,212,255,.4);border-radius:20px;
     padding:26px 38px;text-align:center;backdrop-filter:blur(8px);
-    box-shadow:0 0 40px rgba(47,167,232,.35);opacity:0;pointer-events:none;transition:all .25s;}
+    box-shadow:0 0 40px rgba(47,167,232,.35);opacity:0;pointer-events:none;transition:all .25s;
+    max-height:86vh;overflow-y:auto;max-width:92vw;-webkit-overflow-scrolling:touch;box-sizing:border-box;}
   #resultModal.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1);}
   #resultModal .rm-t{font-size:30px;font-weight:900;color:#FFD25A;letter-spacing:2px;
     text-shadow:0 0 18px rgba(255,210,90,.8);}
