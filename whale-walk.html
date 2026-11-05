@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.35</title>
+<title>鲸步 WHALE WALK · v0.4.36</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -199,8 +199,10 @@
     -webkit-tap-highlight-color:transparent;}
   #btnEndless:hover{transform:translateY(-1px);border-color:rgba(255,210,90,.9);}
   body:not(.playing) #btnEndless{display:block;}
+  /* v0.4.36 触屏下入口移到右侧：预览模式摇杆(body.touch 常显)占左下，避免重叠 */
+  body.touch #btnEndless{left:auto;right:calc(18px + env(safe-area-inset-right,0px));}
   /* ---------- v0.4.34 每日挑战面板 ---------- */
-  #dailyQuest{position:fixed;left:calc(18px + env(safe-area-inset-left,0px));bottom:calc(176px + env(safe-area-inset-bottom,0px));z-index:15;
+  #dailyQuest{position:fixed;left:calc(18px + env(safe-area-inset-left,0px));bottom:calc(200px + env(safe-area-inset-bottom,0px));z-index:15;
     display:none;background:rgba(10,16,38,.72);border:1px solid rgba(127,212,255,.4);border-radius:14px;
     padding:10px 16px;color:#EAF4FF;font-size:12px;line-height:1.9;letter-spacing:1px;
     backdrop-filter:blur(4px);pointer-events:none;}
