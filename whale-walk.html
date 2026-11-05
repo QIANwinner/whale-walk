@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.38</title>
+<title>鲸步 WHALE WALK · v0.4.39</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -703,6 +703,7 @@ const I18N={
     ach_combo24:'连击大师二段 · 单关最高连击 x24', ach_echo10:'回响鲸歌 · 单关用回声定位收集 10 个光点', ach_rewind5:'时之鲸 · 单关时光回溯累计恢复 5 秒',
     ach_mirrored:'镜中鲸 · 在镜面回响下通关第 9 关', ach_frag3:'鲸语通 · 单关集齐全部鲸语碎片', ach_hunter:'猎鲸者 · 踏灭精英无人机',
     ach_frag15:'鲸语收藏家 · 累计收集 15 片鲸语碎片', ach_endless5:'无尽鲸歌 · 无尽模式连续通关 5 关',
+    ach_streak3:'火热连击 · 无尽模式连续通关 3 关',
     /* ---- v0.4.27 文案收拢：动态 toast / 拼接文案 key（含 {占位符}） ---- */
     sndOn:'音效已开启 🔊', sndOff:'音效已关闭 🔇', padConn:'🎮 手柄已连接',
     lvStart:'起始关卡：第 {n} 关', lvPreview:'👁 预览第 {n} 关（长按）', lvFallback:'第 {n} 关',
@@ -3078,7 +3079,8 @@ const ACHS=[
   {id:'frag3',       icon:'🎶', label:'ach_frag3'},
   {id:'hunter',      icon:'🎯', label:'ach_hunter'},
   {id:'frag15',      icon:'🎼', label:'ach_frag15'},
-  {id:'endless5',    icon:'♾', label:'ach_endless5'}
+  {id:'endless5',    icon:'♾', label:'ach_endless5'},
+  {id:'streak3',     icon:'🔥', label:'ach_streak3'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -3107,7 +3109,8 @@ const ACH_PROG={
   dodge5:()=>T('achPer'), dj10:()=>T('achPer'),
   allStars:()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return f+'/'+MAX_LEVEL;},
   m4:()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c+'/4';},
-  frag15:()=>Math.min(FRAGT,15)+'/15'
+  frag15:()=>Math.min(FRAGT,15)+'/15',
+  streak3:()=>T('achPer')
 };
 /* v0.4.00 成就墙搜索过滤；v0.4.29 状态筛选标签（all/got/lock） */
 let achQuery='';
@@ -3386,6 +3389,7 @@ function finishChallenge(win){
   /* v0.4.10 无尽鲸潮：胜利不停表，1.2s 后自动卷入下一关（全通后回第 1 关） */
   if(win && endless){
     endlessStreak++;
+    if(endlessStreak>=3) award('streak3');   // v0.4.39 火热连击
     if(endlessStreak>EBEST){ EBEST=endlessStreak;
       try{ localStorage.setItem('ww-endless-best',String(EBEST)); }catch(_){}
       if(EBEST>=5) award('endless5');
