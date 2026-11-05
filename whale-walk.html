@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.26</title>
+<title>鲸步 WHALE WALK · v0.4.27</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -628,6 +628,76 @@
 
 <script type="module">
 import * as THREE from 'three';
+
+/* =====================================================================
+ *  v0.4.01 双语框架（v0.4.27 前移至顶部 + 文案收拢）
+ *  zh/en 文案表 + LANG + T() + TF()（模板插值）
+ *  静态元素经 data-i18n 覆盖；v0.4.27 起对象 label 与动态 toast
+ *  的文案 key 集中平铺进 I18N.zh（en 段不添加 → T() 回退 zh = 不翻译）
+ * ===================================================================== */
+let LANG='zh'; try{ LANG=localStorage.getItem('ww-lang')||'zh'; }catch(_){}
+const I18N={
+  zh:{
+    t2:'鲸步 · 蓝鲸女仆散步中', modeBadge:'预览模式', scoreLabel:'光点收集', hint:'拖动旋转 · 滚轮缩放',
+    play:'开始散步', pauseTitle:'已暂停', pauseSub:'鲸步稍作休息 · QIAN', resume:'继续散步',
+    restart:'重新开始', exit:'退出关卡', ach:'成就', set:'设置',
+    achTitle:'成就墙', achSub:'鲸步旅途的里程碑 · QIAN', setTitle:'设置', setSub:'鲸步个性化 · QIAN',
+    secLang:'🌐 语言', language:'界面语言', secAudio:'🎵 音频', secVideo:'🎨 画面', secCtrl:'🎮 操控',
+    rain:'雨声', vol:'音效', vib:'震动', quality:'画质', fps:'帧率显示', font:'字体大小', cb:'色弱模式', shake:'画面震动',
+    gyro:'陀螺仪', vibStr:'触觉强度', save:'保存并关闭', tutTitle:'散步指南', tutNext:'下一页', tutOk:'知道了',
+    langTitle:'🌐 选择语言 · Choose Language', langSub:'语言偏好仅本地保存 · Preference saved locally',
+    langZh:'中文', langEn:'English', langSaved:'语言已切换',
+    /* ---- v0.4.27 文案收拢：对象 label key（en 不添加，回退中文） ---- */
+    puShield:'护盾', puMagnet:'磁铁', puSpeed:'加速', puSlow:'子弹时间', puFreeze:'时间冻结', puDouble:'双倍鲸币', puEcho:'回声定位', puRewind:'时光回溯',
+    diffEasy:'简单', diffNormal:'普通', diffHard:'困难', diffExtreme:'极限',
+    lvl1:'霓虹初醒', lvl2:'雨幕疾行', lvl3:'霓虹深渊', lvl4:'雷暴中心', lvl5:'暴雨终章', lvl6:'永夜鲸歌', lvl7:'深海回响', lvl8:'星海鲸梦', lvl9:'鲸落之地',
+    ach_first:'初次散步 · 完成第 1 关', ach_allclear:'一鼓作气 · 通关全部关卡', ach_coins:'满贯鲸币 · 单关收齐全部鲸币',
+    ach_rings:'穿环大师 · 单关穿过全部光环', ach_combo8:'连击大师 · 单关 COMBO x8', ach_combo12:'雷暴舞者 · 单关最高连击 x12',
+    ach_perfect:'雨夜舞者 · 单关无伤通关', ach_dodge5:'雨夜游侠 · 单关躲过 5 次冲锋', ach_dj10:'空中舞者 · 单关二段跳 10 次',
+    ach_halftime:'游刃有余 · 单关剩余过半时间通关', ach_l6:'永夜鲸歌 · 通关第 6 关', ach_l8:'星海鲸梦 · 通关第 8 关',
+    ach_extreme:'极限征服 · 以极限难度通关任意关卡', ach_srank:'完美鲸跃 · 单关拿到 S 评级', ach_extremeAll:'极限大师 · 以极限难度通关全部关卡',
+    ach_allStars:'满星鲸旅 · 全部关卡拿到 3 星', ach_m4:'鲸迁四海 · 四种难度各通关一次', ach_orb150:'星光鲸旅 · 累计收集 150 个光点',
+    ach_coin30:'金币鲸旅 · 累计收集 30 枚鲸币', ach_combo16:'风暴之眼 · 单关最高连击 x16', ach_clears10:'鲸歌回响 · 累计通关 10 次',
+    ach_whalefall:'鲸落之地 · 通关隐藏关第 9 关', ach_morning:'晨风鲸语 · 上午 6-9 点通关一关', ach_midnight:'午夜鲸歌 · 晚上 22-24 点通关一关',
+    ach_combo24:'连击大师二段 · 单关最高连击 x24', ach_echo10:'回响鲸歌 · 单关用回声定位收集 10 个光点', ach_rewind5:'时之鲸 · 单关时光回溯累计恢复 5 秒',
+    ach_mirrored:'镜中鲸 · 在镜面回响下通关第 9 关', ach_frag3:'鲸语通 · 单关集齐全部鲸语碎片', ach_hunter:'猎鲸者 · 踏灭精英无人机',
+    ach_endless5:'无尽鲸歌 · 无尽模式连续通关 5 关',
+    /* ---- v0.4.27 文案收拢：动态 toast / 拼接文案 key（含 {占位符}） ---- */
+    sndOn:'音效已开启 🔊', sndOff:'音效已关闭 🔇', padConn:'🎮 手柄已连接',
+    lvStart:'起始关卡：第 {n} 关', lvPreview:'👁 预览第 {n} 关（长按）', lvFallback:'第 {n} 关',
+    diffTo:'难度：{l}', achGot:'🏆 成就达成：{l}', achLegend:'🌠 鲸界传说 · 全部成就达成！',
+    rewindBack:'⏳ 时光回溯！时间找回 {s} 秒', rewindFlat:'⏳ 时光回溯！近期无损，折算 +2 秒', puGet:'{icon} 获得{label}！',
+    keepProg:'已保留本关进度：{s} 光点 · {c} 币 · {r} 环', shieldHit:'🛡 护盾抵消了伤害！',
+    carHit:'撞到飞车！ -{n} 秒', droneHit:'被巡逻无人机击中！ -{n} 秒',
+    endless:'♾ 无尽鲸潮 · 连续 {n} 关！ (最佳 {b})', star3:'⭐ 第 {n} 关达成 3 星！', daily3:'🌞 每日首次通关 +3 秒！',
+    unlock:'🔓 新关卡解锁：第 {n} 关 · {l}', noCard:'没有可生成的成绩', cardSaved:'成绩卡已保存 📸', cardFail:'成绩卡生成失败',
+    copied:'成绩已复制，去分享吧！', copyFail:'复制失败，请手动分享', lbCleared:'排行榜已清空',
+    rareOrb:'🌟 稀有金光点！额外 +2 秒', allOrbs:'全部光点收集完成！鲸鱼尾为你摆动 🐳', orbsN:'已收集 {n} 个光点',
+    last3:'还剩最后 3 个光点！', comboN:'COMBO x{n}！ +{s} 秒', killDrone:'🐙 踏灭{e}无人机！ +{n} 秒', elite:'精英',
+    coinAll:'全部金色鲸币收集！+{n} 秒', coinGet:'金色鲸币 +{n} 秒！', coinDouble2:'（双倍鲸币×2）', coinDouble:'（双倍鲸币）',
+    coinCombo:'（组合翻倍）', coinComboN:'（连击 x{n} 翻倍）', fragAll:'🐋 鲸语通！碎片齐鸣 +3 秒，全城共鸣！', fragOne:'鲸语碎片 +1 秒（{a}/{b}）',
+    ring2:'穿环 +2 秒！', boostPad:'加速带！⚡', timeTight:'⏱ 时间紧张！跟随金色导航冲刺',
+    vibOn:'震动已开启', vibOff:'震动已关闭', quality:'画质：{q}', qLow:'低', qHigh:'高', qMid:'中',
+    leakWarn:'⚠ 检测到资源持续增长（几何体+纹理 +{n}），建议刷新页面', fontSize:'字体：{f}', fS:'小', fL:'大', fM:'中',
+    cbOn:'色弱模式已开启', cbOff:'色弱模式已关闭', shakeStr:'画面震动：{v}', shS:'强', shM:'中', shW:'弱', shOff:'关',
+    gyroOn:'陀螺仪已开启', gyroOff:'陀螺仪已关闭', exportOk:'💾 存档已导出（{n} 项）', exportFail:'导出失败',
+    importOk:'💾 存档已导入，即将刷新', importFail:'导入失败：{m}', importBad:'文件无效', autoLow:'已自动降低画质保帧率 ⚙', switchLow:'已切换低画质档 ⚙',
+    achLock:'未达成', achNoMatch:'无匹配成就', achPer:'单关达成'
+  },
+  en:{
+    t2:'Whale Walk · Blue Whale Maid Strolling', modeBadge:'Preview', scoreLabel:'Orbs', hint:'Drag to rotate · Scroll to zoom',
+    play:'Start Walk', pauseTitle:'Paused', pauseSub:'Whale Walk · QIAN', resume:'Resume',
+    restart:'Restart', exit:'Exit Level', ach:'Achievements', set:'Settings',
+    achTitle:'Achievement Wall', achSub:'Milestones of the whale journey · QIAN', setTitle:'Settings', setSub:'Whale Walk Personalize · QIAN',
+    secLang:'🌐 Language', language:'Interface Language', secAudio:'🎵 Audio', secVideo:'🎨 Display', secCtrl:'🎮 Controls',
+    rain:'Rain', vol:'SFX', vib:'Vibration', quality:'Quality', fps:'FPS', font:'Font Size', cb:'Colorblind', shake:'Screen Shake',
+    gyro:'Gyroscope', vibStr:'Vibration Strength', save:'Save & Close', tutTitle:'Walk Guide', tutNext:'Next', tutOk:'Got it',
+    langTitle:'🌐 Select Language · 选择语言', langSub:'Preference saved locally · 语言偏好仅本地保存',
+    langZh:'中文', langEn:'English', langSaved:'Language switched'
+  }
+};
+function T(k){ return (I18N[LANG]&&I18N[LANG][k])||I18N.zh[k]||k; }
+function TF(k,v){ let s=T(k); if(v) for(const kk in v) s=s.split('{'+kk+'}').join(v[kk]); return s; }
 
 /* v0.4.02 画质档全局（提前声明供场景初始化使用）：ww-quality 低/中/高 */
 let qScale=1; try{ const q=localStorage.getItem('ww-quality')||'mid'; qScale=q==='low'?0.6:q==='high'?1.2:1; }catch(_){}
@@ -2002,14 +2072,14 @@ function spawnPatrolDrones(n){
  *  道具系统：护盾 / 磁铁 / 加速
  * ===================================================================== */
 const powerUps=[];
-const PU_TYPES={ shield:{label:'护盾',icon:'🛡',color:0x7FD4FF,dur:0},
-  magnet:{label:'磁铁',icon:'🧲',color:0xFFD25A,dur:8},
-  speed:{label:'加速',icon:'⚡',color:0x35E0FF,dur:5},
-  slow:{label:'子弹时间',icon:'🌀',color:0xC9A8FF,dur:6},
-  freeze:{label:'时间冻结',icon:'🧊',color:0x9FE8FF,dur:3},       // v0.3.86 时间冻结：无人机/车静止 3s
-  double:{label:'双倍鲸币',icon:'💰',color:0xFFC850,dur:10},      // v0.3.86 双倍鲸币：10s 金币翻倍
-  echo:{label:'回声定位',icon:'📡',color:0x7FE4FF,dur:6},       // v0.4.06 回声定位：隔墙透视全场收集物 6s
-  rewind:{label:'时光回溯',icon:'⏳',color:0xFFE9A8,dur:0} };    // v0.4.08 时光回溯：找回近期受击扣掉的时间（瞬时）
+const PU_TYPES={ shield:{label:'puShield',icon:'🛡',color:0x7FD4FF,dur:0},
+  magnet:{label:'puMagnet',icon:'🧲',color:0xFFD25A,dur:8},
+  speed:{label:'puSpeed',icon:'⚡',color:0x35E0FF,dur:5},
+  slow:{label:'puSlow',icon:'🌀',color:0xC9A8FF,dur:6},
+  freeze:{label:'puFreeze',icon:'🧊',color:0x9FE8FF,dur:3},       // v0.3.86 时间冻结：无人机/车静止 3s
+  double:{label:'puDouble',icon:'💰',color:0xFFC850,dur:10},      // v0.3.86 双倍鲸币：10s 金币翻倍
+  echo:{label:'puEcho',icon:'📡',color:0x7FE4FF,dur:6},       // v0.4.06 回声定位：隔墙透视全场收集物 6s
+  rewind:{label:'puRewind',icon:'⏳',color:0xFFE9A8,dur:0} };    // v0.4.08 时光回溯：找回近期受击扣掉的时间（瞬时）
 const puGeo=new THREE.OctahedronGeometry(0.26,0);
 const puCols={shield:0x7FD4FF,magnet:0xFFD25A,speed:0x35E0FF,slow:0xC9A8FF,freeze:0x9FE8FF,double:0xFFC850,echo:0x7FE4FF,rewind:0xFFE9A8};
 function spawnPowerUp(){
@@ -2536,7 +2606,7 @@ function buzz(ms){ try{
 function applyMute(){ const m=AudioFX.toggle();
   try{ localStorage.setItem('ww-muted', m?'1':'0'); }catch(_){}
   document.getElementById('btnMute').textContent = m?'🔇':'🔊';
-  toast(m?'音效已关闭 🔇':'音效已开启 🔊'); }
+  toast(T(m?'sndOff':'sndOn')); }
 /* v0.3.3 静音状态持久化：刷新后保持上次静音设置 */
 try{ if(localStorage.getItem('ww-muted')==='1'){ AudioFX.toggle();
   document.getElementById('btnMute').textContent='🔇'; } }catch(_){}
@@ -2544,7 +2614,7 @@ try{ if(localStorage.getItem('ww-muted')==='1'){ AudioFX.toggle();
 const keys={};
 /* v0.3.18 手柄支持：左摇杆移动 / A 跳 / Start 暂停 / A 预览开始 */
 let gpJumpLatch=false, gpStartLatch=false, gpNotified=false;
-addEventListener('gamepadconnected',()=>{ if(!gpNotified){ gpNotified=true; toast('🎮 手柄已连接'); } });
+addEventListener('gamepadconnected',()=>{ if(!gpNotified){ gpNotified=true; toast(T('padConn')); } });
 function pollGamepad(){
   try{
     const gps=navigator.getGamepads?navigator.getGamepads():[];
@@ -2567,7 +2637,7 @@ addEventListener('keydown',e=>{ keys[e.code]=true;  if(e.code==='KeyP'&&mode==='
   if(e.code==='Enter'&&mode==='preview') setMode('play');   // v0.3.13 Enter 快捷开始
   if(mode==='preview' && e.code>='Digit1' && e.code<='Digit9'){   // v0.3.69 数字键1-9快选解锁关卡；v0.3.88 第9关需隐藏解锁
     const n=+e.code.slice(-1);
-    if(!lvLocked(n)){ startLevel=n; renderLevelPick(); toast('起始关卡：第 '+n+' 关'); } }
+    if(!lvLocked(n)){ startLevel=n; renderLevelPick(); toast(TF('lvStart',{n})); } }
   /* v0.3.26 结算弹窗按 Enter 空格 = 确认按钮（下一关优先于再来一局） */
   if((e.code==='Enter'||e.code==='Space') && rmEl.classList.contains('show')){
     e.preventDefault();
@@ -2696,7 +2766,7 @@ function openPause(){ if(mode!=='play')return; paused=true; pauseMenuEl.classLis
   AudioFX.ui('pause');   // v0.3.97 暂停提示音
   document.body.classList.add('paused');   // v0.3.95 暂停色调
   document.getElementById('pmStats').textContent=   // v0.3.9 暂停即见当前进度；v0.3.24 加成就进度
-    `难度 ${diff().label} · 第 ${level}/${MAX_LEVEL} 关 ${levelName()} · 剩余 ${Math.ceil(challenge.timeLeft)} 秒 · 收集 ${score}/${TOTAL} · 鲸币 ${coinCount}/${coinTotal}${(()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return ' · 全星 '+f+'/'+MAX_LEVEL;})()}${bestOf()?' · 本难度最佳 '+fmtT(bestOf().time):''} · 🏆 ${achGot.length}/${ACHS.length}`; }
+    `难度 ${T(diff().label)} · 第 ${level}/${MAX_LEVEL} 关 ${levelName()} · 剩余 ${Math.ceil(challenge.timeLeft)} 秒 · 收集 ${score}/${TOTAL} · 鲸币 ${coinCount}/${coinTotal}${(()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return ' · 全星 '+f+'/'+MAX_LEVEL;})()}${bestOf()?' · 本难度最佳 '+fmtT(bestOf().time):''} · 🏆 ${achGot.length}/${ACHS.length}`; }
 function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); document.body.classList.remove('paused');
   AudioFX.ui('resume'); }   // v0.3.97 继续提示音（含移除暂停色调）
 function togglePause(){ if(mode!=='play')return; paused?closePause():openPause(); }
@@ -2728,10 +2798,10 @@ const _rimBlue=new THREE.Color(0x8FC8FF), _rimGold=new THREE.Color(0xFFD25A);
  *  难度分级 + 关卡 + 挑战玩法：限时收集 + 连击 + 躲避 + 星级
  * ===================================================================== */
 const DIFFS={
-  easy:  {label:'简单', time:100, carMul:0.85, drones:1, orbHigh:2, thunderMin:15, thunderMax:32},
-  normal:{label:'普通', time:80,  carMul:1.0,  drones:2, orbHigh:4, thunderMin:10, thunderMax:24},
-  hard:  {label:'困难', time:64,  carMul:1.25, drones:3, orbHigh:6, thunderMin:6,  thunderMax:16},
-  extreme:{label:'极限', time:60,  carMul:1.45, drones:4, orbHigh:8, thunderMin:5,  thunderMax:12},
+  easy:  {label:'diffEasy', time:100, carMul:0.85, drones:1, orbHigh:2, thunderMin:15, thunderMax:32},
+  normal:{label:'diffNormal', time:80,  carMul:1.0,  drones:2, orbHigh:4, thunderMin:10, thunderMax:24},
+  hard:  {label:'diffHard', time:64,  carMul:1.25, drones:3, orbHigh:6, thunderMin:6,  thunderMax:16},
+  extreme:{label:'diffExtreme', time:60,  carMul:1.45, drones:4, orbHigh:8, thunderMin:5,  thunderMax:12},
 };
 let diffKey='normal';
 try{ const d=localStorage.getItem('ww-diff'); if(DIFFS[d]) diffKey=d; }catch(_){}
@@ -2740,12 +2810,12 @@ function diff(){ return DIFFS[diffKey]; }
 {
   const box=document.getElementById('diffPick');
   const sync=()=>{ box.querySelectorAll('.dbtn').forEach(b=>b.classList.toggle('on', b.dataset.diff===diffKey));
-    document.getElementById('diffLabel').textContent=diff().label;
+    document.getElementById('diffLabel').textContent=T(diff().label);
     document.body.classList.toggle('extreme', diffKey==='extreme'); };   // v0.3.59 极限难度 HUD 亮红
   box.addEventListener('click',e=>{
     const b=e.target.closest('.dbtn'); if(!b)return;
     diffKey=b.dataset.diff; try{ localStorage.setItem('ww-diff',diffKey); }catch(_){}
-    sync(); renderDiffBest(); toast('难度：'+diff().label);
+    sync(); renderDiffBest(); toast(TF('diffTo',{l:T(diff().label)}));
   });
   sync();
 }
@@ -2756,8 +2826,8 @@ let mirrorOn=false;
 /* v0.4.20 镜面回响日轮换：每周三/周五全部关卡镜像（模块级供 __dbg 读取） */
 const mirrorDay=()=>(new Date().getDay()===3||new Date().getDay()===5);
 /* v0.3.23 章节命名：每关一个名字，开局横幅与结算标题使用；v0.3.88 第9关隐藏关「鲸落之地」 */
-const LEVEL_NAMES=['霓虹初醒','雨幕疾行','霓虹深渊','雷暴中心','暴雨终章','永夜鲸歌','深海回响','星海鲸梦','鲸落之地'];
-const levelName=()=>LEVEL_NAMES[Math.min(level,LEVEL_NAMES.length)-1]||('第 '+level+' 关');
+const LEVEL_NAMES=['lvl1','lvl2','lvl3','lvl4','lvl5','lvl6','lvl7','lvl8','lvl9'];
+const levelName=()=>T(LEVEL_NAMES[Math.min(level,LEVEL_NAMES.length)-1])||TF('lvFallback',{n:level});
 let level=1, levelTimeUsed=0, runTotalUsed=0, runCoins=0, runRings=0;
 const levelNumEl=document.getElementById('levelNum');
 const btnNext=document.getElementById('btnNext');
@@ -2849,7 +2919,7 @@ function renderLevelPick(){
     if((STARS[i]||0)>=3) b.classList.add('max');
     if(i===9 && !locked) b.classList.add('hidden9');   // v0.3.88 隐藏关金色角标
     if(i<=8 && !locked && hiddenUnlocked() && (STARS[i]||0)>0) b.classList.add('extreme9');   // v0.3.89 已极限全通关卡角标
-    b.addEventListener('click',()=>{ startLevel=i; renderLevelPick(); toast('起始关卡：第 '+i+' 关'); });
+    b.addEventListener('click',()=>{ startLevel=i; renderLevelPick(); toast(TF('lvStart',{n:i})); });
     /* v0.4.00 长按预览该关：600ms 长按显示关卡横幅信息（独立计算，不依赖全局 level） */
     let lpT=null;
     b.addEventListener('pointerdown',()=>{ lpT=setTimeout(()=>{
@@ -2857,8 +2927,8 @@ function renderLevelPick(){
       startLevel=i; renderLevelPick();
       const pOrbs=(diffKey==='easy'?22:diffKey==='hard'?28:24)+(i-1)*4;
       const pTime=diffKey==='normal'?Math.max(28,Math.round(78-(i-1)*7.2)):Math.max(28,Math.round(diff().time-(i-1)*8));
-      showLevelBanner('第 '+i+' 关 · '+(LEVEL_NAMES[i-1]||('第 '+i+' 关')), '预览 · '+pOrbs+' 光点 · 时间 '+pTime+' 秒 · '+diff().label);
-      toast('👁 预览第 '+i+' 关（长按）');
+      showLevelBanner('第 '+i+' 关 · '+(T(LEVEL_NAMES[i-1])||TF('lvFallback',{n:i})), '预览 · '+pOrbs+' 光点 · 时间 '+pTime+' 秒 · '+T(diff().label));
+      toast(TF('lvPreview',{n:i}));
     },600); });
     ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>{ if(lpT){clearTimeout(lpT); lpT=null;} }));
     levelPickEl.appendChild(b);
@@ -2878,37 +2948,37 @@ function updateLegend(){
  *  v0.3.8 成就系统：localStorage 持久化（ww-ach-v1），本局新获在结算页展示
  * ===================================================================== */
 const ACHS=[
-  {id:'first',    icon:'🐳', label:'初次散步 · 完成第 1 关'},
-  {id:'allclear', icon:'🏆', label:'一鼓作气 · 通关全部关卡'},
-  {id:'coins',    icon:'🪙', label:'满贯鲸币 · 单关收齐全部鲸币'},
-  {id:'rings',    icon:'💫', label:'穿环大师 · 单关穿过全部光环'},
-  {id:'combo8',   icon:'⚡', label:'连击大师 · 单关 COMBO x8'},
-  {id:'combo12',  icon:'🌩', label:'雷暴舞者 · 单关最高连击 x12'},
-  {id:'perfect',  icon:'🛡', label:'雨夜舞者 · 单关无伤通关'},
-  {id:'dodge5',   icon:'🌀', label:'雨夜游侠 · 单关躲过 5 次冲锋'},
-  {id:'dj10',     icon:'⭐', label:'空中舞者 · 单关二段跳 10 次'},
-  {id:'halftime', icon:'⏱', label:'游刃有余 · 单关剩余过半时间通关'},
-  {id:'l6',       icon:'🐋', label:'永夜鲸歌 · 通关第 6 关'},
-  {id:'l8',       icon:'🌌', label:'星海鲸梦 · 通关第 8 关'},
-  {id:'extreme',  icon:'🔥', label:'极限征服 · 以极限难度通关任意关卡'},
-  {id:'srank',    icon:'👑', label:'完美鲸跃 · 单关拿到 S 评级'},
-  {id:'extremeAll', icon:'🌠', label:'极限大师 · 以极限难度通关全部关卡'},
-  {id:'allStars',    icon:'⭐', label:'满星鲸旅 · 全部关卡拿到 3 星'},
-  {id:'m4',          icon:'🌊', label:'鲸迁四海 · 四种难度各通关一次'},
-  {id:'orb150',      icon:'✨', label:'星光鲸旅 · 累计收集 150 个光点'},
-  {id:'coin30',      icon:'💰', label:'金币鲸旅 · 累计收集 30 枚鲸币'},
-  {id:'combo16',     icon:'🌪', label:'风暴之眼 · 单关最高连击 x16'},
-  {id:'clears10',    icon:'🎵', label:'鲸歌回响 · 累计通关 10 次'},
-  {id:'whalefall',   icon:'🐋', label:'鲸落之地 · 通关隐藏关第 9 关'},
-  {id:'morning',     icon:'🌅', label:'晨风鲸语 · 上午 6-9 点通关一关'},
-  {id:'midnight',    icon:'🌙', label:'午夜鲸歌 · 晚上 22-24 点通关一关'},
-  {id:'combo24',     icon:'⚡', label:'连击大师二段 · 单关最高连击 x24'},
-  {id:'echo10',      icon:'📡', label:'回响鲸歌 · 单关用回声定位收集 10 个光点'},
-  {id:'rewind5',     icon:'⏳', label:'时之鲸 · 单关时光回溯累计恢复 5 秒'},
-  {id:'mirrored',    icon:'🪞', label:'镜中鲸 · 在镜面回响下通关第 9 关'},
-  {id:'frag3',       icon:'🎶', label:'鲸语通 · 单关集齐全部鲸语碎片'},
-  {id:'hunter',      icon:'🎯', label:'猎鲸者 · 踏灭精英无人机'},
-  {id:'endless5',    icon:'♾', label:'无尽鲸歌 · 无尽模式连续通关 5 关'}
+  {id:'first',    icon:'🐳', label:'ach_first'},
+  {id:'allclear', icon:'🏆', label:'ach_allclear'},
+  {id:'coins',    icon:'🪙', label:'ach_coins'},
+  {id:'rings',    icon:'💫', label:'ach_rings'},
+  {id:'combo8',   icon:'⚡', label:'ach_combo8'},
+  {id:'combo12',  icon:'🌩', label:'ach_combo12'},
+  {id:'perfect',  icon:'🛡', label:'ach_perfect'},
+  {id:'dodge5',   icon:'🌀', label:'ach_dodge5'},
+  {id:'dj10',     icon:'⭐', label:'ach_dj10'},
+  {id:'halftime', icon:'⏱', label:'ach_halftime'},
+  {id:'l6',       icon:'🐋', label:'ach_l6'},
+  {id:'l8',       icon:'🌌', label:'ach_l8'},
+  {id:'extreme',  icon:'🔥', label:'ach_extreme'},
+  {id:'srank',    icon:'👑', label:'ach_srank'},
+  {id:'extremeAll', icon:'🌠', label:'ach_extremeAll'},
+  {id:'allStars',    icon:'⭐', label:'ach_allStars'},
+  {id:'m4',          icon:'🌊', label:'ach_m4'},
+  {id:'orb150',      icon:'✨', label:'ach_orb150'},
+  {id:'coin30',      icon:'💰', label:'ach_coin30'},
+  {id:'combo16',     icon:'🌪', label:'ach_combo16'},
+  {id:'clears10',    icon:'🎵', label:'ach_clears10'},
+  {id:'whalefall',   icon:'🐋', label:'ach_whalefall'},
+  {id:'morning',     icon:'🌅', label:'ach_morning'},
+  {id:'midnight',    icon:'🌙', label:'ach_midnight'},
+  {id:'combo24',     icon:'⚡', label:'ach_combo24'},
+  {id:'echo10',      icon:'📡', label:'ach_echo10'},
+  {id:'rewind5',     icon:'⏳', label:'ach_rewind5'},
+  {id:'mirrored',    icon:'🪞', label:'ach_mirrored'},
+  {id:'frag3',       icon:'🎶', label:'ach_frag3'},
+  {id:'hunter',      icon:'🎯', label:'ach_hunter'},
+  {id:'endless5',    icon:'♾', label:'ach_endless5'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -2923,9 +2993,9 @@ function award(id){
   const a=ACHS.find(x=>x.id===id); if(!a)return;
   achGot.push(id); newAch.push(a);
   try{ localStorage.setItem('ww-ach-v1',JSON.stringify(achGot)); }catch(_){}
-  toast('🏆 成就达成：'+a.label); AudioFX.pickup();
+  toast(TF('achGot',{l:T(a.label)})); AudioFX.pickup();
   /* v0.3.97 全部成就达成「鲸界传说」主题曲 */
-  if(achGot.length===ACHS.length){ setTimeout(()=>{ AudioFX.legend(); toast('🌠 鲸界传说 · 全部成就达成！'); },600); }
+  if(achGot.length===ACHS.length){ setTimeout(()=>{ AudioFX.legend(); toast(T('achLegend')); },600); }
 }
 /* v0.3.10 成就墙：预览模式随时查看收集进度 */
 /* v0.3.94 成就进度查询：未达成显示当前/目标（累计类） */
@@ -2933,8 +3003,8 @@ const ACH_PROG={
   orb150:()=>Math.min(ORB,150)+'/150',
   coin30:()=>Math.min(COIN,30)+'/30',
   clears10:()=>Math.min(CLEARS,10)+'/10',
-  combo8:()=>'单关达成', combo12:()=>'单关达成', combo16:()=>'单关达成', combo24:()=>'单关达成',
-  dodge5:()=>'单关达成', dj10:()=>'单关达成',
+  combo8:()=>T('achPer'), combo12:()=>T('achPer'), combo16:()=>T('achPer'), combo24:()=>T('achPer'),
+  dodge5:()=>T('achPer'), dj10:()=>T('achPer'),
   allStars:()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return f+'/'+MAX_LEVEL;},
   m4:()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c+'/4';}
 };
@@ -2943,11 +3013,11 @@ let achQuery='';
 function renderAch(){
   const list=document.getElementById('achList');
   const q=achQuery.trim().toLowerCase();
-  list.innerHTML=ACHS.filter(a=>!q||a.label.toLowerCase().includes(q)||a.icon.includes(q)).map(a=>{
+  list.innerHTML=ACHS.filter(a=>!q||T(a.label).toLowerCase().includes(q)||a.icon.includes(q)).map(a=>{
     const got=achGot.includes(a.id);
     const prog=!got&&ACH_PROG[a.id]?ACH_PROG[a.id]():'';
-    return `<div class="ach-row ${got?'got':'lock'}"><span class="ic">${a.icon}</span><span>${a.label}${got?'':'（未达成'+(prog?' · '+prog:'')+'）'}</span></div>`;
-  }).join('') || '<div style="opacity:.6;text-align:center;padding:8px">无匹配成就</div>';
+    return `<div class="ach-row ${got?'got':'lock'}"><span class="ic">${a.icon}</span><span>${T(a.label)}${got?'':'（'+T('achLock')+(prog?' · '+prog:'')+'）'}</span></div>`;
+  }).join('') || '<div style="opacity:.6;text-align:center;padding:8px">'+T('achNoMatch')+'</div>';
   document.getElementById('achCount').textContent=achGot.length+'/'+ACHS.length;
   const fill=document.getElementById('achBarFill');   // v0.3.58 成就进度条
   if(fill) fill.style.width=(achGot.length/ACHS.length*100).toFixed(1)+'%';
@@ -2981,36 +3051,7 @@ tutOkBtn.addEventListener('click',()=>{
   else document.getElementById('tut').classList.remove('show');
 });
 document.getElementById('tut').addEventListener('pointerdown',()=>AudioFX.tick());
-/* =====================================================================
- *  v0.4.01 英文界面双语框架：zh/en 文案表 + LANG + T() + applyLang()
- *  覆盖主要静态元素（HUD/暂停/成就/设置/教程/语言），动态 toast 暂保留中文（已知限制）
- * ===================================================================== */
-let LANG='zh'; try{ LANG=localStorage.getItem('ww-lang')||'zh'; }catch(_){}
-const I18N={
-  zh:{
-    t2:'鲸步 · 蓝鲸女仆散步中', modeBadge:'预览模式', scoreLabel:'光点收集', hint:'拖动旋转 · 滚轮缩放',
-    play:'开始散步', pauseTitle:'已暂停', pauseSub:'鲸步稍作休息 · QIAN', resume:'继续散步',
-    restart:'重新开始', exit:'退出关卡', ach:'成就', set:'设置',
-    achTitle:'成就墙', achSub:'鲸步旅途的里程碑 · QIAN', setTitle:'设置', setSub:'鲸步个性化 · QIAN',
-    secLang:'🌐 语言', language:'界面语言', secAudio:'🎵 音频', secVideo:'🎨 画面', secCtrl:'🎮 操控',
-    rain:'雨声', vol:'音效', vib:'震动', quality:'画质', fps:'帧率显示', font:'字体大小', cb:'色弱模式', shake:'画面震动',
-    gyro:'陀螺仪', vibStr:'触觉强度', save:'保存并关闭', tutTitle:'散步指南', tutNext:'下一页', tutOk:'知道了',
-    langTitle:'🌐 选择语言 · Choose Language', langSub:'语言偏好仅本地保存 · Preference saved locally',
-    langZh:'中文', langEn:'English', langSaved:'语言已切换'
-  },
-  en:{
-    t2:'Whale Walk · Blue Whale Maid Strolling', modeBadge:'Preview', scoreLabel:'Orbs', hint:'Drag to rotate · Scroll to zoom',
-    play:'Start Walk', pauseTitle:'Paused', pauseSub:'Whale Walk · QIAN', resume:'Resume',
-    restart:'Restart', exit:'Exit Level', ach:'Achievements', set:'Settings',
-    achTitle:'Achievement Wall', achSub:'Milestones of the whale journey · QIAN', setTitle:'Settings', setSub:'Whale Walk Personalize · QIAN',
-    secLang:'🌐 Language', language:'Interface Language', secAudio:'🎵 Audio', secVideo:'🎨 Display', secCtrl:'🎮 Controls',
-    rain:'Rain', vol:'SFX', vib:'Vibration', quality:'Quality', fps:'FPS', font:'Font Size', cb:'Colorblind', shake:'Screen Shake',
-    gyro:'Gyroscope', vibStr:'Vibration Strength', save:'Save & Close', tutTitle:'Walk Guide', tutNext:'Next', tutOk:'Got it',
-    langTitle:'🌐 Select Language · 选择语言', langSub:'Preference saved locally · 语言偏好仅本地保存',
-    langZh:'中文', langEn:'English', langSaved:'Language switched'
-  }
-};
-function T(k){ return (I18N[LANG]&&I18N[LANG][k])||I18N.zh[k]||k; }
+/* I18N/T/TF 已前移至脚本顶部（v0.4.27）；applyLang() 依赖 DOM，保留原位 */
 function applyLang(){
   document.querySelectorAll('[data-i18n]').forEach(el=>{
     if(el.getAttribute('data-i18n')==='tutOk') return;   // 教程按钮按页单独处理
@@ -3081,13 +3122,13 @@ function applyPowerUp(type){
       challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+back);
       challenge.recentLoss-=back; lvRewind+=back;
       if(lvRewind>=5) award('rewind5');
-      toast('⏳ 时光回溯！时间找回 '+back.toFixed(1)+' 秒');
+      toast(TF('rewindBack',{s:back.toFixed(1)}));
     } else {
       challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2);
-      toast('⏳ 时光回溯！近期无损，折算 +2 秒');
+      toast(T('rewindFlat'));
     }
   }
-  if(type!=='rewind') toast(info.icon+' 获得'+info.label+'！');   // v0.4.08 回溯有专属文案
+  if(type!=='rewind') toast(TF('puGet',{icon:info.icon,label:T(info.label)}));   // v0.4.08 回溯有专属文案
   AudioFX.pickup();
 }
 function fmtT(s){ return s.toFixed(1)+' 秒'; }
@@ -3139,7 +3180,7 @@ function startChallenge(){
     k=Math.min(retainPending.rings, rings.length);
     for(let i=0;i<k;i++){ const r=rings[i]; r.userData.alive=false; ringGroup.remove(r); }
     ringCount=k;
-    toast('已保留本关进度：'+score+' 光点 · '+coinCount+' 币 · '+ringCount+' 环');
+    toast(TF('keepProg',{s:score,c:coinCount,r:ringCount}));
     retainPending=null;
   }
   challenge.active=true; challenge.done=false; challenge.failed=false;
@@ -3155,7 +3196,7 @@ function startChallenge(){
   /* v0.4.20 镜面回响日轮换：每周三/周五全部关卡镜像 */
   mirrorOn=(level===9)||mirrorDay();  const mirrorHudEl=document.getElementById('mirrorHud');
   if(mirrorHudEl) mirrorHudEl.classList.toggle('on',mirrorOn);
-  showLevelBanner('第 '+level+' 关 · '+levelName(), diff().label+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点'+(mirrorOn?' · ⚠ 左右反转':'')+' · 今日布局');   // v0.3.23 开局章节横幅；v0.4.13 每日布局标注
+  showLevelBanner('第 '+level+' 关 · '+levelName(), T(diff().label)+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点'+(mirrorOn?' · ⚠ 左右反转':'')+' · 今日布局');   // v0.3.23 开局章节横幅；v0.4.13 每日布局标注
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
   timerNum.textContent=Math.ceil(challenge.timeLeft);
   levelTimeUsed=0;
@@ -3163,7 +3204,7 @@ function startChallenge(){
 function stopChallengeUI(){ timerEl.style.display='none'; comboEl.classList.remove('on'); }
 function consumeShield(){
   powerState.shield=false; shieldBubble.visible=false; pwShieldEl.classList.remove('on');
-  toast('🛡 护盾抵消了伤害！');
+  toast(T('shieldHit'));
 }
 function hitCar(){
   if(challenge.invuln>0) return;
@@ -3176,7 +3217,7 @@ function hitCar(){
   girl.userData.state.speed*=0.4;
   challenge.tookHit=true;   // v0.3.8 无伤成就判定（护盾抵消不算）
   AudioFX.crash(); buzz(45);   // v0.3.85 撞车专属音调区分
-  toast('撞到飞车！ -'+HIT_PENALTY+' 秒');
+  toast(TF('carHit',{n:HIT_PENALTY}));
 }
 function hitDrone(d){
   if(challenge.invuln>0) return;
@@ -3194,7 +3235,7 @@ function hitDrone(d){
   st.speed*=0.3;
   challenge.tookHit=true;   // v0.3.8 无伤成就判定（护盾抵消不算）
   AudioFX.land(0.7); buzz(45);
-  toast('被巡逻无人机击中！ -'+DRONE_PENALTY+' 秒');
+  toast(TF('droneHit',{n:DRONE_PENALTY}));
 }
 /* ---- v0.4.21 无人机威胁方向指示：最近威胁不在视野内时，屏幕边缘红箭头指向袭来方向 ---- */
 const droneWarnEl=document.getElementById('droneWarn');
@@ -3233,7 +3274,7 @@ function finishChallenge(win){
       try{ localStorage.setItem('ww-endless-best',String(EBEST)); }catch(_){}
       if(EBEST>=5) award('endless5');
     }
-    toast('♾ 无尽鲸潮 · 连续 '+endlessStreak+' 关！ (最佳 '+EBEST+')');
+    toast(TF('endless',{n:endlessStreak,b:EBEST}));
     rmEl.classList.remove('show');
     challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+5);   // 连关补给
     setTimeout(()=>{ if(endless && mode==='play') endlessNext(); },1200);
@@ -3258,7 +3299,7 @@ function finishChallenge(win){
     const oldStars=STARS[level]||0;
     STARS[level]=Math.max(STARS[level]||0, stars);
     try{ localStorage.setItem('ww-stars-v1',JSON.stringify(STARS)); }catch(_){}
-    if(oldStars<3 && stars>=3) toast('⭐ 第 '+level+' 关达成 3 星！');   // v0.3.83 首次3星提示
+    if(oldStars<3 && stars>=3) toast(TF('star3',{n:level}));   // v0.3.83 首次3星提示
     CLEARS++; try{ localStorage.setItem('ww-clears-v1',String(CLEARS)); }catch(_){} metaLine();   // v0.3.81 通关计数
     if(CLEARS>=10) award('clears10');
     let all3=true; for(let i=1;i<=MAX_LEVEL;i++) if((STARS[i]||0)<3){ all3=false; break; }
@@ -3266,15 +3307,15 @@ function finishChallenge(win){
     rmRank.style.display='block';
     { const rw=document.getElementById('rmRankWhy'); if(rw) rw.style.display=(rank==='S')?'block':'none'; }   // v0.3.75
     /* v0.3.89 排行榜：本关净得分入榜 */
-    lbAdd(diff().label, level, score+Math.round((challenge.comboBonus||0)+challenge.timeLeft), stars);
+    lbAdd(T(diff().label), level, score+Math.round((challenge.comboBonus||0)+challenge.timeLeft), stars);
     runTotalUsed+=levelTimeUsed; runCoins+=coinCount; runRings+=ringCount;
     /* v0.3.25 星星逐个弹出 */
     rmStars.innerHTML='★★★☆☆☆'.slice(0,stars*2).split('').map((s,i)=>
       s==='★'?`<span class="star-on" style="animation-delay:${i*0.16}s">★</span>`:''
     ).join('')+'☆'.repeat(3-stars);
     shareSnap = (level>=MAX_LEVEL)
-      ? {kind:'final',diff:diff().label,time:fmtT(runTotalUsed),coins:runCoins,rings:runRings}
-      : {kind:'win',diff:diff().label,level,stars,time:fmtT(levelTimeUsed)};
+      ? {kind:'final',diff:T(diff().label),time:fmtT(runTotalUsed),coins:runCoins,rings:runRings}
+      : {kind:'win',diff:T(diff().label),level,stars,time:fmtT(levelTimeUsed)};
     if(level===1) award('first');             // v0.3.8 成就
     if(level>=MAX_LEVEL) award('allclear');
     if(level>=6) award('l6');
@@ -3295,7 +3336,7 @@ function finishChallenge(win){
       const last=localStorage.getItem('ww-daily-date');
       if(last!==today){ localStorage.setItem('ww-daily-date',today);
         challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+3);
-        toast('🌞 每日首次通关 +3 秒！'); } }
+        toast(T('daily3')); } }
     if(ringCount>=ringTotal && ringTotal>0) award('rings'); // v0.3.44 穿环大师
     if(diffKey==='extreme') award('extreme'); // v0.3.46 极限征服
     if(level<MAX_LEVEL){
@@ -3306,14 +3347,14 @@ function finishChallenge(win){
         try{ localStorage.setItem('ww-cleardiff-v1',JSON.stringify(CLEARED)); }catch(_){}
         if(CLEARED.easy&&CLEARED.normal&&CLEARED.hard&&CLEARED.extreme) award('m4');
       }
-      shareSnap={kind:'win',diff:diff().label,level,stars,time:fmtT(levelTimeUsed),rank};   // v0.3.52 胜利也写分享快照
+      shareSnap={kind:'win',diff:T(diff().label),level,stars,time:fmtT(levelTimeUsed),rank};   // v0.3.52 胜利也写分享快照
       const beforeUnlock=unlockMax;
       /* v0.3.88 逐关解锁只到第 8 关；第 9 关隐藏关由极限全通（hiddenUnlocked）控制 */
       unlockMax=Math.max(unlockMax,Math.min(8,level+1));
       if(hiddenUnlocked()) unlockMax=Math.max(unlockMax,9);   // 极限全通后解锁鲸落之地
       try{ localStorage.setItem('ww-unlock-v1',String(unlockMax)); }catch(_){}
       renderLevelPick();
-      if(unlockMax>beforeUnlock) toast('🔓 新关卡解锁：第 '+Math.min(MAX_LEVEL,unlockMax)+' 关 · '+LEVEL_NAMES[Math.min(MAX_LEVEL,unlockMax)-1]);   // v0.3.57 解锁提示
+      if(unlockMax>beforeUnlock) toast(TF('unlock',{n:Math.min(MAX_LEVEL,unlockMax),l:T(LEVEL_NAMES[Math.min(MAX_LEVEL,unlockMax)-1])||TF('lvFallback',{n:Math.min(MAX_LEVEL,unlockMax)})}));   // v0.3.57 解锁提示
       rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
@@ -3322,15 +3363,15 @@ function finishChallenge(win){
         +'<br>本局净得分 <b id="rmNetScore">0</b> 分'
         +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)+'）'   // v0.3.89
         +(stars<3?'<br>下次快 '+fmtT(levelCfg().time*0.42-challenge.timeLeft)+' 即可 3★':'')
-        +(level<8?'<br>下一关：'+(level+1)+' '+LEVEL_NAMES[level]+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
-          :(hiddenUnlocked()?'<br>隐藏关解锁：第 9 关 · '+LEVEL_NAMES[8]:'<br>故事全通！隐藏关需极限难度通关第 8 关解锁'))
-        +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
+        +(level<8?'<br>下一关：'+(level+1)+' '+T(LEVEL_NAMES[level])+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
+          :(hiddenUnlocked()?'<br>隐藏关解锁：第 9 关 · '+T(LEVEL_NAMES[8]):'<br>故事全通！隐藏关需极限难度通关第 8 关解锁'))
+        +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+T(a.label)).join(' · '):'');
       rmBest.textContent='';
       btnNext.style.display='inline-block';
-      showLevelBanner('第 '+(level+1)+' 关', '更多光点 · 更短时间 · '+diff().label);
+      showLevelBanner('第 '+(level+1)+' 关', '更多光点 · 更短时间 · '+T(diff().label));
     } else {
       /* v0.3.88 第 9 关隐藏关「鲸落之地」全通 */
-      shareSnap={kind:'final',diff:diff().label,time:fmtT(runTotalUsed),coins:runCoins,rings:runRings};
+      shareSnap={kind:'final',diff:T(diff().label),time:fmtT(runTotalUsed),coins:runCoins,rings:runRings};
       award('whalefall');   // v0.3.88 第9关专属成就
       if(mirrorOn) award('mirrored');   // v0.4.09 镜面回响通关成就
       CLEARED[diffKey]=true;
@@ -3341,9 +3382,9 @@ function finishChallenge(win){
       { const st=girl.userData.state;
         st.grounded=false; st.vy=11; st.y=Math.max(st.y,0.05); st.airJumps=1;
         hitStop=0.35; orbitT=3.2; cheerT=2.2; }
-      rmInfo.innerHTML=MAX_LEVEL+'关总用时 <b>'+fmtT(runTotalUsed)+'</b><br>难度 '+diff().label+' · 鲸币 '+runCoins+' · 穿环 '+runRings
+      rmInfo.innerHTML=MAX_LEVEL+'关总用时 <b>'+fmtT(runTotalUsed)+'</b><br>难度 '+T(diff().label)+' · 鲸币 '+runCoins+' · 穿环 '+runRings
         +(()=>{let c4=0;for(const k in CLEARED)if(CLEARED[k])c4++;return '<br>四难度通关 '+c4+'/4';})()   // v0.3.83 全通四难度进度
-        +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+a.label).join(' · '):'');
+        +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+T(a.label)).join(' · '):'');
       const prev=bestOf();
       if(runTotalUsed>=1 && (!prev || runTotalUsed<prev.time)){
         BEST[diffKey]={time:runTotalUsed, stars};
@@ -3359,7 +3400,7 @@ function finishChallenge(win){
     }
     if(!celebrated){ celebrated=true; cheerT=1; spawnCelebrate(); AudioFX.whaleCall(); AudioFX.celebrate(); showCelebrateBanner(); orbitT=2.2; }   // v0.3.22 环视庆祝
   } else {
-    shareSnap={kind:'fail',diff:diff().label,level,score,total:TOTAL};
+    shareSnap={kind:'fail',diff:T(diff().label),level,score,total:TOTAL};
     document.getElementById('btnRetry').textContent='再来一局 · 第 '+level+' 关';   // v0.3.68 按钮文案带关卡
     AudioFX.fail();   // v0.3.73 失败下行音
     /* v0.3.89 失败重试保留本关进度：光点/币/环快照，重试同关时恢复 */
@@ -3447,12 +3488,12 @@ function makeScoreCard(){
 }
 document.getElementById('btnCard').addEventListener('click',()=>{
   const url=makeScoreCard();
-  if(!url){ toast('没有可生成的成绩'); return; }
+  if(!url){ toast(T('noCard')); return; }
   try{
     const a=document.createElement('a'); a.href=url; a.download='whale-walk-成绩卡.png';
     document.body.appendChild(a); a.click(); a.remove();
-    toast('成绩卡已保存 📸');
-  }catch(_){ toast('成绩卡生成失败'); }
+    toast(T('cardSaved'));
+  }catch(_){ toast(T('cardFail')); }
 });
 /* v0.4.04 安全：外部 URL 一律 https 校验（分享/跳转仅放行 https，拦截 http/其他协议） */
 function safeURL(u){
@@ -3473,10 +3514,10 @@ document.getElementById('btnShare').addEventListener('click',()=>{
   const fallback=()=>{ const ta=document.createElement('textarea');
     ta.value=t; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta);
     ta.select();
-    try{ document.execCommand('copy'); toast('成绩已复制，去分享吧！'); }
-    catch(_){ toast('复制失败，请手动分享'); }
+    try{ document.execCommand('copy'); toast(T('copied')); }
+    catch(_){ toast(T('copyFail')); }
     ta.remove(); };
-  try{ navigator.clipboard.writeText(t).then(()=>toast('成绩已复制，去分享吧！'),fallback); }
+  try{ navigator.clipboard.writeText(t).then(()=>toast(T('copied')),fallback); }
   catch(_){ fallback(); }
 });
 document.getElementById('btnRetry').addEventListener('click',()=>resetChallenge());
@@ -3501,7 +3542,7 @@ function renderLB(){
 }
 document.getElementById('lbClear').addEventListener('click',()=>{
   leaderboard=[]; try{ localStorage.setItem('ww-lb-v1','[]'); }catch(_){}
-  renderLB(); toast('排行榜已清空');
+  renderLB(); toast(T('lbCleared'));
 });
 renderLB();
 
@@ -3822,7 +3863,7 @@ function update(dt){
         if(u.golden){
           challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2);
           AudioFX.coin();
-          toast('🌟 稀有金光点！额外 +2 秒');
+          toast(T('rareOrb'));
         }
         score++; scoreEl.textContent=`${score} / ${TOTAL}`;
         ORB++; try{ localStorage.setItem('ww-orbtotal-v1',String(ORB)); }catch(_){}   // v0.3.77 累计光点
@@ -3839,10 +3880,10 @@ function update(dt){
         buzz(12);   // v0.3.3 收集光点轻振动
         if(score===TOTAL){
           if(challenge.active) finishChallenge(true);
-          else { toast('全部光点收集完成！鲸鱼尾为你摆动 🐳'); P.tailJ.rotation.y=0.5;
+          else { toast(T('allOrbs')); P.tailJ.rotation.y=0.5;
             if(!celebrated){ celebrated=true; cheerT=1; spawnCelebrate(); AudioFX.whaleCall(); AudioFX.celebrate(); showCelebrateBanner(); } } }
-        else if(score%6===0) toast(`已收集 ${score} 个光点`);
-        if(TOTAL-score===3) toast('还剩最后 3 个光点！');   // v0.3.27 冲刺提醒
+        else if(score%6===0) toast(TF('orbsN',{n:score}));
+        if(TOTAL-score===3) toast(T('last3'));   // v0.3.27 冲刺提醒
         /* 连击 + 时间奖励 */
         if(challenge.active){
           resPulse=1;   // v0.4.07 收集触发城市霓虹共鸣
@@ -3855,7 +3896,7 @@ function update(dt){
             const cb=(diffKey==='extreme')?COMBO_BONUS*1.25:COMBO_BONUS;   // v0.3.86 极限难度连击加成 1.25×
             challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+cb);
             challenge.comboBonus=(challenge.comboBonus||0)+cb;   // v0.3.89 净得分累计
-            toast(`COMBO x${challenge.combo}！ +${cb.toFixed(1)} 秒`);
+            toast(TF('comboN',{n:challenge.combo,s:cb.toFixed(1)}));
           }
         }
       }
@@ -4018,7 +4059,7 @@ function update(dt){
       const killBonus=d.elite?4:2;
       challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+killBonus);
       if(d.elite) award('hunter');
-      toast('🐙 踏灭'+(d.elite?'精英':'')+'无人机！ +'+killBonus+' 秒'); AudioFX.boost(); buzz(d.elite?50:30);
+      toast(TF('killDrone',{e:d.elite?T('elite'):'',n:killBonus})); AudioFX.boost(); buzz(d.elite?50:30);
       burst(g.position.clone());
       continue;
     }
@@ -4087,8 +4128,8 @@ function update(dt){
         blinkT=1; burst(c.position);
         AudioFX.coin(); buzz(30);
         toast(coinCount===coinTotal
-          ?('全部金色鲸币收集！+'+coinBonus+' 秒'+(powerState.double>0?'（双倍鲸币×2）':'')+(challenge.combo>=3?'（组合翻倍）':''))
-          :('金色鲸币 +'+coinBonus+' 秒！'+(powerState.double>0?'（双倍鲸币）':'')+(coinBonus>6?'（连击 x'+challenge.combo+' 翻倍）':'')));
+          ?(TF('coinAll',{n:coinBonus})+(powerState.double>0?T('coinDouble2'):'')+(challenge.combo>=3?T('coinCombo'):''))
+          :(TF('coinGet',{n:coinBonus})+(powerState.double>0?T('coinDouble'):'')+(coinBonus>6?TF('coinComboN',{n:challenge.combo}):'')));
         if(coinCount===coinTotal) award('coins');   // v0.3.8 满贯鲸币
       }
     }
@@ -4112,9 +4153,9 @@ function update(dt){
           challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+3);
           resPulse=1;   // v0.4.07 全城霓虹共鸣
           AudioFX.whaleChord();
-          toast('🐋 鲸语通！碎片齐鸣 +3 秒，全城共鸣！');
+          toast(T('fragAll'));
           award('frag3');
-        } else toast('鲸语碎片 +1 秒（'+fragCount+'/'+fragTotal+'）');
+        } else toast(TF('fragOne',{a:fragCount,b:fragTotal}));
       }
     }
     /* 空中光环（水平环）：沿弹跳轨迹向上穿过，+2 秒 */
@@ -4130,7 +4171,7 @@ function update(dt){
         challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2);
         blinkT=1; burst(r.position);
         AudioFX.ring(); buzz(18);
-        toast('穿环 +2 秒！');
+        toast(T('ring2'));
       }
     }
     /* 加速带（v0.3.86 时间 2.2→2.6s，极限难度保持 2.2）：踏上 ×2.2 冲刺 */
@@ -4141,7 +4182,7 @@ function update(dt){
          && Math.abs(girl.position.z-bs.position.z)<u.halfL){
         boostT=(diffKey==='extreme')?2.2:2.6; u.cool=boostT+0.2;
         AudioFX.boost(); buzz(16);
-        toast('加速带！⚡');
+        toast(T('boostPad'));
       }
     }
   }
@@ -4231,7 +4272,7 @@ function update(dt){
     /* v0.3.92 低时间全屏红色呼吸：≤15s 常驻脉动（受击闪之上） */
     redEl.classList.toggle('breath', tl<=15 && challenge.active);
     /* v0.3.4 濒危引导：≤10s 提示一次 + 小地图导航增强 */
-    if(tl<=10 && !challenge.danger){ challenge.danger=true; toast('⏱ 时间紧张！跟随金色导航冲刺'); }
+    if(tl<=10 && !challenge.danger){ challenge.danger=true; toast(T('timeTight')); }
     }
     /* combo 显示 */
     if(challenge.combo>=2 && elapsed-challenge.lastPick<comboWindow()){
@@ -4477,7 +4518,7 @@ function drawMinimap(){
     syncVib();
     vb.addEventListener('click',()=>{ vibOn=!vibOn;
       try{ localStorage.setItem('ww-vib',vibOn?'1':'0'); }catch(_){}
-      syncVib(); toast(vibOn?'震动已开启':'震动已关闭'); });
+      syncVib(); toast(T(vibOn?'vibOn':'vibOff')); });
   }
 }
 /* =====================================================================
@@ -4523,7 +4564,7 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
   const vb=document.getElementById('setVib');
   const syncV=()=>{ vb.textContent=vibOn?'开':'关'; vb.classList.toggle('off',!vibOn); }; syncV();
   vb.addEventListener('click',()=>{ vibOn=!vibOn; try{ localStorage.setItem('ww-vib',vibOn?'1':'0'); }catch(_){}
-    syncV(); AudioFX.tick(); toast(vibOn?'震动已开启':'震动已关闭'); });
+    syncV(); AudioFX.tick(); toast(T(vibOn?'vibOn':'vibOff')); });
 }
 /* 画面：画质档 / FPS 显示 */
 {
@@ -4534,7 +4575,7 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
     /* v0.4.02 画质切换：重建雨丝缓冲（低 260/高 520）+ 阴影贴图降档，不重置关卡 */
     applyRainQuality();
     if(typeof applyShadowQuality==='function') applyShadowQuality();
-    toast('画质：'+(q.value==='low'?'低':q.value==='high'?'高':'中')); AudioFX.tick(); });
+    toast(TF('quality',{q:q.value==='low'?T('qLow'):q.value==='high'?T('qHigh'):T('qMid')})); AudioFX.tick(); });
   const fb=document.getElementById('setFps'), fpsEl=document.getElementById('fps');
   let fpsOn=false; try{ fpsOn=localStorage.getItem('ww-fps')==='1'; }catch(_){}
   const syncF=()=>{ fb.textContent=fpsOn?'开':'关'; fb.classList.toggle('off',!fpsOn); fpsEl.classList.toggle('on',fpsOn); }; syncF();
@@ -4556,7 +4597,7 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
     if(__leakBase===null){ __leakBase=cur; return {base:cur,cur,delta:0,ok:true}; }
     const delta=cur-__leakBase;
     if(delta>40 && !__leakWarned){ __leakWarned=true;
-      toast('⚠ 检测到资源持续增长（几何体+纹理 +'+delta+'），建议刷新页面'); }
+      toast(TF('leakWarn',{n:delta})); }
     return {base:__leakBase,cur,delta,ok:delta<=40};
   };
   /* v0.3.99 字体大小档 */
@@ -4565,19 +4606,19 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
   const syncFont=()=>{ document.body.classList.toggle('hud-s',fz.value==='s'); document.body.classList.toggle('hud-l',fz.value==='l'); };
   syncFont();
   fz.addEventListener('change',()=>{ try{ localStorage.setItem('ww-font',fz.value); }catch(_){}
-    syncFont(); AudioFX.tick(); toast('字体：'+(fz.value==='s'?'小':fz.value==='l'?'大':'中')); });
+    syncFont(); AudioFX.tick(); toast(TF('fontSize',{f:fz.value==='s'?T('fS'):fz.value==='l'?T('fL'):T('fM')})); });
   /* v0.3.99 色弱模式 */
   const cb=document.getElementById('setCb');
   let cbOn=false; try{ cbOn=localStorage.getItem('ww-colorblind')==='1'; }catch(_){}
   const syncCb=()=>{ cb.textContent=cbOn?'开':'关'; cb.classList.toggle('off',!cbOn);
     document.body.classList.toggle('colorblind',cbOn); }; syncCb();
   cb.addEventListener('click',()=>{ cbOn=!cbOn; try{ localStorage.setItem('ww-colorblind',cbOn?'1':'0'); }catch(_){}
-    syncCb(); AudioFX.tick(); toast(cbOn?'色弱模式已开启':'色弱模式已关闭'); });
+    syncCb(); AudioFX.tick(); toast(T(cbOn?'cbOn':'cbOff')); });
   /* v0.4.25 无障碍：画面震动强度开关 */
   const sh=document.getElementById('setShake'), shv=localStorage.getItem('ww-shake')||'1';
   sh.value=shv; sh.addEventListener('change',()=>{ shakeAmp=parseFloat(sh.value)||0;
     try{ localStorage.setItem('ww-shake',sh.value); }catch(_){}
-    AudioFX.tick(); toast('画面震动：'+(sh.value==='1'?'强':sh.value==='0.55'?'中':sh.value==='0.25'?'弱':'关')); });
+    AudioFX.tick(); toast(TF('shakeStr',{v:sh.value==='1'?T('shS'):sh.value==='0.55'?T('shM'):sh.value==='0.25'?T('shW'):T('shOff')})); });
 }
 /* 操控：陀螺仪 / 触觉强度 */
 {
@@ -4585,7 +4626,7 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
   let gyroOn=false; try{ gyroOn=localStorage.getItem('ww-gyro')==='1'; }catch(_){}
   const syncG=()=>{ gb.textContent=gyroOn?'开':'关'; gb.classList.toggle('off',!gyroOn); }; syncG();
   gb.addEventListener('click',()=>{ gyroOn=!gyroOn; try{ localStorage.setItem('ww-gyro',gyroOn?'1':'0'); }catch(_){}
-    syncG(); AudioFX.tick(); toast(gyroOn?'陀螺仪已开启':'陀螺仪已关闭'); });
+    syncG(); AudioFX.tick(); toast(T(gyroOn?'gyroOn':'gyroOff')); });
   const vs=document.getElementById('setVibStr'), vsv=localStorage.getItem('ww-vibstr')||'1';
   vs.value=vsv; vs.addEventListener('change',()=>{ vibStr=parseFloat(vs.value)||1;
     try{ localStorage.setItem('ww-vibstr',String(vibStr)); }catch(_){} AudioFX.tick(); });
@@ -4609,8 +4650,8 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
       const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
       a.download='whale-walk-save.json'; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(a.href),2000);
-      toast('💾 存档已导出（'+Object.keys(dump.data).length+' 项）');
-    }catch(_){ toast('导出失败'); }
+      toast(TF('exportOk',{n:Object.keys(dump.data).length}));
+    }catch(_){ toast(T('exportFail')); }
   });
   document.getElementById('setImportBtn').addEventListener('click',()=>document.getElementById('setImport').click());
   document.getElementById('setImport').addEventListener('change',e=>{
@@ -4624,9 +4665,9 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
       if(!keys.length) throw new Error('存档为空');
       if(!confirm('导入 '+keys.length+' 项存档？将覆盖当前进度。')) return;
       keys.forEach(k=>{ try{ localStorage.setItem(k,String(dump.data[k])); }catch(_){} });
-      toast('💾 存档已导入，即将刷新');
+      toast(T('importOk'));
       setTimeout(()=>location.reload(),900);
-    }catch(err){ toast('导入失败：'+(err&&err.message?err.message:'文件无效')); } };
+    }catch(err){ toast(TF('importFail',{m:err&&err.message?err.message:T('importBad')})); } };
     rd.readAsText(f,'utf-8');
   });
 }
@@ -4697,13 +4738,13 @@ function autoDegrade(){
   if(degradeLv===1){
     renderer.setPixelRatio(1);
     renderer.setSize(innerWidth,innerHeight);
-    toast('已自动降低画质保帧率 ⚙');
+    toast(T('autoLow'));
   } else {
     qScale=0.6; applyRainQuality(); applyShadowQuality();
     renderer.setPixelRatio(0.8); renderer.setSize(innerWidth,innerHeight);
     try{ localStorage.setItem('ww-quality','low'); }catch(_){}
     const q=document.getElementById('setQuality'); if(q) q.value='low';
-    toast('已切换低画质档 ⚙');
+    toast(T('switchLow'));
   }
 }
 /* v0.4.03 WebGL 上下文丢失重连：丢失时冻结游戏防跳帧，恢复时重启渲染循环 */
@@ -4808,6 +4849,10 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   mmColorblind:()=>document.body.classList.contains('colorblind'),
   padShape:(i)=>{ const bp=bouncePads[i]; if(!bp)return null;
     return (bp.userData.cool>0)?'square':'ring'; },
+  /* v0.4.27 文案收拢钩子：多语言字符串检查 */
+  T, TF, I18N,
+  strCount:()=>Object.keys(I18N.zh).length,
+  strKeys:()=>Object.keys(I18N.zh),
   fragShape:()=>document.body.classList.contains('colorblind')?'triangle':'diamond',
   droneShape:(i)=>{ const d=patrolDrones[i]; if(!d)return null;
     return (d.mode==='windup'||d.mode==='dash')?'triangle':'circle'; },
