@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.24</title>
+<title>鲸步 WHALE WALK · v0.4.25</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -607,6 +607,8 @@
       <div class="set-row"><span data-i18n="font">字体大小</span><select id="setFont">
         <option value="s">小</option><option value="m" selected>中</option><option value="l">大</option></select></div>
       <div class="set-row"><span data-i18n="cb">色弱模式</span><button id="setCb">关</button></div>
+      <div class="set-row"><span data-i18n="shake">画面震动</span><select id="setShake">
+        <option value="1" selected>强</option><option value="0.55">中</option><option value="0.25">弱</option><option value="0">关</option></select></div>
     </div>
     <div class="set-sec">
       <div class="set-sec-title" data-i18n="secCtrl">🎮 操控</div>
@@ -2519,6 +2521,8 @@ const AudioFX=(()=>{
 let vibOn=true; try{ vibOn=localStorage.getItem('ww-vib')!=='0'; }catch(_){}
 /* v0.3.98 触觉强度滑条（弱/中/强）：ww-vibstr '0.5'/'1'/'1.6' */
 let vibStr=1; try{ vibStr=parseFloat(localStorage.getItem('ww-vibstr')||'1')||1; }catch(_){}
+/* v0.4.25 无障碍：画面震动强度开关（ww-shake '1'/'0.55'/'0.25'/'0'=强/中/弱/关） */
+let shakeAmp=1; try{ shakeAmp=parseFloat(localStorage.getItem('ww-shake')||'1'); if(![1,0.55,0.25,0].includes(shakeAmp)) shakeAmp=1; }catch(_){}
 /* qScale 已在模块顶部声明并初始化（v0.4.02），此处不重复声明 */
 function buzz(ms){ try{
   if(!vibOn) return;
@@ -2989,7 +2993,7 @@ const I18N={
     restart:'重新开始', exit:'退出关卡', ach:'成就', set:'设置',
     achTitle:'成就墙', achSub:'鲸步旅途的里程碑 · QIAN', setTitle:'设置', setSub:'鲸步个性化 · QIAN',
     secLang:'🌐 语言', language:'界面语言', secAudio:'🎵 音频', secVideo:'🎨 画面', secCtrl:'🎮 操控',
-    rain:'雨声', vol:'音效', vib:'震动', quality:'画质', fps:'帧率显示', font:'字体大小', cb:'色弱模式',
+    rain:'雨声', vol:'音效', vib:'震动', quality:'画质', fps:'帧率显示', font:'字体大小', cb:'色弱模式', shake:'画面震动',
     gyro:'陀螺仪', vibStr:'触觉强度', save:'保存并关闭', tutTitle:'散步指南', tutNext:'下一页', tutOk:'知道了',
     langTitle:'🌐 选择语言 · Choose Language', langSub:'语言偏好仅本地保存 · Preference saved locally',
     langZh:'中文', langEn:'English', langSaved:'语言已切换'
@@ -3000,7 +3004,7 @@ const I18N={
     restart:'Restart', exit:'Exit Level', ach:'Achievements', set:'Settings',
     achTitle:'Achievement Wall', achSub:'Milestones of the whale journey · QIAN', setTitle:'Settings', setSub:'Whale Walk Personalize · QIAN',
     secLang:'🌐 Language', language:'Interface Language', secAudio:'🎵 Audio', secVideo:'🎨 Display', secCtrl:'🎮 Controls',
-    rain:'Rain', vol:'SFX', vib:'Vibration', quality:'Quality', fps:'FPS', font:'Font Size', cb:'Colorblind',
+    rain:'Rain', vol:'SFX', vib:'Vibration', quality:'Quality', fps:'FPS', font:'Font Size', cb:'Colorblind', shake:'Screen Shake',
     gyro:'Gyroscope', vibStr:'Vibration Strength', save:'Save & Close', tutTitle:'Walk Guide', tutNext:'Next', tutOk:'Got it',
     langTitle:'🌐 Select Language · 选择语言', langSub:'Preference saved locally · 语言偏好仅本地保存',
     langZh:'中文', langEn:'English', langSaved:'Language switched'
@@ -3581,9 +3585,9 @@ function update(dt){
   camera.position.copy(_vCam);
   /* v0.3.16 相机震动（受击 0.35s 内随机偏移） */
   if(shakeT>0){ shakeT-=dt;
-    camera.position.x+=(Math.random()-0.5)*0.14;
-    camera.position.y+=(Math.random()-0.5)*0.10;
-    camera.position.z+=(Math.random()-0.5)*0.14; }
+    camera.position.x+=(Math.random()-0.5)*0.14*shakeAmp;
+    camera.position.y+=(Math.random()-0.5)*0.10*shakeAmp;
+    camera.position.z+=(Math.random()-0.5)*0.14*shakeAmp; }
   camera.lookAt(_vTgt);
   /* v0.3.92 关卡色调渐变：fog/background 连续 lerp 到目标色调（切关不跳变） */
   const tintLerp=1-Math.pow(0.06,dt);
@@ -4554,6 +4558,11 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
     document.body.classList.toggle('colorblind',cbOn); }; syncCb();
   cb.addEventListener('click',()=>{ cbOn=!cbOn; try{ localStorage.setItem('ww-colorblind',cbOn?'1':'0'); }catch(_){}
     syncCb(); AudioFX.tick(); toast(cbOn?'色弱模式已开启':'色弱模式已关闭'); });
+  /* v0.4.25 无障碍：画面震动强度开关 */
+  const sh=document.getElementById('setShake'), shv=localStorage.getItem('ww-shake')||'1';
+  sh.value=shv; sh.addEventListener('change',()=>{ shakeAmp=parseFloat(sh.value)||0;
+    try{ localStorage.setItem('ww-shake',sh.value); }catch(_){}
+    AudioFX.tick(); toast('画面震动：'+(sh.value==='1'?'强':sh.value==='0.55'?'中':sh.value==='0.25'?'弱':'关')); });
 }
 /* 操控：陀螺仪 / 触觉强度 */
 {
@@ -4771,7 +4780,15 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.4.24 弹跳垫冷却可视化钩子 */
   padVisual:(i)=>{ const bp=bouncePads[i]; if(!bp)return null;
     const u=bp.userData, pm=bp.children[0].material;
-    return {cool:u.cool, emissive:pm.emissive.getHex(), intensity:pm.emissiveIntensity}; }};
+    return {cool:u.cool, emissive:pm.emissive.getHex(), intensity:pm.emissiveIntensity}; },
+  /* v0.4.25 无障碍：画面震动强度钩子 */
+  shakeAmp:()=>shakeAmp,
+  shakeProbe:(amp)=>{ const was=shakeAmp;
+    shakeAmp=0; shakeT=0; const p0=camera.position.clone(); update(0.016); const p1=camera.position.clone();
+    const drift=p1.distanceTo(p0);
+    shakeAmp=amp; shakeT=0.35; const q0=p1.clone(); update(0.016); const q1=camera.position.clone();
+    const total=q1.distanceTo(q0); shakeAmp=was; shakeT=0;
+    return {drift, total, shake:Math.max(0,total-drift)}; }};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
