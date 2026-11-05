@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.22</title>
+<title>鲸步 WHALE WALK · v0.4.23</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3991,6 +3991,12 @@ function update(dt){
     } else if(d.mode==='dash'){
       bodyMat.emissive.setHex(0x5A0A06);
       aimGrp.visible=true; aimPlane.material.opacity=0.20;
+    } else if(d.mode==='cool'){
+      /* v0.4.23 冷却再武装可视化：暗蓝灰(无害窗口)→末段脉冲提醒即将再武装 */
+      const ck=d.t/2.2;
+      if(ck<0.75) bodyMat.emissive.setHex(0x16323C);
+      else bodyMat.emissive.setHex(Math.sin(d.t*30)>0?0x4A0A08:0x16323C);
+      aimGrp.visible=false;
     } else { bodyMat.emissive.setHex(0x000000); aimGrp.visible=false; }
     /* 扫描环旋转 + 信标闪（windup 急闪 + 扫描环脉冲放大；v0.3.93 机灯闪烁随接近玩家加快） */
     d.grp.userData.scan.rotation.z+=dt*(d.mode==='windup'?6:1.5);
