@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.54</title>
+<title>鲸步 WHALE WALK · v0.4.55</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -658,6 +658,9 @@
       <div class="set-sec-title" data-i18n="secAudio">🎵 音频</div>
       <div class="set-row"><span data-i18n="rain">雨声</span><input type="range" id="setRain" min="0" max="100" value="33"></div>
       <div class="set-row"><span data-i18n="vol">音效</span><input type="range" id="setVol" min="0" max="100" value="80"></div>
+      <div class="set-row"><span data-i18n="volPick">拾取音</span><input type="range" id="setVolPick" min="0" max="100" value="100"></div>
+      <div class="set-row"><span data-i18n="volCoin">金币音</span><input type="range" id="setVolCoin" min="0" max="100" value="100"></div>
+      <div class="set-row"><span data-i18n="volRing">穿环音</span><input type="range" id="setVolRing" min="0" max="100" value="100"></div>
       <div class="set-row"><span data-i18n="vib">震动</span><button id="setVib">开</button></div>
     </div>
     <div class="set-sec">
@@ -705,7 +708,7 @@ const I18N={
     restart:'重新开始', exit:'退出关卡', ach:'成就', set:'设置',
     achTitle:'成就墙', achSub:'鲸步旅途的里程碑 · QIAN', setTitle:'设置', setSub:'鲸步个性化 · QIAN',
     secLang:'🌐 语言', language:'界面语言', secAudio:'🎵 音频', secVideo:'🎨 画面', secCtrl:'🎮 操控',
-    rain:'雨声', vol:'音效', vib:'震动', quality:'画质', fps:'帧率显示', font:'字体大小', cb:'色弱模式', shake:'画面震动',
+    rain:'雨声', vol:'音效', vib:'震动', volPick:'拾取音', volCoin:'金币音', volRing:'穿环音', quality:'画质', fps:'帧率显示', font:'字体大小', cb:'色弱模式', shake:'画面震动',
     gyro:'陀螺仪', vibStr:'触觉强度', save:'保存并关闭', tutTitle:'散步指南', tutNext:'下一页', tutOk:'知道了',
     langTitle:'🌐 选择语言 · Choose Language', langSub:'语言偏好仅本地保存 · Preference saved locally',
     langZh:'中文', langEn:'English', langSaved:'语言已切换',
@@ -757,7 +760,7 @@ const I18N={
     restart:'Restart', exit:'Exit Level', ach:'Achievements', set:'Settings',
     achTitle:'Achievement Wall', achSub:'Milestones of the whale journey · QIAN', setTitle:'Settings', setSub:'Whale Walk Personalize · QIAN',
     secLang:'🌐 Language', language:'Interface Language', secAudio:'🎵 Audio', secVideo:'🎨 Display', secCtrl:'🎮 Controls',
-    rain:'Rain', vol:'SFX', vib:'Vibration', quality:'Quality', fps:'FPS', font:'Font Size', cb:'Colorblind', shake:'Screen Shake',
+    rain:'Rain', vol:'SFX', vib:'Vibration', volPick:'Pickup Vol', volCoin:'Coin Vol', volRing:'Ring Vol', quality:'Quality', fps:'FPS', font:'Font Size', cb:'Colorblind', shake:'Screen Shake',
     gyro:'Gyroscope', vibStr:'Vibration Strength', save:'Save & Close', tutTitle:'Walk Guide', tutNext:'Next', tutOk:'Got it',
     langTitle:'🌐 Select Language · 选择语言', langSub:'Preference saved locally · 语言偏好仅本地保存',
     langZh:'中文', langEn:'English', langSaved:'Language switched'
@@ -2467,6 +2470,7 @@ function spawnNewProps(){
  * ===================================================================== */
 const AudioFX=(()=>{
   let ctx=null,bus=null,muted=false,nSteps=0,nPick=0,vol=0.8;
+  let volPick=1,volCoin=1,volRing=1;   // v0.4.55 音效分层：拾取/金币/穿环独立音量倍率（0-1）
   let lastPickTier=0,lastPickLayer=2;   // v0.4.48 连击和声阶梯：最近一次拾取音景档位/音数（供钩子）
   function ac(){
     const AC=window.AudioContext||window.webkitAudioContext;
@@ -2560,11 +2564,11 @@ const AudioFX=(()=>{
     pickup(cb){ nPick++; const k=Math.max(0,cb||0);
       const f=PENTA[k%5]*(k>=10?2:1);
       const tier=comboTier(k);   // v0.4.48 和声档位 0-3
-      tone(f,f,0.12,0.14,'sine');
-      tone(f*1.33,f*1.33,0.14,0.12,'sine',0.06);
-      if(tier>=1) tone(f*1.25,f*1.25,0.13,0.11,'sine',0.02);   // v0.4.48 大三度
-      if(tier>=2) tone(f*1.5,f*1.5,0.15,0.10,'sine',0.04);      // v0.4.48 纯五度和声
-      if(tier>=3) tone(f*2,f*2,0.16,0.09,'sine',0.08);          // v0.4.48 高八度闪光
+      tone(f,f,0.12,0.14*volPick,'sine');
+      tone(f*1.33,f*1.33,0.14,0.12*volPick,'sine',0.06);
+      if(tier>=1) tone(f*1.25,f*1.25,0.13,0.11*volPick,'sine',0.02);   // v0.4.48 大三度
+      if(tier>=2) tone(f*1.5,f*1.5,0.15,0.10*volPick,'sine',0.04);      // v0.4.48 纯五度和声
+      if(tier>=3) tone(f*2,f*2,0.16,0.09*volPick,'sine',0.08);          // v0.4.48 高八度闪光
       lastPickTier=tier; lastPickLayer=2+tier;   // v0.4.48 钩子：本档音数（基础+五度泛音+叠加）
       return tier; },
     comboTier,
@@ -2658,13 +2662,13 @@ const AudioFX=(()=>{
       [523,659,784].forEach((f,i)=>tone(f,f,0.5,0.12,'triangle',i*0.05));
       tone(1046,1046,0.7,0.14,'sine',0.2); },
     coin(){ if(muted||!ac())return;
-      tone(988,988,0.09,0.13,'sine');
-      tone(1319,1319,0.22,0.15,'sine',0.07); },
+      tone(988,988,0.09,0.13*volCoin,'sine');
+      tone(1319,1319,0.22,0.15*volCoin,'sine',0.07); },
     /* v0.3.4 穿环：三连琶音；v0.3.96 上行 5 度（523→784→1174） */
     ring(){ if(muted||!ac())return;
-      tone(523,523,0.10,0.12,'triangle');
-      tone(784,784,0.10,0.13,'triangle',0.07);
-      tone(1174,1174,0.24,0.15,'triangle',0.14); },
+      tone(523,523,0.10,0.12*volRing,'triangle');
+      tone(784,784,0.10,0.13*volRing,'triangle',0.07);
+      tone(1174,1174,0.24,0.15*volRing,'triangle',0.14); },
     /* v0.3.4 弹跳：快速上扬滑音 */
     /* v0.3.4 弹跳；v0.3.96 落地软音：低频 thump + 短促软着地 */
     bounce(){ if(muted||!ac())return;
@@ -2743,6 +2747,13 @@ const AudioFX=(()=>{
     /* v0.3.13 音效总线音量（0-1，雨声独立于总线） */
     setVolume(v){ vol=clamp(v,0,1); if(bus) bus.gain.value=vol*0.85; return vol; },
     get volume(){return vol;},
+    /* v0.4.55 音效分层：拾取/金币/穿环独立音量（0-1 倍率，默认 1=100%） */
+    setVolPick(v){ volPick=clamp(v,0,1); return volPick; },
+    setVolCoin(v){ volCoin=clamp(v,0,1); return volCoin; },
+    setVolRing(v){ volRing=clamp(v,0,1); return volRing; },
+    get volPick(){return volPick;},
+    get volCoin(){return volCoin;},
+    get volRing(){return volRing;},
     setRainLevel(v){ rainLevel=Math.max(0,Math.min(0.15,v)); setRain(muted?0:rainLevel); return rainLevel; },
     get rainLevel(){return rainLevel;},
     toggle(){ muted=!muted; if(!muted)ac(); setRain(muted?0:rainLevel); return muted; },
@@ -4935,7 +4946,7 @@ document.getElementById('setClose').addEventListener('click',closeSettings);
 /* v0.4.32 恢复默认设置：只清设置键（画质/音量/雨声/震动/字体/色弱/陀螺仪/静音/语言/小地图视图），进度键（成就/星级/最佳/解锁/累计）全部保留 */
 document.getElementById('setReset').addEventListener('click',()=>{
   if(!confirm('恢复全部设置为默认值？\n（成就、星级、解锁等进度不受影响）')) return;
-  const SETTING_KEYS=['ww-quality','ww-vol','ww-rain','ww-vibstr','ww-font','ww-cb','ww-gyro','ww-muted','ww-lang','ww-mmview'];
+  const SETTING_KEYS=['ww-quality','ww-vol','ww-rain','ww-vibstr','ww-font','ww-cb','ww-gyro','ww-muted','ww-lang','ww-mmview','ww-volpick','ww-volcoin','ww-volring'];
   SETTING_KEYS.forEach(k=>{ try{ localStorage.removeItem(k); }catch(_){} });
   toast('⚙ 已恢复默认设置，即将刷新');
   setTimeout(()=>location.reload(),900);
@@ -4950,6 +4961,17 @@ settingsEl.addEventListener('pointerdown',e=>{ if(e.target===settingsEl) closeSe
     try{ localStorage.setItem('ww-rain',String(v)); }catch(_){} });
   sv.addEventListener('input',()=>{ const v=AudioFX.setVolume(sv.value/100);
     try{ localStorage.setItem('ww-vol',String(v)); }catch(_){} });
+  /* v0.4.55 音效分层：拾取/金币/穿环独立音量（持久化 ww-volpick/ww-volcoin/ww-volring） */
+  const sVP=document.getElementById('setVolPick'), sVC=document.getElementById('setVolCoin'), sVR=document.getElementById('setVolRing');
+  try{ const s=parseFloat(localStorage.getItem('ww-volpick')); if(!isNaN(s)){ sVP.value=Math.round(s*100); AudioFX.setVolPick(s); } }catch(_){}
+  try{ const s=parseFloat(localStorage.getItem('ww-volcoin')); if(!isNaN(s)){ sVC.value=Math.round(s*100); AudioFX.setVolCoin(s); } }catch(_){}
+  try{ const s=parseFloat(localStorage.getItem('ww-volring')); if(!isNaN(s)){ sVR.value=Math.round(s*100); AudioFX.setVolRing(s); } }catch(_){}
+  sVP.addEventListener('input',()=>{ const v=AudioFX.setVolPick(sVP.value/100);
+    try{ localStorage.setItem('ww-volpick',String(v)); }catch(_){} });
+  sVC.addEventListener('input',()=>{ const v=AudioFX.setVolCoin(sVC.value/100);
+    try{ localStorage.setItem('ww-volcoin',String(v)); }catch(_){} });
+  sVR.addEventListener('input',()=>{ const v=AudioFX.setVolRing(sVR.value/100);
+    try{ localStorage.setItem('ww-volring',String(v)); }catch(_){} });
   const vb=document.getElementById('setVib');
   const syncV=()=>{ vb.textContent=vibOn?'开':'关'; vb.classList.toggle('off',!vibOn); }; syncV();
   vb.addEventListener('click',()=>{ vibOn=!vibOn; try{ localStorage.setItem('ww-vib',vibOn?'1':'0'); }catch(_){}
@@ -5194,6 +5216,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
     return {mode:d.mode, x:+d.grp.position.x.toFixed(3), z:+d.grp.position.z.toFixed(3),
       ringOpacity:am?+am.opacity.toFixed(3):-1,
       ringColor:am?am.color.getHexString():''}; }),
+  /* v0.4.55 音效分层探针：拾取/金币/穿环独立音量（验收断言 setVolXxx 生效 + 持久化） */
+  sfxVols:()=>({pick:AudioFX.volPick, coin:AudioFX.volCoin, ring:AudioFX.volRing}),
   /* v0.4.50 加速带金币链钩子：带链 id + 各链金币坐标（供验收探针，确定性） */
   boostChainInfo:()=>boostChainIds.map(id=>({
     id,
