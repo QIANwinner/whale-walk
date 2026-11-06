@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.91</title>
+<title>鲸步 WHALE WALK · v0.4.92</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3218,6 +3218,9 @@ function bestComboTick(n){
 }
 /* v0.3.64 每关最高星级（ww-stars-v1） */
 let STARS={}; try{ STARS=JSON.parse(localStorage.getItem('ww-stars-v1')||'{}')||{}; }catch(_){ STARS={}; }
+/* v0.4.92 每关最佳用时（ww-lvlbest-v1，秒） */
+let LVLBEST={}; try{ LVLBEST=JSON.parse(localStorage.getItem('ww-lvlbest-v1')||'{}')||{}; }catch(_){ LVLBEST={}; }
+let lvlBestNew=false;   // 本局是否刷新本关最佳（结算提示）
 /* v0.3.67 四种难度各通关一次（ww-cleardiff-v1） */
 let CLEARED={}; try{ CLEARED=JSON.parse(localStorage.getItem('ww-cleardiff-v1')||'{}')||{}; }catch(_){ CLEARED={}; }
 /* v0.3.77/78 累计光点/鲸币计数（跨关，持久化） */
@@ -3680,6 +3683,11 @@ function finishChallenge(win){
   }
   levelTimeUsed=levelCfg().time-challenge.timeLeft;
   const stars=win?starsFor(challenge.timeLeft):0;
+  if(win){   // v0.4.92 本关最佳用时记录
+    const prev=LVLBEST[level];
+    lvlBestNew=!prev||levelTimeUsed<prev-0.05;
+    if(lvlBestNew){ LVLBEST[level]=+levelTimeUsed.toFixed(1);
+      try{ localStorage.setItem('ww-lvlbest-v1',JSON.stringify(LVLBEST)); }catch(_){} } }
   if(win) tailWagLeft=stars;   // v0.3.95 胜利鲸尾摆动次数 = 星级
   const rmRank=document.getElementById('rmRank');
   if(win){
@@ -3757,6 +3765,7 @@ function finishChallenge(win){
       if(unlockMax>beforeUnlock) toast(TF('unlock',{n:Math.min(MAX_LEVEL,unlockMax),l:T(LEVEL_NAMES[Math.min(MAX_LEVEL,unlockMax)-1])||TF('lvFallback',{n:Math.min(MAX_LEVEL,unlockMax)})}));   // v0.3.57 解锁提示
       rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
+        +(LVLBEST[level]?(lvlBestNew?' · 🏅 本关最佳！':' · 本关最佳 '+fmtT(LVLBEST[level])):'')   // v0.4.92 本关最佳
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 道具 ×'+lvPU+' · 最高连击 x'+(challenge.comboMax||0)
         +(statBadges()?'<br>'+statBadges():'')   // v0.4.67/73/76/84 精度统计徽章行
@@ -5523,6 +5532,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   forceDQAll:()=>{ DQ.orb=DQ_KEYS.orb; DQ.clear=DQ_KEYS.clear; DQ.frag=DQ_KEYS.frag; renderDQ(); return DQ; },   // v0.4.88 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
+  lvlBest:()=>({b:LVLBEST[level]||0, isNew:lvlBestNew, level}),   // v0.4.92 验收辅助
   finishFail:()=>{ __dbg.finishChallenge(false); return document.getElementById('rmInfo').innerText; },   // v0.4.75 验收辅助
   droneKills:()=>droneKills,   // v0.4.76
   ringPftTotal:()=>ringPftTotal,   // v0.4.78
