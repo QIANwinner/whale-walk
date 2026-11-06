@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.70</title>
+<title>鲸步 WHALE WALK · v0.4.71</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -763,7 +763,7 @@ const I18N={
     last3:'还剩最后 3 个光点！', comboN:'COMBO x{n}！ +{s} 秒', killDrone:'🐙 踏灭{e}无人机！ +{n} 秒', elite:'精英',
     coinAll:'全部金色鲸币收集！+{n} 秒', coinGet:'金色鲸币 +{n} 秒！', coinDouble2:'（双倍鲸币×2）', coinDouble:'（双倍鲸币）',
     coinCombo:'（组合翻倍）', coinComboN:'（连击 x{n} 翻倍）', fragAll:'🐋 鲸语通！碎片齐鸣 +3 秒，全城共鸣！', fragOne:'鲸语碎片 +1 秒（{a}/{b}）',
-    ring2:'穿环 +2 秒！', ringPerfect:'🎯 正穿 PERFECT！+3 秒', boostPad:'加速带！⚡', timeTight:'⏱ 时间紧张！跟随金色导航冲刺',
+    ring2:'穿环 +2 秒！', ringPerfect:'🎯 正穿 PERFECT！+3 秒', padPerfect:'🎯 正中弹跳！弹得更高', boostPad:'加速带！⚡', timeTight:'⏱ 时间紧张！跟随金色导航冲刺',
     chainFull:'⚡ 全链收割！金币链吃满 3 枚',
     comboBreak:'💔 连击中断 x{n}！',   // v0.4.51 连击断连提示（en 缺 key 回退中文）
     vibOn:'震动已开启', vibOff:'震动已关闭', quality:'画质：{q}', qLow:'低', qHigh:'高', qMid:'中',
@@ -2899,6 +2899,7 @@ let girlPulseT=0;   // v0.4.61 拾取弹性脉冲计时
 let lastRingPerfect=false;   // v0.4.66 最近一次穿环是否正穿（探针用）
 let ringPerfectCount=0;   // v0.4.67 本关正穿 PERFECT 次数（结算统计）
 let ringPerfectStreak=0;   // v0.4.68 连续正穿计数（偏穿清零，≥2 次额外奖励）
+let lastPadPerfect=false;   // v0.4.71 最近一次弹跳垫是否正中（探针用）
 function doJump(){ const st=girl.userData.state;
   if(mode!=='play')return;
   if(st.grounded){ st.vy=4.9; st.grounded=false; st.airJumps=1; AudioFX.jump(); }
@@ -4146,10 +4147,15 @@ function update(dt){
         if(Math.hypot(px-bp.position.x,pz-bp.position.z)<1.0){ onPad=bp; break; }
       }
       if(onPad && onPad.userData.cool<=0){
-        st.grounded=false; st.vy=8.5; st.y=0.02; st.airJumps=1;
+        /* v0.4.71 正中弹跳：距垫心 <0.35 → 弹力 9.6（更高），更容易够到高处环/光点 */
+        const pd=Math.hypot(px-onPad.position.x,pz-onPad.position.z);
+        const perfectPad=pd<0.35;
+        lastPadPerfect=perfectPad;
+        st.grounded=false; st.vy=perfectPad?9.6:8.5; st.y=0.02; st.airJumps=1;
         onPad.userData.cool=0.8;
         onPad.scale.y=0.6;                     // 压缩反馈
         AudioFX.bounce(); buzz(22);
+        if(perfectPad){ AudioFX.coin(); buzzP([10,30,22]); toast(T('padPerfect')); }
       }
     } else {
       girl.position.y=absY;
@@ -5446,6 +5452,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   lastRingPerfect:()=>lastRingPerfect,
   ringPerfectCount:()=>ringPerfectCount,   // v0.4.67
   ringPerfectStreak:()=>ringPerfectStreak,   // v0.4.68
+  lastPadPerfect:()=>lastPadPerfect,   // v0.4.71
+  girlVy:()=>girl.userData.state.vy,   // v0.4.71
   /* v0.4.34 每日挑战钩子 */
   DQ:()=>DQ, dqBump, renderDQ};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
