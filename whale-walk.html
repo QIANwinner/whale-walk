@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.97</title>
+<title>鲸步 WHALE WALK · v0.4.98</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2930,6 +2930,8 @@ let droneKills=0;   // v0.4.76 本关踏灭无人机数（结算统计）
 let ringPftTotal=0;
 try{ ringPftTotal=parseInt(localStorage.getItem('ww-pft-v1')||'0',10)||0; }catch(_){}
 let dodgeStreak=0;   // v0.4.80 连续躲避冲锋计数（被撞清零）
+/* v0.4.98 成就解锁日期（ww-achdate-v1） */
+let ACHDATE={}; try{ ACHDATE=JSON.parse(localStorage.getItem('ww-achdate-v1')||'{}')||{}; }catch(_){ ACHDATE={}; }
 function doJump(){ const st=girl.userData.state;
   if(mode!=='play')return;
   if(st.grounded){ st.vy=4.9; st.grounded=false; st.airJumps=1; AudioFX.jump(); }
@@ -3360,7 +3362,9 @@ function award(id){
   if(achGot.includes(id))return;
   const a=ACHS.find(x=>x.id===id); if(!a)return;
   achGot.push(id); newAch.push(a);
-  try{ localStorage.setItem('ww-ach-v1',JSON.stringify(achGot)); }catch(_){}
+  ACHDATE[id]=Date.now();   // v0.4.98 解锁日期
+  try{ localStorage.setItem('ww-ach-v1',JSON.stringify(achGot));
+    localStorage.setItem('ww-achdate-v1',JSON.stringify(ACHDATE)); }catch(_){}
   toast(TF('achGot',{l:T(a.label)})); AudioFX.pickup();
   /* v0.3.97 全部成就达成「鲸界传说」主题曲 */
   if(achGot.length===ACHS.length){ setTimeout(()=>{ AudioFX.legend(); toast(T('achLegend')); },600); }
@@ -3391,7 +3395,7 @@ function renderAch(){
   }).map(a=>{
     const got=achGot.includes(a.id);
     const prog=!got&&ACH_PROG[a.id]?ACH_PROG[a.id]():'';
-    return `<div class="ach-row ${got?'got':'lock'}"><span class="ic">${a.icon}</span><span>${T(a.label)}${got?'':'（'+T('achLock')+(prog?' · '+prog:'')+'）'}</span></div>`;
+    return `<div class="ach-row ${got?'got':'lock'}" ${got&&ACHDATE[a.id]?`title="${new Date(ACHDATE[a.id]).toLocaleDateString('zh-CN')} 解锁"`:''}><span class="ic">${a.icon}</span><span>${T(a.label)}${got?'':'（'+T('achLock')+(prog?' · '+prog:'')+'）'}</span></div>`;
   }).join('') || '<div style="opacity:.6;text-align:center;padding:8px">'+T('achNoMatch')+'</div>';
   document.getElementById('achCount').textContent=achGot.length+'/'+ACHS.length;
   const fill=document.getElementById('achBarFill');   // v0.3.58 成就进度条
@@ -5548,6 +5552,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   diffBestText:()=>document.getElementById('diffBest').textContent,   // v0.4.95 验收辅助
   setVerText:()=>document.getElementById('setVer').textContent,   // v0.4.96 验收辅助
   rankCls:()=>document.getElementById('rmRank').className,   // v0.4.97 验收辅助
+  achDate:()=>ACHDATE,   // v0.4.98 验收辅助
+  achRowTitle:(i)=>{ const rows=document.querySelectorAll('#achList .ach-row'); return rows[i]?rows[i].getAttribute('title')||'':''; },   // v0.4.98 验收辅助
+  openAchWall:()=>{ renderAch(); document.getElementById('achModal').classList.add('show'); },   // v0.4.98 验收辅助
   finishFail:()=>{ __dbg.finishChallenge(false); return document.getElementById('rmInfo').innerText; },   // v0.4.75 验收辅助
   droneKills:()=>droneKills,   // v0.4.76
   ringPftTotal:()=>ringPftTotal,   // v0.4.78
