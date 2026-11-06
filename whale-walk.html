@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.45</title>
+<title>鲸步 WHALE WALK · v0.4.46</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2978,12 +2978,18 @@ const levelName=()=>T(LEVEL_NAMES[Math.min(level,LEVEL_NAMES.length)-1])||TF('lv
 let level=1, levelTimeUsed=0, runTotalUsed=0, runCoins=0, runRings=0;
 const levelNumEl=document.getElementById('levelNum');
 const btnNext=document.getElementById('btnNext');
-/* v0.3.87 关卡曲线重校：普通 L1 78s → L8 28s（每关约-7.2s）；其余难度保持原斜率，下限降至 28 */
-function levelTime(){
-  if(diffKey==='normal') return Math.max(28, Math.round(78-(level-1)*7.2));
-  return Math.max(28, Math.round(diff().time-(level-1)*8));
+/* v0.4.46 平衡重校：光点成长放缓（+2/关，封顶+16），时间预算下限大幅抬高（普通 60s）
+ * 旧曲线 L7-L9 光点 48-56 个但预算被 clamp 到 28s，实测最优收集需 41-43s → 关卡不可胜；
+ * 新曲线保证各难度全程可胜，星级改为「固定完成时间上限 + 预算比例」双约束（见 star3Need） */
+function orbCountFor(lv){ return (diffKey==='easy'?22:diffKey==='hard'?28:24)+Math.min(16,Math.round((lv-1)*2)); }
+function timeFor(lv){
+  const base=diffKey==='normal'?78:diff().time;
+  const fl=diffKey==='easy'?72:diffKey==='normal'?60:diffKey==='hard'?56:54;
+  const sl=diffKey==='easy'?3.5:diffKey==='normal'?2.5:3;
+  return Math.max(fl, Math.round(base-(lv-1)*sl));
 }
-function levelOrbs(){ return (diffKey==='easy'?22:diffKey==='hard'?28:24)+(level-1)*4; }
+function levelTime(){ return timeFor(level); }
+function levelOrbs(){ return orbCountFor(level); }
 function levelCfg(){
   const d=diff();
   return { time:levelTime(), orbs:levelOrbs(), high:d.orbHigh,
@@ -3087,8 +3093,8 @@ function renderLevelPick(){
     b.addEventListener('pointerdown',()=>{ lpT=setTimeout(()=>{
       if(locked) return;
       startLevel=i; renderLevelPick();
-      const pOrbs=(diffKey==='easy'?22:diffKey==='hard'?28:24)+(i-1)*4;
-      const pTime=diffKey==='normal'?Math.max(28,Math.round(78-(i-1)*7.2)):Math.max(28,Math.round(diff().time-(i-1)*8));
+      const pOrbs=orbCountFor(i);
+      const pTime=timeFor(i);
       showLevelBanner('第 '+i+' 关 · '+(T(LEVEL_NAMES[i-1])||TF('lvFallback',{n:i})), '预览 · '+pOrbs+' 光点 · 时间 '+pTime+' 秒 · '+T(diff().label));
       toast(TF('lvPreview',{n:i}));
     },600); });
@@ -3308,8 +3314,15 @@ function applyPowerUp(type){
   AudioFX.pickup();
 }
 function fmtT(s){ return s.toFixed(1)+' 秒'; }
-function starsFor(tl){ const t=levelCfg().time;
-  return tl>=t*0.42?3:tl>=t*0.20?2:1; }   // v0.3.87 2★门槛 0.18→0.20（鼓励连击）
+/* v0.4.46 星级改为「预算比例 + 绝对完成时间上限」双约束：
+ * 旧规则 tl>=t*0.42（即完成 ≤0.58t）在预算被 clamp 后使高关卡 3★ 数学不可达；
+ * 现改为「完成时间 ≤ max(比例×预算, 固定上限)」，高关卡由固定上限兜底，保证可达成 */
+const STAR3_CAP=46, STAR2_CAP=49, SRANK_CAP=44;   // 完成时间上限：S≤44s / 3★≤46s / 2★≤49s（全部 > 实测最紧理想路径 41.2s）
+function star3Need(t){ return Math.max(t*0.58, STAR3_CAP); }
+function star2Need(t){ return Math.max(t*0.80, STAR2_CAP); }
+function srankNeed(t){ return Math.max(t*0.40, SRANK_CAP); }
+function starsFor(tl){ const t=levelCfg().time, e=t-tl;
+  return e<=star3Need(t)?3:e<=star2Need(t)?2:1; }
 /* 关卡横幅 */
 const lvBannerEl=document.getElementById('lvBanner'), lvBannerT=document.getElementById('lvBannerT');
 let lvBannerTO=0;
@@ -3468,7 +3481,7 @@ function finishChallenge(win){
   const rmRank=document.getElementById('rmRank');
   if(win){
     document.getElementById('btnRetry').textContent='再来一局';
-    const rank = stars>=3 ? (challenge.timeLeft >= levelCfg().time*0.6 ? 'S' : 'A')
+    const rank = stars>=3 ? (challenge.timeLeft >= levelCfg().time - srankNeed(levelCfg().time) ? 'S' : 'A')
                 : stars===2 ? 'B' : 'C';
     rmRank.textContent=rank;
     if(rank==='S'){
@@ -3506,7 +3519,7 @@ function finishChallenge(win){
     if(!challenge.tookHit) award('perfect');
     if(lvDodge>=5) award('dodge5');           // v0.3.12
     if(lvDj>=10) award('dj10');
-    if(challenge.timeLeft>=levelCfg().time/2) award('halftime');
+    if(challenge.timeLeft>=levelCfg().time-Math.max(levelCfg().time*0.5,38)) award('halftime');   // v0.4.46 高关卡由 38s 兜底，保证可达成
     if((challenge.comboMax||0)>=12) award('combo12');
     if((challenge.comboMax||0)>=16) award('combo16');   // v0.3.79 风暴之眼
     if((challenge.comboMax||0)>=24) award('combo24');   // v0.3.90 连击大师二段
@@ -3547,7 +3560,7 @@ function finishChallenge(win){
         +'<br>本局净得分 <b id="rmNetScore">0</b> 分'
         +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)+'）'   // v0.3.89
         +rmBarsHtml()   // v0.4.28 结算收集率可视化进度条
-        +(stars<3?'<br>下次快 '+fmtT(levelCfg().time*0.42-challenge.timeLeft)+' 即可 3★':'')
+        +(stars<3?'<br>下次快 '+fmtT(Math.max(0,(levelCfg().time-challenge.timeLeft)-star3Need(levelCfg().time)))+' 即可 3★':'')
         +(level<8?'<br>下一关：'+(level+1)+' '+T(LEVEL_NAMES[level])+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
           :(hiddenUnlocked()?'<br>隐藏关解锁：第 9 关 · '+T(LEVEL_NAMES[8]):'<br>故事全通！隐藏关需极限难度通关第 8 关解锁'))
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+T(a.label)).join(' · '):'');
@@ -5027,6 +5040,12 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   chainFull:()=>chainFull, chainEat:()=>chainEat,
   coinCount:()=>coinCount, coinTotal:()=>coinTotal, boostT:()=>boostT,
   ringCount:()=>ringCount, ringTotal:()=>ringTotal, levelSet:(v)=>{level=v;},   // v0.3.6 测试钩子
+  /* v0.4.46 测试钩子：切换难度（供 CDP 平衡验证） */
+  setDiff:(k)=>{ if(DIFFS[k]) diffKey=k; },
+  /* v0.4.46 平衡验证钩子：星级阈值函数 */
+  star3Need, star2Need, srankNeed, timeFor, orbCountFor,
+  /* v0.4.46 实时光点钩子：返回 orbGroup 子节点（含实时 position / userData.alive）供收集验收 */
+  orbLive:()=>orbGroup.children,
   /* v0.3.4 暂停菜单 */
   paused:()=>paused, openPause, closePause, togglePause,
   /* v0.4.21 无人机威胁方向指示 */
