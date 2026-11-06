@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.5.0</title>
+<title>鲸步 WHALE WALK · v0.5.1</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3605,7 +3605,7 @@ function startChallenge(){
   /* v0.4.20 镜面回响日轮换：每周三/周五全部关卡镜像 */
   mirrorOn=(level===9)||mirrorDay();  const mirrorHudEl=document.getElementById('mirrorHud');
   if(mirrorHudEl) mirrorHudEl.classList.toggle('on',mirrorOn);
-  showLevelBanner('第 '+level+' 关 · '+levelName(), T(diff().label)+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点'+(mirrorOn?' · 🪞 镜像':'')+' · 今日布局 #'+daySeed());   // v0.3.23 开局章节横幅；v0.4.13 每日布局标注；v0.4.74 布局编号
+  showLevelBanner('第 '+level+' 关 · '+levelName(), T(diff().label)+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点'+(mirrorOn?' · 🪞 镜像':'')+' · 今日布局 #'+daySeed()+(STARS[level]?' · 历史最高 '+'★'.repeat(STARS[level]):''));   // v0.3.23 开局章节横幅；v0.4.13 每日布局标注；v0.4.74 布局编号；v0.5.1 历史最高星
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
   timerNum.textContent=Math.ceil(challenge.timeLeft);
   levelTimeUsed=0;
@@ -5555,6 +5555,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   lvTitle:(i)=>{ const b=document.querySelectorAll('#levelPick button')[i-1]; return b?b.title:''; },   // v0.4.94 验收辅助
   diffBestText:()=>document.getElementById('diffBest').textContent,   // v0.4.95 验收辅助
   setVerText:()=>document.getElementById('setVer').textContent,   // v0.4.96 验收辅助
+  setStars:(lv,n)=>{ STARS[lv]=n; },   // v0.5.1 验收辅助
   rankCls:()=>document.getElementById('rmRank').className,   // v0.4.97 验收辅助
   achDate:()=>ACHDATE,   // v0.4.98 验收辅助
   achRowTitle:(i)=>{ const rows=document.querySelectorAll('#achList .ach-row'); return rows[i]?rows[i].getAttribute('title')||'':''; },   // v0.4.98 验收辅助
