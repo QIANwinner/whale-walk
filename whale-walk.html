@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.85</title>
+<title>鲸步 WHALE WALK · v0.4.86</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2852,7 +2852,12 @@ function pollGamepad(){
   return null;
 }
 addEventListener('keydown',e=>{ keys[e.code]=true;  if(e.code==='KeyP'&&mode==='play') togglePause();   // v0.3.4 暂停菜单
-  if(e.code==='Escape'&&mode==='play') togglePause();  // v0.3.55 Esc 暂停/继续
+  if(e.code==='Escape'&&mode==='play'){
+    /* v0.4.86 结算弹窗打开时 Esc=确认（与 Enter 同优先级，避免叠加暂停菜单） */
+    if(rmEl.classList.contains('show')){
+      (btnNext.style.display!=='none'?btnNext:document.getElementById('btnRetry')).click();
+    } else togglePause();   // v0.3.55 Esc 暂停/继续
+  }
   if(e.code==='KeyR'&&mode==='play'&&!paused) resetChallenge();   // v0.3.9 R 键秒重开
   if(e.code==='KeyF'){ try{   // v0.3.13 F 全屏；headless/iframe 拒绝时 Promise 静默回落
     const p=document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
@@ -5503,6 +5508,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   bannerSub:()=>document.querySelector('#lvBanner .lv-s').textContent,   // v0.4.74 验收辅助
   tutText:()=>document.getElementById('tutItem').innerText,   // v0.4.81 验收辅助
   cardLines:()=>{ const s=shareSnap; return s?[s.pft,s.pp,s.kk]:null; },   // v0.4.82 验收辅助
+  escProbe:()=>({rm:rmEl.classList.contains('show'), paused:paused}),   // v0.4.86 验收辅助
   finishFail:()=>{ __dbg.finishChallenge(false); return document.getElementById('rmInfo').innerText; },   // v0.4.75 验收辅助
   droneKills:()=>droneKills,   // v0.4.76
   ringPftTotal:()=>ringPftTotal,   // v0.4.78
