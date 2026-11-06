@@ -8,3 +8,5 @@
 - 音效：WebAudio 全合成（脚步/跳跃/拾取）
 
 打开 \whale-walk.html\ 即可游玩。
+
+<!-- pages-rebuild-trigger:v0.4.43 -->
