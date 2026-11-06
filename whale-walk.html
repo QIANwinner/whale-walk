@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.69</title>
+<title>鲸步 WHALE WALK · v0.4.70</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -746,6 +746,7 @@ const I18N={
     ach_combo24:'连击大师二段 · 单关最高连击 x24', ach_echo10:'回响鲸歌 · 单关用回声定位收集 10 个光点', ach_rewind5:'时之鲸 · 单关时光回溯累计恢复 5 秒',
     ach_mirrored:'镜中鲸 · 在镜面回响下通关第 9 关', ach_frag3:'鲸语通 · 单关集齐全部鲸语碎片', ach_hunter:'猎鲸者 · 踏灭精英无人机',
     ach_ringPerfect:'正穿首秀 · 首次正穿 PERFECT（环心穿过光环）',   // v0.4.69
+    ach_ringPerfect3:'节奏鲸手 · 单关连续正穿 3 次',   // v0.4.70
     ach_frag15:'鲸语收藏家 · 累计收集 15 片鲸语碎片', ach_endless5:'无尽鲸歌 · 无尽模式连续通关 5 关',
     ach_streak3:'火热连击 · 无尽模式连续通关 3 关',
     /* ---- v0.4.27 文案收拢：动态 toast / 拼接文案 key（含 {占位符}） ---- */
@@ -3296,7 +3297,8 @@ const ACHS=[
   {id:'frag15',      icon:'🎼', label:'ach_frag15'},
   {id:'endless5',    icon:'♾', label:'ach_endless5'},
   {id:'streak3',     icon:'🔥', label:'ach_streak3'},
-  {id:'ringPerfect', icon:'🎯', label:'ach_ringPerfect'}
+  {id:'ringPerfect', icon:'🎯', label:'ach_ringPerfect'},
+  {id:'ringPerfect3', icon:'🏹', label:'ach_ringPerfect3'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -4650,7 +4652,8 @@ function update(dt){
         blinkT=1; burst(r.position);
         AudioFX.ring(); buzzP([18,40,18,40,18]);   // v0.4.57 穿环三连脉冲
         toast(T(perfect?'ringPerfect':'ring2')+(ringPerfectStreak>=2?' ×'+ringPerfectStreak:''));
-        if(perfect){ burst(r.position); ringPerfectCount++; award('ringPerfect'); }   // v0.4.66 完美金色连闪；v0.4.67 正穿计数；v0.4.69 首穿成就
+        if(perfect){ burst(r.position); ringPerfectCount++; award('ringPerfect');
+          if(ringPerfectStreak>=3) award('ringPerfect3'); }   // v0.4.66 金色连闪；v0.4.67 计数；v0.4.69 首穿成就；v0.4.70 三连正穿成就
       }
     }
     /* 加速带（v0.3.86 时间 2.2→2.6s，极限难度保持 2.2）：踏上 ×2.2 冲刺 */
