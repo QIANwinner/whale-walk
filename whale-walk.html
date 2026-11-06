@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.67</title>
+<title>鲸步 WHALE WALK · v0.4.68</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2337,7 +2337,7 @@ function clearNewProps(){
   while(fragGroup.children.length) fragGroup.remove(fragGroup.children[0]);
   coins.length=0; rings.length=0; bouncePads.length=0; boostStrips.length=0;
   frags.length=0;
-  coinCount=0; boostT=0; ringCount=0; fragCount=0; ringPerfectCount=0;   // v0.4.67 正穿计数随关清零
+  coinCount=0; boostT=0; ringCount=0; fragCount=0; ringPerfectCount=0; ringPerfectStreak=0;   // v0.4.67/68 正穿计数随关清零
   coinNumEl.textContent='0 / '+(coinTotal||3);
   const fragNumEl=document.getElementById('fragNum');
   if(fragNumEl) fragNumEl.textContent='0 / '+(fragTotal||3);
@@ -2896,6 +2896,7 @@ let spinT=0, spaceHeld=false;
 let girlPulseT=0;   // v0.4.61 拾取弹性脉冲计时
 let lastRingPerfect=false;   // v0.4.66 最近一次穿环是否正穿（探针用）
 let ringPerfectCount=0;   // v0.4.67 本关正穿 PERFECT 次数（结算统计）
+let ringPerfectStreak=0;   // v0.4.68 连续正穿计数（偏穿清零，≥2 次额外奖励）
 function doJump(){ const st=girl.userData.state;
   if(mode!=='play')return;
   if(st.grounded){ st.vy=4.9; st.grounded=false; st.airJumps=1; AudioFX.jump(); }
@@ -4638,14 +4639,15 @@ function update(dt){
       if(dd<0.85 && Math.abs(girl.position.y+0.9-r.position.y)<0.62 && st.vy>0.5){
         u.alive=false; ringGroup.remove(r); rings.splice(i,1);
         ringCount++;
-        /* v0.4.66 正穿 PERFECT：环心正穿（dd<0.28）额外 +1 秒 +1 分 */
+        /* v0.4.66 正穿 PERFECT：环心正穿（dd<0.28）额外 +1 秒 +1 分；v0.4.68 连续正穿 ≥2 再 +1 分 */
         const perfect=dd<0.28;
         lastRingPerfect=perfect;
+        ringPerfectStreak=perfect?(ringPerfectStreak+1):0;
         challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2+(perfect?1:0));
-        challenge.bonusScore=(challenge.bonusScore||0)+2+(perfect?1:0);   // v0.4.56 穿环计入净得分（随难度 scoreMul 递进）
+        challenge.bonusScore=(challenge.bonusScore||0)+2+(perfect?1:0)+(ringPerfectStreak>=2?1:0);   // v0.4.56 穿环计入净得分（随难度 scoreMul 递进）
         blinkT=1; burst(r.position);
         AudioFX.ring(); buzzP([18,40,18,40,18]);   // v0.4.57 穿环三连脉冲
-        toast(T(perfect?'ringPerfect':'ring2'));
+        toast(T(perfect?'ringPerfect':'ring2')+(ringPerfectStreak>=2?' ×'+ringPerfectStreak:''));
         if(perfect){ burst(r.position); ringPerfectCount++; }   // v0.4.66 完美额外金色连闪；v0.4.67 正穿计数
       }
     }
@@ -5438,6 +5440,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.4.66 穿环 PERFECT 探针：最近一次穿环是否正穿（验收断言 +3 秒/PERFECT toast） */
   lastRingPerfect:()=>lastRingPerfect,
   ringPerfectCount:()=>ringPerfectCount,   // v0.4.67
+  ringPerfectStreak:()=>ringPerfectStreak,   // v0.4.68
   /* v0.4.34 每日挑战钩子 */
   DQ:()=>DQ, dqBump, renderDQ};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
