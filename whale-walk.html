@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.84</title>
+<title>鲸步 WHALE WALK · v0.4.85</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3651,11 +3651,15 @@ function finishChallenge(win){
   if(win && endless){
     endlessStreak++;
     if(endlessStreak>=3) award('streak3');   // v0.4.39 火热连击
+    const _prevBest=EBEST;   // v0.4.85 破纪录判定
     if(endlessStreak>EBEST){ EBEST=endlessStreak;
       try{ localStorage.setItem('ww-endless-best',String(EBEST)); }catch(_){}
       if(EBEST>=5) award('endless5');
     }
     toast(TF('endless',{n:endlessStreak,b:EBEST}));
+    if(_prevBest>0 && endlessStreak>_prevBest){   // v0.4.85 无尽新纪录：延迟覆盖 toast + 双 burst
+      setTimeout(()=>{ toast('🏆 无尽新纪录！连续 '+EBEST+' 关');
+        burst(girl.position); burst(girl.position); },420); }
     rmEl.classList.remove('show');
     challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+5);   // 连关补给
     setTimeout(()=>{ if(endless && mode==='play') endlessNext(); },1200);
@@ -5413,7 +5417,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.4.09 镜面回响钩子 */
   mirrorOn:()=>mirrorOn, mirrorDay:()=>mirrorDay(),
   /* v0.4.10 无尽鲸潮钩子 */
-  endless:()=>endless, endlessStreak:()=>endlessStreak, ebest:()=>EBEST,
+  endless:(v)=>{ if(v!==undefined) endless=v; return endless; }, endlessStreak:()=>endlessStreak, ebest:()=>EBEST,   // v0.4.85 endless 支持写入(验收驱动)
   /* v0.4.13 每日布局钩子 */
   daySeed,
   /* v0.4.11 成绩卡钩子 */
