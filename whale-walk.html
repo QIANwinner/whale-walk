@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.7.1</title>
+<title>鲸步 WHALE WALK · v0.7.2</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2957,6 +2957,10 @@ let walkDist=0;   // v0.6.8 本局漫步距离（米）
 /* v0.7.1 生涯累计漫步（ww-walktotal-v1） */
 let walkTotal=0;
 try{ walkTotal=parseFloat(localStorage.getItem('ww-walktotal-v1')||'0')||0; }catch(_){}
+/* v0.7.2 生涯累计游玩秒数（ww-playtime-v1，play 模式每帧累计） */
+let playTime=0;
+try{ playTime=parseFloat(localStorage.getItem('ww-playtime-v1')||'0')||0; }catch(_){}
+let playTimeSave=0;   // 落盘节流计时
 /* v0.4.98 成就解锁日期（ww-achdate-v1） */
 let ACHDATE={}; try{ ACHDATE=JSON.parse(localStorage.getItem('ww-achdate-v1')||'{}')||{}; }catch(_){ ACHDATE={}; }
 function doJump(){ const st=girl.userData.state;
@@ -4692,6 +4696,10 @@ function update(dt){
     if(sfx) sfx.classList.toggle('on', powerState.slow>0); }
   { const ffx=document.getElementById('freezeFx');   // v0.6.7 时间冻结渐晕
     if(ffx) ffx.classList.toggle('on', powerState.freeze>0); }
+  /* v0.7.2 累计游玩时长：play 模式每帧累计，每 30 秒落盘 */
+  if(mode==='play'){ playTime+=dt; playTimeSave+=dt;
+    if(playTimeSave>=30){ playTimeSave=0;
+      try{ localStorage.setItem('ww-playtime-v1',String(Math.round(playTime))); }catch(_){} } }
   if(powerState.freeze>0){ powerState.freeze-=dt; if(powerState.freeze<=0){ powerState.freeze=0; pwFreezeEl.classList.remove('on'); } pwT(pwFreezeEl,powerState.freeze,PU_TYPES.freeze.dur); }
   if(powerState.double>0){ powerState.double-=dt; if(powerState.double<=0){ powerState.double=0; pwDoubleEl.classList.remove('on'); } pwT(pwDoubleEl,powerState.double,PU_TYPES.double.dur); }
   /* v0.4.06 回声定位：持续期间每帧维持透视（新生成道具也高亮），到期还原；v0.4.63 补上倒计时文本+时间条 */
@@ -5169,7 +5177,7 @@ let settingsOpen=false;
 const settingsEl=document.getElementById('settingsModal');
 function openSettings(){ if(settingsOpen)return; settingsOpen=true; settingsEl.classList.add('show'); AudioFX.tick();
   { const v=document.getElementById('setVer');   // v0.4.96 设置面板显示当前版本号（便于反馈/自查）
-    if(v) v.textContent='· '+document.title.replace(/^.*·\s*/,''); } }
+    if(v) v.textContent='· '+document.title.replace(/^.*·\s*/,'')+' · 已陪伴 '+(playTime>=3600?Math.floor(playTime/3600)+' 时 '+Math.floor(playTime%3600/60)+' 分':Math.floor(playTime/60)+' 分钟'); } }   // v0.7.2 游玩时长
 function closeSettings(){ settingsOpen=false; settingsEl.classList.remove('show'); AudioFX.ui('resume'); }
 /* v0.4.01 无障碍：按钮 aria-label 补全 */
 {
@@ -5633,6 +5641,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   walkDistM:()=>+walkDist.toFixed(1),   // v0.6.8 验收辅助
   forceWalk:(m)=>{ walkDist=m; return walkDist; },   // v0.6.8 验收辅助
   walkTotalM:()=>Math.round(walkTotal),   // v0.7.1 验收辅助
+  playTimeS:()=>Math.round(playTime),   // v0.7.2 验收辅助
+  forcePlayTime:(s)=>{ playTime=s; return playTime; },   // v0.7.2 验收辅助
   forceWalkTotal:(m)=>{ walkTotal=m; return walkTotal; },   // v0.7.1 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
