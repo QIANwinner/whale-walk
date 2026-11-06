@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.2</title>
+<title>鲸步 WHALE WALK · v0.9.3</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3013,8 +3013,8 @@ function dqSave(){ try{ localStorage.setItem('ww-daily-quest-v1',JSON.stringify(
 function dqLine(){ const f=(v,k)=>v+'/'+k+(v>=k?'✓':'');
   const done=Object.keys(DQ_KEYS).filter(k=>(DQ[k]||0)>=DQ_KEYS[k]).length;   // v0.8.9 完成度计数
   return '📅 每日任务('+done+'/3) · 光点 '+f(DQ.orb,DQ_KEYS.orb)+' · 通关 '+f(DQ.clear,DQ_KEYS.clear)+' · 碎片 '+f(DQ.frag,DQ_KEYS.frag); }
-/* v0.4.84 结算精度统计徽章段（单一来源，胜/败分支共用；无统计返回空） */
-function statBadges(){
+/* v0.4.84 结算精度统计徽章段（单一来源，胜/败分支共用；无统计返回空；v0.9.3 无伤徽章仅胜利显示） */
+function statBadges(isWin){
   let h='';
   if(ringPerfectCount>0) h+='<span class="rm-badge">🎯 正穿 '+ringPerfectCount+'</span>';
   if(padPerfectCount>0) h+='<span class="rm-badge">🎢 正中弹 ×'+padPerfectCount+'</span>';
@@ -3023,7 +3023,7 @@ function statBadges(){
   if(coinTotal>0&&coinCount===coinTotal) h+='<span class="rm-badge">🪙 鲸币满贯</span>';   // v0.5.6 满贯徽章
   if(TOTAL>0&&score===TOTAL) h+='<span class="rm-badge">✨ 光点满贯</span>';   // v0.5.7 光点满贯徽章
   if(fragTotal>0&&fragCount===fragTotal) h+='<span class="rm-badge">🎶 碎片满贯</span>';   // v0.6.3 碎片满贯徽章
-  if(!challenge.tookHit&&(lvDodge>0||ringCount>0)) h+='<span class="rm-badge">🛡 无伤通关</span>';   // v0.9.2 无伤徽章
+  if(isWin&&!challenge.tookHit&&(lvDodge>0||ringCount>0)) h+='<span class="rm-badge">🛡 无伤通关</span>';   // v0.9.2/v0.9.3 无伤徽章(仅胜)
   return h; }
 function dqBump(key, n){
   DQ[key]=Math.min((DQ[key]||0)+n, DQ_KEYS[key]);
@@ -3846,7 +3846,7 @@ function finishChallenge(win){
         +(ringCount>0?'（正穿率 '+Math.round(ringPerfectCount/ringCount*100)+'%）':'')   // v0.8.6 正穿率
         +' · 躲冲锋 '+lvDodge+((lvDodge+(challenge.hitCount||0))>0?'(闪避率 '+Math.round(lvDodge/(lvDodge+(challenge.hitCount||0))*100)+'%)':'')   // v0.8.7 闪避率
         +' · 二段跳 '+lvDj+' · 道具 ×'+lvPU+' · 最高连击 x'+(challenge.comboMax||0)
-        +(statBadges()?'<br>'+statBadges():'')   // v0.4.67/73/76/84 精度统计徽章行
+        +(statBadges(true)?'<br>'+statBadges(true):'')   // v0.4.67~v0.9.3 精度统计徽章行(胜利含无伤)
         +(comboRecShown?' · 🔥 生涯新高 x'+bestComboOf():' · 生涯 x'+bestComboOf())   // v0.4.53 生涯最高连击
         +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
         +'<br>布局 #'+daySeed()+(mirrorOn?' · 🪞镜像日':'')   // v0.4.44 结算布局编号
@@ -3910,7 +3910,7 @@ function finishChallenge(win){
       endless=false;   // 潮落回到常规模式
     } else {
     rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关 · 漫步 '+walkDist.toFixed(0)+' m<br>最高连击 x'+(challenge.comboMax||0)
-      +(statBadges()?'<br>'+statBadges():'')   // v0.4.75/76/84 精度统计徽章行
+      +(statBadges(false)?'<br>'+statBadges(false):'')   // v0.4.75~v0.9.3 精度统计徽章行(失败不含无伤)
       +(fragTotal?' · 鲸语碎片 '+fragCount+'/'+fragTotal:'')+' · 道具 ×'+lvPU
       +'<br>'+dqLine()   // v0.4.60 失败也显示每日任务；v0.4.79 达成勾选
       +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次'
@@ -5684,6 +5684,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   dqTitleText:()=>document.querySelector('#dailyQuest .dq-t').textContent,   // v0.9.0 验收辅助
   noHitBadge:()=>!challenge.tookHit,   // v0.9.2 验收辅助
   forceHit:()=>{ challenge.tookHit=true; return true; },   // v0.9.2 验收辅助
+  statBadges:()=>statBadges(true),   // v0.9.3 验收辅助
   forceWalkTotal:(m)=>{ walkTotal=m; return walkTotal; },   // v0.7.1 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
@@ -5706,7 +5707,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   forceDash:()=>{ const d=patrolDrones[0]; if(d&&d.mode!=='dash'){ d.mode='windup'; d.t=0; } return d?d.mode:'none'; },   // v0.4.80 验收辅助：强制进入冲锋前摇
   dronesLive:()=>patrolDrones.map(d=>d.grp.position.clone()),   // v0.4.76 实时坐标(踏灭验收)
   /* v0.4.34 每日挑战钩子 */
-  DQ:()=>DQ, dqBump, renderDQ, dqLine:()=>dqLine(), statBadges:()=>statBadges()};
+  DQ:()=>DQ, dqBump, renderDQ, dqLine:()=>dqLine(), statBadges:()=>statBadges(true)};   // v0.9.3 statBadges 胜利签名
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
