@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.5.5</title>
+<title>鲸步 WHALE WALK · v0.5.6</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2984,6 +2984,7 @@ function statBadges(){
   if(padPerfectCount>0) h+='<span class="rm-badge">🎢 正中弹 ×'+padPerfectCount+'</span>';
   if(droneKills>0) h+='<span class="rm-badge">🐙 踏灭 '+droneKills+'</span>';
   if(chainFull>0) h+='<span class="rm-badge">⛓ 全链 ×'+chainFull+'</span>';   // v0.5.2 金币链全收统计
+  if(coinTotal>0&&coinCount===coinTotal) h+='<span class="rm-badge">🪙 鲸币满贯</span>';   // v0.5.6 满贯徽章
   return h; }
 function dqBump(key, n){
   DQ[key]=Math.min((DQ[key]||0)+n, DQ_KEYS[key]);
@@ -5554,6 +5555,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   forceDQAll:()=>{ DQ.orb=DQ_KEYS.orb; DQ.clear=DQ_KEYS.clear; DQ.frag=DQ_KEYS.frag; renderDQ(); return DQ; },   // v0.4.88 验收辅助
   chainFullN:()=>chainFull,   // v0.5.2 验收辅助
   forceChainFull:()=>{ chainFull=2; return chainFull; },   // v0.5.2 验收辅助
+  forceCoinsFull:()=>{ coinCount=coinTotal||1; return coinCount; },   // v0.5.6 验收辅助
+  coinState:()=>({c:coinCount,t:coinTotal}),   // v0.5.6 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
   lvlBest:()=>({b:LVLBEST[level]||0, isNew:lvlBestNew, level}),   // v0.4.92 验收辅助
