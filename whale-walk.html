@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.52</title>
+<title>鲸步 WHALE WALK · v0.4.53</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -544,7 +544,7 @@
 <div id="fragbar" style="display:none"><div class="frag-chip">🎶 鲸语 <span class="cc-n" id="fragNum">0 / 3</span></div></div>
 <div id="lightning"></div>
 <div id="lvBanner"><div class="lv-t" id="lvBannerT">第 2 关</div><div class="lv-s">更多光点 · 更短时间</div></div>
-<div id="combo"><span id="comboTxt"></span><i id="comboBar"><b></b></i></div>
+<div id="combo"><span id="comboTxt"></span><em id="comboBest"></em><i id="comboBar"><b></b></i></div>
 <div id="harmonyBadge"><span class="hb-note">♪</span><span id="harmonyBadgeTxt"></span></div>
 <div id="resHud"><span id="resTxt"></span></div>
 <div id="mirrorHud">🪞 镜面回响 · 左右反转</div>
@@ -3070,6 +3070,7 @@ const COMBO_BONUS=2, HIT_PENALTY=3, DRONE_PENALTY=4, INVULN=1.5;
 const timerEl=document.getElementById('timer'), timerNum=document.getElementById('timerNum');
 const comboEl=document.getElementById('combo'), redEl=document.getElementById('redflash');
 const comboTxtEl=document.getElementById('comboTxt'), comboBarEl=document.querySelector('#comboBar b');
+const comboBestEl=document.getElementById('comboBest');   // v0.4.53 生涯最高连击小字
 /* v0.4.49 和声档位徽章：元素引用（applyComboTierClass 同一单一来源驱动） */
 const harmonyBadgeEl=document.getElementById('harmonyBadge'), harmonyBadgeTxtEl=document.getElementById('harmonyBadgeTxt');
 /* v0.4.07 鲸歌共鸣：收集触发城市霓虹演奏 + 连击共鸣指示 */
@@ -3102,6 +3103,17 @@ try{
     if(old&&old.time>=1) BEST={[diffKey]:old}; }
 }catch(_){}
 const bestOf=()=>BEST[diffKey]||null;
+/* v0.4.53 生涯最高连击按难度持久化（ww-bestcombo-v1）：跨局历史最佳，破纪录时 🔥 反馈 */
+let BCBEST={};
+try{ BCBEST=JSON.parse(localStorage.getItem('ww-bestcombo-v1')||'{}')||{}; }catch(_){ BCBEST={}; }
+const bestComboOf=()=>BCBEST[diffKey]||0;
+let comboRecShown=false;   // v0.4.53 破纪录提示每局只亮一次
+function bestComboTick(n){
+  const cur=bestComboOf();
+  if(n>cur){ BCBEST[diffKey]=n; try{ localStorage.setItem('ww-bestcombo-v1',JSON.stringify(BCBEST)); }catch(_){}
+    return {best:n, record:true}; }
+  return {best:cur, record:false};
+}
 /* v0.3.64 每关最高星级（ww-stars-v1） */
 let STARS={}; try{ STARS=JSON.parse(localStorage.getItem('ww-stars-v1')||'{}')||{}; }catch(_){ STARS={}; }
 /* v0.3.67 四种难度各通关一次（ww-cleardiff-v1） */
@@ -3453,6 +3465,7 @@ function startChallenge(){
   challenge.ready=1.2;   // v0.3.17 开局缓冲：1.2s 内不计时且免伤
   challenge.tookHit=false; challenge.comboMax=0; newAch=[];   // v0.3.8 成就判定状态
   comboBreakN=0; comboBreakShown=false;   // v0.4.51 连击断连反馈状态随关卡重置
+  comboRecShown=false;   // v0.4.53 破纪录提示每局重置
   echoPick=0;   // v0.4.06 回声定位计数重置
   lvDodge=0; lvDj=0;   // v0.3.12 单关操作统计
   lvPU=0;   // v0.4.19 道具拾取计数
@@ -3625,6 +3638,7 @@ function finishChallenge(win){
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 道具 ×'+lvPU+' · 最高连击 x'+(challenge.comboMax||0)
+        +(comboRecShown?' · 🔥 生涯新高 x'+bestComboOf():' · 生涯 x'+bestComboOf())   // v0.4.53 生涯最高连击
         +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
         +'<br>📅 每日任务 · 光点 '+DQ.orb+'/'+DQ_KEYS.orb+' · 通关 '+DQ.clear+'/'+DQ_KEYS.clear+' · 碎片 '+DQ.frag+'/'+DQ_KEYS.frag   // v0.4.40 每日任务进度
         +'<br>本局净得分 <b id="rmNetScore">0</b> 分'
@@ -4202,6 +4216,11 @@ function update(dt){
           else challenge.combo=1;
           challenge.lastPick=elapsed;
           challenge.comboMax=Math.max(challenge.comboMax||0,challenge.combo);
+          /* v0.4.53 生涯最高连击：持久化破纪录，🔥 提示每局一次 */
+          if(challenge.comboMax>=3){
+            const bc=bestComboTick(challenge.comboMax);
+            if(bc.record && !comboRecShown){ comboRecShown=true; toast('🔥 生涯新高！最高连击 x'+challenge.comboMax); }
+          }
           if(challenge.combo>=8) award('combo8');   // v0.3.8 连击大师
           if(challenge.combo>=3){
             const cb=(diffKey==='extreme')?COMBO_BONUS*1.25:COMBO_BONUS;   // v0.3.86 极限难度连击加成 1.25×
@@ -4612,6 +4631,7 @@ function update(dt){
     if(challenge.combo>=2 && elapsed-challenge.lastPick<comboWindow()){
       comboEl.classList.add('on');
       comboTxtEl.textContent='COMBO x'+challenge.combo;
+      if(comboBestEl){ comboBestEl.textContent='生涯 x'+bestComboOf(); }   // v0.4.53 生涯最高连击小字
       /* v0.4.48 连击和声阶梯：连击条分档配色（t1/t2/t3 与音景档位同步，经共用 helper） */
       applyComboTierClass(challenge.combo);
       /* v0.4.33 连击越高字越大（2.0 缩放封顶，断连归位） */
@@ -5151,6 +5171,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   chainFull:()=>chainFull, chainEat:()=>chainEat,
   /* v0.4.51 连击断连反馈钩子：断连计数 + 纯函数探针 + 确定性强制断连 */
   comboBreakN:()=>comboBreakN, comboBreakTick, forceComboBreak:(n)=>comboBreakTick(n),
+  /* v0.4.53 生涯最高连击钩子：历史最佳读取 + 纯函数探针 + 破纪录标记 */
+  bestCombo:()=>bestComboOf(), bestComboTick, comboRec:()=>comboRecShown, bcBest:()=>BCBEST,
   /* v0.4.50 加速带金币链钩子：带链 id + 各链金币坐标（供验收探针，确定性） */
   boostChainInfo:()=>boostChainIds.map(id=>({
     id,
