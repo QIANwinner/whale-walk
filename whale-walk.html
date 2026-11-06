@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.72</title>
+<title>鲸步 WHALE WALK · v0.4.73</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3717,6 +3717,7 @@ function finishChallenge(win){
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +(ringPerfectCount>0?'（🎯 正穿 '+ringPerfectCount+'）':'')   // v0.4.67 正穿统计
+        +(padPerfectCount>0?' · 🎢 正中弹 ×'+padPerfectCount:'')   // v0.4.73 正中弹统计
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 道具 ×'+lvPU+' · 最高连击 x'+(challenge.comboMax||0)
         +(comboRecShown?' · 🔥 生涯新高 x'+bestComboOf():' · 生涯 x'+bestComboOf())   // v0.4.53 生涯最高连击
         +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
@@ -5459,6 +5460,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   lastPadPerfect:()=>lastPadPerfect,   // v0.4.71
   girlVy:()=>girl.userData.state.vy,   // v0.4.71
   padPerfectCount:()=>padPerfectCount,   // v0.4.72
+  finishWin:()=>{ __dbg.finishChallenge(true); return document.getElementById('rmInfo').innerText; },   // v0.4.73 验收辅助
   /* v0.4.34 每日挑战钩子 */
   DQ:()=>DQ, dqBump, renderDQ};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
