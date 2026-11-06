@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.74</title>
+<title>鲸步 WHALE WALK · v0.4.75</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3782,6 +3782,8 @@ function finishChallenge(win){
       endless=false;   // 潮落回到常规模式
     } else {
     rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关<br>最高连击 x'+(challenge.comboMax||0)
+      +(ringPerfectCount>0?' · 🎯 正穿 '+ringPerfectCount:'')   // v0.4.75 失败也见正穿
+      +(padPerfectCount>0?' · 🎢 正中弹 ×'+padPerfectCount:'')   // v0.4.75 失败也见正中弹
       +(fragTotal?' · 鲸语碎片 '+fragCount+'/'+fragTotal:'')+' · 道具 ×'+lvPU
       +'<br>📅 每日任务 · 光点 '+DQ.orb+'/'+DQ_KEYS.orb+' · 通关 '+DQ.clear+'/'+DQ_KEYS.clear+' · 碎片 '+DQ.frag+'/'+DQ_KEYS.frag   // v0.4.60 失败也显示每日任务
       +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次'
@@ -5462,6 +5464,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   padPerfectCount:()=>padPerfectCount,   // v0.4.72
   finishWin:()=>{ __dbg.finishChallenge(true); return document.getElementById('rmInfo').innerText; },   // v0.4.73 验收辅助
   bannerSub:()=>document.querySelector('#lvBanner .lv-s').textContent,   // v0.4.74 验收辅助
+  finishFail:()=>{ __dbg.finishChallenge(false); return document.getElementById('rmInfo').innerText; },   // v0.4.75 验收辅助
   /* v0.4.34 每日挑战钩子 */
   DQ:()=>DQ, dqBump, renderDQ};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
