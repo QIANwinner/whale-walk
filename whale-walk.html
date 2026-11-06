@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.62</title>
+<title>鲸步 WHALE WALK · v0.4.63</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -328,12 +328,13 @@
   /* ---------- 道具状态栏 ---------- */
   #powerbar{position:fixed;top:112px;left:50%;transform:translateX(-50%);z-index:11;
     display:flex;gap:10px;pointer-events:none;}
-  .pw-chip{background:rgba(10,16,38,.7);border:1px solid rgba(127,212,255,.35);border-radius:999px;
+  .pw-chip{position:relative;overflow:hidden;background:rgba(10,16,38,.7);border:1px solid rgba(127,212,255,.35);border-radius:999px;
     padding:5px 14px;font-size:12px;font-weight:700;color:#fff;letter-spacing:1px;
     display:none;align-items:center;gap:6px;backdrop-filter:blur(3px);
     box-shadow:0 0 12px rgba(47,167,232,.3);}
   .pw-chip.on{display:flex;}
   .pw-chip .pw-t{font-size:11px;color:#8FC8FF;}
+  .pw-chip .pw-fi{position:absolute;left:0;bottom:0;height:2px;width:0%;background:linear-gradient(90deg,#7FD4FF,#BFE9FF);border-radius:999px;transition:width .15s linear;pointer-events:none;opacity:.85;}
   #pwShield{border-color:rgba(127,212,255,.6);color:#BFE4FF;}
   #pwMagnet{border-color:rgba(255,210,90,.6);color:#FFD25A;}
   #pwSpeed{border-color:rgba(53,224,255,.6);color:#35E0FF;}
@@ -547,13 +548,13 @@
 <div id="timer"><div class="t" id="timerNum">80</div><div class="l">挑战倒计时 · 收集全部光点</div>
   <div id="timerProg"><div id="timerProgFill"></div></div></div>
 <div id="powerbar">
-  <div class="pw-chip" id="pwShield">🛡 护盾 <span class="pw-t"></span></div>
-  <div class="pw-chip" id="pwMagnet">🧲 磁铁 <span class="pw-t"></span></div>
-  <div class="pw-chip" id="pwSpeed">⚡ 加速 <span class="pw-t"></span></div>
-  <div class="pw-chip" id="pwSlow">🌀 子弹时间 <span class="pw-t"></span></div>
-  <div class="pw-chip" id="pwFreeze">🧊 时间冻结 <span class="pw-t"></span></div>
-  <div class="pw-chip" id="pwDouble">💰 双倍鲸币 <span class="pw-t"></span></div>
-  <div class="pw-chip" id="pwEcho">📡 回声定位 <span class="pw-t"></span></div>
+  <div class="pw-chip" id="pwShield">🛡 护盾 <span class="pw-t"></span><i class="pw-fi"></i></div>
+  <div class="pw-chip" id="pwMagnet">🧲 磁铁 <span class="pw-t"></span><i class="pw-fi"></i></div>
+  <div class="pw-chip" id="pwSpeed">⚡ 加速 <span class="pw-t"></span><i class="pw-fi"></i></div>
+  <div class="pw-chip" id="pwSlow">🌀 子弹时间 <span class="pw-t"></span><i class="pw-fi"></i></div>
+  <div class="pw-chip" id="pwFreeze">🧊 时间冻结 <span class="pw-t"></span><i class="pw-fi"></i></div>
+  <div class="pw-chip" id="pwDouble">💰 双倍鲸币 <span class="pw-t"></span><i class="pw-fi"></i></div>
+  <div class="pw-chip" id="pwEcho">📡 回声定位 <span class="pw-t"></span><i class="pw-fi"></i></div>
 </div>
 <div id="coinbar"><div class="coin-chip">🪙 鲸币 <span class="cc-n" id="coinNum">0 / 3</span></div></div>
 <div id="fragbar" style="display:none"><div class="frag-chip">🎶 鲸语 <span class="cc-n" id="fragNum">0 / 3</span></div></div>
@@ -4530,16 +4531,18 @@ function update(dt){
       }
     }
   }
-  /* 道具持续时间倒计时；v0.4.29 剩余秒数填进 chip（.pw-t 一直空着，现在利用起来） */
-  const pwT=(el,v)=>{ const s=el.querySelector('.pw-t'); if(s) s.textContent=v>0?Math.ceil(v)+'s':''; };
-  if(powerState.magnet>0){ powerState.magnet-=dt; if(powerState.magnet<=0){ powerState.magnet=0; pwMagnetEl.classList.remove('on'); } pwT(pwMagnetEl,powerState.magnet); }
-  if(powerState.speed>0){ powerState.speed-=dt; if(powerState.speed<=0){ powerState.speed=0; pwSpeedEl.classList.remove('on'); } pwT(pwSpeedEl,powerState.speed); }
-  if(powerState.slow>0){ powerState.slow-=dt; if(powerState.slow<=0){ powerState.slow=0; pwSlowEl.classList.remove('on'); } pwT(pwSlowEl,powerState.slow); }
-  if(powerState.freeze>0){ powerState.freeze-=dt; if(powerState.freeze<=0){ powerState.freeze=0; pwFreezeEl.classList.remove('on'); } pwT(pwFreezeEl,powerState.freeze); }
-  if(powerState.double>0){ powerState.double-=dt; if(powerState.double<=0){ powerState.double=0; pwDoubleEl.classList.remove('on'); } pwT(pwDoubleEl,powerState.double); }
-  /* v0.4.06 回声定位：持续期间每帧维持透视（新生成道具也高亮），到期还原 */
+  /* 道具持续时间倒计时；v0.4.29 剩余秒数填进 chip；v0.4.63 底部剩余时间条（.pw-fi 宽度随比例收缩） */
+  const pwT=(el,v,max)=>{ const s=el.querySelector('.pw-t'); if(s) s.textContent=v>0?Math.ceil(v)+'s':'';
+    const fi=el.querySelector('.pw-fi'); if(fi) fi.style.width=(v>0&&max>0?Math.min(100,v/max*100):0)+'%'; };
+  if(powerState.magnet>0){ powerState.magnet-=dt; if(powerState.magnet<=0){ powerState.magnet=0; pwMagnetEl.classList.remove('on'); } pwT(pwMagnetEl,powerState.magnet,PU_TYPES.magnet.dur); }
+  if(powerState.speed>0){ powerState.speed-=dt; if(powerState.speed<=0){ powerState.speed=0; pwSpeedEl.classList.remove('on'); } pwT(pwSpeedEl,powerState.speed,PU_TYPES.speed.dur); }
+  if(powerState.slow>0){ powerState.slow-=dt; if(powerState.slow<=0){ powerState.slow=0; pwSlowEl.classList.remove('on'); } pwT(pwSlowEl,powerState.slow,PU_TYPES.slow.dur); }
+  if(powerState.freeze>0){ powerState.freeze-=dt; if(powerState.freeze<=0){ powerState.freeze=0; pwFreezeEl.classList.remove('on'); } pwT(pwFreezeEl,powerState.freeze,PU_TYPES.freeze.dur); }
+  if(powerState.double>0){ powerState.double-=dt; if(powerState.double<=0){ powerState.double=0; pwDoubleEl.classList.remove('on'); } pwT(pwDoubleEl,powerState.double,PU_TYPES.double.dur); }
+  /* v0.4.06 回声定位：持续期间每帧维持透视（新生成道具也高亮），到期还原；v0.4.63 补上倒计时文本+时间条 */
   if(powerState.echo>0){ echoOn();
     powerState.echo-=dt;
+    pwT(pwEchoEl,powerState.echo,PU_TYPES.echo.dur);
     if(powerState.echo<=0){ powerState.echo=0; pwEchoEl.classList.remove('on'); echoOff(); } }
 
   /* ---- v0.3.4 新玩法物件：金币 / 穿环 / 加速带 ---- */
