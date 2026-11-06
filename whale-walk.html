@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.93</title>
+<title>鲸步 WHALE WALK · v0.4.94</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3218,8 +3218,9 @@ function bestComboTick(n){
 }
 /* v0.3.64 每关最高星级（ww-stars-v1） */
 let STARS={}; try{ STARS=JSON.parse(localStorage.getItem('ww-stars-v1')||'{}')||{}; }catch(_){ STARS={}; }
-/* v0.4.92 每关最佳用时（ww-lvlbest-v1，秒） */
-let LVLBEST={}; try{ LVLBEST=JSON.parse(localStorage.getItem('ww-lvlbest-v1')||'{}')||{}; }catch(_){ LVLBEST={}; }
+/* v0.4.92 每关最佳用时（ww-lvlbest-v1，秒）；v0.4.94 读取时统一转数字（防导入存档脏字符串） */
+let LVLBEST={}; try{ LVLBEST=JSON.parse(localStorage.getItem('ww-lvlbest-v1')||'{}')||{};
+  for(const k in LVLBEST) LVLBEST[k]=+LVLBEST[k]||0; }catch(_){ LVLBEST={}; }
 let lvlBestNew=false;   // 本局是否刷新本关最佳（结算提示）
 /* v0.3.67 四种难度各通关一次（ww-cleardiff-v1） */
 let CLEARED={}; try{ CLEARED=JSON.parse(localStorage.getItem('ww-cleardiff-v1')||'{}')||{}; }catch(_){ CLEARED={}; }
@@ -3270,7 +3271,7 @@ function renderLevelPick(){
     b.className=(locked?'lock':'')+(i===startLevel?' on':'');
     b.disabled=locked;
     b.setAttribute('aria-label','起始关卡 '+i);
-    b.title='第 '+i+' 关 · 最高 '+((STARS[i]||0)>0?'★'.repeat(STARS[i]):'未获星');   // v0.3.76 悬浮显示星级
+    b.title='第 '+i+' 关 · 最高 '+((STARS[i]||0)>0?'★'.repeat(STARS[i]):'未获星')+(LVLBEST[i]?' · 最佳 '+fmtT(LVLBEST[i]):'');   // v0.3.76 悬浮星级；v0.4.94 最佳用时
     if((STARS[i]||0)>=3) b.classList.add('max');
     if(i===9 && !locked) b.classList.add('hidden9');   // v0.3.88 隐藏关金色角标
     if(i<=8 && !locked && hiddenUnlocked() && (STARS[i]||0)>0) b.classList.add('extreme9');   // v0.3.89 已极限全通关卡角标
@@ -5535,6 +5536,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   lvlBest:()=>({b:LVLBEST[level]||0, isNew:lvlBestNew, level}),   // v0.4.92 验收辅助
   pmText:()=>document.getElementById('pmStats').textContent,   // v0.4.93 验收辅助
   openPauseDbg:()=>openPause(),   // v0.4.93 验收辅助
+  lvTitle:(i)=>{ const b=document.querySelectorAll('#levelPick button')[i-1]; return b?b.title:''; },   // v0.4.94 验收辅助
   finishFail:()=>{ __dbg.finishChallenge(false); return document.getElementById('rmInfo').innerText; },   // v0.4.75 验收辅助
   droneKills:()=>droneKills,   // v0.4.76
   ringPftTotal:()=>ringPftTotal,   // v0.4.78
