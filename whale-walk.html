@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.82</title>
+<title>鲸步 WHALE WALK · v0.4.83</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3920,7 +3920,8 @@ function shareText(){ if(!shareSnap)return '';
   const safe=safeURL(u);
   const c4=()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c;};
   const lb=' · 布局 #'+daySeed();   // v0.4.31 每日布局编号（同日同图可对比）
-  if(shareSnap.kind==='win') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 ${shareSnap.stars}★（评级：${shareSnap.rank}） · 用时：${shareSnap.time} · 四难度通关：${c4()}/4${lb}\n${safe}`;
+  const precision=(shareSnap.pft?' · 🎯正穿 '+shareSnap.pft:'')+(shareSnap.pp?' · 🎢正中弹 ×'+shareSnap.pp:'')+(shareSnap.kk?' · 🐙踏灭 '+shareSnap.kk:'');   // v0.4.83 分享文本精度统计
+  if(shareSnap.kind==='win') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 ${shareSnap.stars}★（评级：${shareSnap.rank}） · 用时：${shareSnap.time}${precision} · 四难度通关：${c4()}/4${lb}\n${safe}`;
   if(shareSnap.kind==='final') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · ${MAX_LEVEL}关全通！总用时：${shareSnap.time} · 鲸币：${shareSnap.coins} · 穿环：${shareSnap.rings} · 四难度通关：${c4()}/4${lb}\n${safe}`;
   return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 时间到 · 收集：${shareSnap.score}/${shareSnap.total}${lb}\n${safe}`; }
 document.getElementById('btnShare').addEventListener('click',()=>{
