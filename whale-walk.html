@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.8.8</title>
+<title>鲸步 WHALE WALK · v0.8.9</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3011,7 +3011,8 @@ try{
 function dqSave(){ try{ localStorage.setItem('ww-daily-quest-v1',JSON.stringify(DQ)); }catch(_){} }
 /* v0.4.79 结算每日任务行：达标项后缀 ✓（统一单一来源，胜/败分支共用） */
 function dqLine(){ const f=(v,k)=>v+'/'+k+(v>=k?'✓':'');
-  return '📅 每日任务 · 光点 '+f(DQ.orb,DQ_KEYS.orb)+' · 通关 '+f(DQ.clear,DQ_KEYS.clear)+' · 碎片 '+f(DQ.frag,DQ_KEYS.frag); }
+  const done=Object.keys(DQ_KEYS).filter(k=>(DQ[k]||0)>=DQ_KEYS[k]).length;   // v0.8.9 完成度计数
+  return '📅 每日任务('+done+'/3) · 光点 '+f(DQ.orb,DQ_KEYS.orb)+' · 通关 '+f(DQ.clear,DQ_KEYS.clear)+' · 碎片 '+f(DQ.frag,DQ_KEYS.frag); }
 /* v0.4.84 结算精度统计徽章段（单一来源，胜/败分支共用；无统计返回空） */
 function statBadges(){
   let h='';
@@ -5675,6 +5676,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   ringRate:()=>ringCount>0?Math.round(ringPerfectCount/ringCount*100):null,   // v0.8.6 验收辅助
   dodgeRate:()=>(lvDodge+(challenge.hitCount||0))>0?Math.round(lvDodge/(lvDodge+(challenge.hitCount||0))*100):null,   // v0.8.7 验收辅助
   orbPerMin:()=>levelTimeUsed>0?Math.round(score/(levelTimeUsed/60)):null,   // v0.8.8 验收辅助
+  dqDoneN:()=>Object.keys(DQ_KEYS).filter(k=>(DQ[k]||0)>=DQ_KEYS[k]).length,   // v0.8.9 验收辅助
   forceWalkTotal:(m)=>{ walkTotal=m; return walkTotal; },   // v0.7.1 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
