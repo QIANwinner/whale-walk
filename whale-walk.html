@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.8.4</title>
+<title>鲸步 WHALE WALK · v0.8.5</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3299,7 +3299,7 @@ function renderDiffBest(){
   const names={easy:'简单',normal:'普通',hard:'困难',extreme:'极限'};
   document.querySelectorAll('#diffPick .dbtn').forEach(btn=>{
     const k=btn.dataset.diff;
-    if(k) btn.title=names[k]+(CLEARED[k]?' · 🏁 已通关':'');
+    if(k) btn.title=names[k]+'(得分×'+DIFFS[k].scoreMul+')'+(CLEARED[k]?' · 🏁 已通关':'');   // v0.8.5 倍率透明化
   });
   { const be=document.getElementById('btnEndless');   // v0.5.9 无尽按钮悬浮显示最佳
     if(be) be.title='♾ 无尽鲸潮 · 连续通关挑战'+(EBEST>0?' · 最佳 '+EBEST+' 关':''); }
