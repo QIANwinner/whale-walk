@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.89</title>
+<title>鲸步 WHALE WALK · v0.4.90</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3230,8 +3230,8 @@ try{ CLEARS=parseInt(localStorage.getItem('ww-clears-v1')||'0',10)||0; }catch(_)
 function metaLine(){
   const el=document.getElementById('metaLine'); if(!el)return;
   let c4=0; for(const k in CLEARED) if(CLEARED[k]) c4++;
-  /* v0.4.65 主菜单生涯四计数：散步/通关/四难度 + 累计光点/鲸币/碎片（正向积累一屏可见） */
-  el.textContent='🐳 散步 '+RUNS+' 次 · 通关 '+CLEARS+' 次 · 四难度通关 '+c4+'/4 · ✨'+ORB+' 🪙'+COIN+' 🎶'+FRAGT;
+  /* v0.4.65 主菜单生涯四计数：散步/通关/四难度 + 累计光点/鲸币/碎片；v0.4.90 加无尽最佳 */
+  el.textContent='🐳 散步 '+RUNS+' 次 · 通关 '+CLEARS+' 次 · 四难度通关 '+c4+'/4 · ✨'+ORB+' 🪙'+COIN+' 🎶'+FRAGT+(EBEST>0?' · ♾最佳 '+EBEST:'');
 }
 /* v0.3.51 主界面展示当前难度最佳成绩 */
 function renderDiffBest(){
@@ -5517,6 +5517,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   openSet:()=>openSettings(), closeSet:()=>closeSettings(), openAch:()=>renderAch(),   // v0.4.87 验收辅助
   forceDQAll:()=>{ DQ.orb=DQ_KEYS.orb; DQ.clear=DQ_KEYS.clear; DQ.frag=DQ_KEYS.frag; renderDQ(); return DQ; },   // v0.4.88 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
+  metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
   finishFail:()=>{ __dbg.finishChallenge(false); return document.getElementById('rmInfo').innerText; },   // v0.4.75 验收辅助
   droneKills:()=>droneKills,   // v0.4.76
   ringPftTotal:()=>ringPftTotal,   // v0.4.78
