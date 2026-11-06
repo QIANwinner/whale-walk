@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.7.5</title>
+<title>鲸步 WHALE WALK · v0.7.6</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3819,7 +3819,8 @@ function finishChallenge(win){
         try{ localStorage.setItem('ww-cleardiff-v1',JSON.stringify(CLEARED)); }catch(_){}
         if(CLEARED.easy&&CLEARED.normal&&CLEARED.hard&&CLEARED.extreme) award('m4');
       }
-      shareSnap={kind:'win',diff:T(diff().label),level,stars,time:fmtT(levelTimeUsed),rank,pft:ringPerfectCount,pp:padPerfectCount,kk:droneKills,cf:chainFull};   // v0.3.52 胜利快照；v0.4.82 三统计；v0.5.3 全链
+      shareSnap={kind:'win',diff:T(diff().label),level,stars,time:fmtT(levelTimeUsed),rank,pft:ringPerfectCount,pp:padPerfectCount,kk:droneKills,cf:chainFull,
+        fo:(coinTotal>0&&coinCount===coinTotal)?1:0, oo:(TOTAL>0&&score===TOTAL)?1:0, ff:(fragTotal>0&&fragCount===fragTotal)?1:0};   // v0.3.52 胜利快照；v0.4.82 三统计；v0.5.3 全链；v0.7.6 三满贯
       const beforeUnlock=unlockMax;
       /* v0.3.88 逐关解锁只到第 8 关；第 9 关隐藏关由极限全通（hiddenUnlocked）控制 */
       unlockMax=Math.max(unlockMax,Math.min(8,level+1));
@@ -4016,7 +4017,8 @@ function shareText(){ if(!shareSnap)return '';
   const safe=safeURL(u);
   const c4=()=>{let c=0;for(const k in CLEARED)if(CLEARED[k])c++;return c;};
   const lb=' · 布局 #'+daySeed();   // v0.4.31 每日布局编号（同日同图可对比）
-  const precision=(shareSnap.pft?' · 🎯正穿 '+shareSnap.pft:'')+(shareSnap.pp?' · 🎢正中弹 ×'+shareSnap.pp:'')+(shareSnap.kk?' · 🐙踏灭 '+shareSnap.kk:'')+(shareSnap.cf?' · ⛓全链 ×'+shareSnap.cf:'');   // v0.4.83/v0.5.3 分享文本精度统计
+  const precision=(shareSnap.pft?' · 🎯正穿 '+shareSnap.pft:'')+(shareSnap.pp?' · 🎢正中弹 ×'+shareSnap.pp:'')+(shareSnap.kk?' · 🐙踏灭 '+shareSnap.kk:'')+(shareSnap.cf?' · ⛓全链 ×'+shareSnap.cf:'')
+    +(shareSnap.oo?' · ✨光点满贯':'')+(shareSnap.fo?' · 🪙鲸币满贯':'')+(shareSnap.ff?' · 🎶碎片满贯':'');   // v0.4.83/v0.5.3/v0.7.6 分享文本统计
   if(shareSnap.kind==='win') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 ${shareSnap.stars}★（评级：${shareSnap.rank}） · 用时：${shareSnap.time}${precision} · 四难度通关：${c4()}/4${lb}\n${safe}`;
   if(shareSnap.kind==='final') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · ${MAX_LEVEL}关全通！总用时：${shareSnap.time} · 鲸币：${shareSnap.coins} · 穿环：${shareSnap.rings} · 四难度通关：${c4()}/4${lb}\n${safe}`;
   return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 时间到 · 收集：${shareSnap.score}/${shareSnap.total}${lb}\n${safe}`; }
@@ -5618,7 +5620,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   tutKeysText:()=>document.getElementById('tutKeys').innerText,   // v0.6.0 验收辅助
   tutPageText:()=>document.getElementById('tutPage').textContent,   // v0.6.0 验收辅助
   tutNext:()=>tutOkBtn.click(),   // v0.6.0 验收辅助
-  cardLines:()=>{ const s=shareSnap; return s?[s.pft,s.pp,s.kk,s.cf]:null; },   // v0.4.82/v0.5.3 验收辅助
+  cardLines:()=>{ const s=shareSnap; return s?[s.pft,s.pp,s.kk,s.cf,s.oo,s.fo,s.ff]:null; },   // v0.4.82~v0.7.6 验收辅助
   shareTextDbg:()=>shareText(),   // v0.5.3 验收辅助
   unlockText:()=>document.getElementById('unlockInfo').textContent,   // v0.5.4 验收辅助
   rmTitleText:()=>document.getElementById('rmTitle').textContent,   // v0.5.5 验收辅助
