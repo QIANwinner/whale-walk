@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.99</title>
+<title>鲸步 WHALE WALK · v0.5.0</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -760,6 +760,7 @@ const I18N={
     ach_padPerfect3:'弹床高手 · 单关正中弹跳 3 次',   // v0.4.72
     ach_droneKill3:'空中猎手 · 单关踏灭 3 架无人机',   // v0.4.77
     ach_ringPerfect10:'精准鲸灵 · 累计正穿 10 次',   // v0.4.78
+    ach_runs100:'百步之约 · 累计散步 100 次',   // v0.5.0 百版里程碑
     ach_frag15:'鲸语收藏家 · 累计收集 15 片鲸语碎片', ach_endless5:'无尽鲸歌 · 无尽模式连续通关 5 关',
     ach_streak3:'火热连击 · 无尽模式连续通关 3 关',
     /* ---- v0.4.27 文案收拢：动态 toast / 拼接文案 key（含 {占位符}） ---- */
@@ -3046,6 +3047,7 @@ function setMode(m){
     girl.userData.state={yaw:0,speed:0,phase:0,vy:0,y:0,airT:0,grounded:true,step:0,airJumps:1};
     if(m==='play'){ camS.tYaw=girl.userData.state.yaw+Math.PI; camS.tPitch=0.30; camS.tDist=3.0;
       RUNS++; try{ localStorage.setItem('ww-runs-v1',String(RUNS)); }catch(_){} metaLine();   // v0.3.81 散步计数
+      if(RUNS>=100) award('runs100');   // v0.5.0 百步之约
       if(challenge.done||challenge.failed) resetChallenge(); else if(!challenge.active) startChallenge();
       setTimeout(showTutIfFirst,600); }   // v0.3.20 首次进入挑战显示引导
     else { camS.tYaw=Math.PI*0.85; camS.tPitch=0.14; camS.tDist=2.2;
@@ -3348,7 +3350,8 @@ const ACHS=[
   {id:'ringPerfect3', icon:'🏹', label:'ach_ringPerfect3'},
   {id:'padPerfect3', icon:'🎢', label:'ach_padPerfect3'},
   {id:'droneKill3', icon:'🛰', label:'ach_droneKill3'},
-  {id:'ringPerfect10', icon:'🌟', label:'ach_ringPerfect10'}
+  {id:'ringPerfect10', icon:'🌟', label:'ach_ringPerfect10'},
+  {id:'runs100', icon:'💯', label:'ach_runs100'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
