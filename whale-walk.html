@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.55</title>
+<title>鲸步 WHALE WALK · v0.4.56</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3030,10 +3030,11 @@ const _rimBlue=new THREE.Color(0x8FC8FF), _rimGold=new THREE.Color(0xFFD25A);
  * ===================================================================== */
 const DIFFS={
   /* v0.4.47 无人机手感曲线：windup 蓄力窗口越难越短、dash 冲刺越难越快、cool 冷却越难越短——躲得开但紧张 */
-  easy:  {label:'diffEasy', time:100, carMul:0.85, drones:1, orbHigh:2, thunderMin:15, thunderMax:32, droneWindup:0.62, droneDash:8.4, droneCool:2.6},
-  normal:{label:'diffNormal', time:80,  carMul:1.0,  drones:2, orbHigh:4, thunderMin:10, thunderMax:24, droneWindup:0.55, droneDash:9.2, droneCool:2.2},
-  hard:  {label:'diffHard', time:64,  carMul:1.25, drones:3, orbHigh:6, thunderMin:6,  thunderMax:16, droneWindup:0.50, droneDash:9.9, droneCool:2.0},
-  extreme:{label:'diffExtreme', time:60,  carMul:1.45, drones:4, orbHigh:8, thunderMin:5,  thunderMax:12, droneWindup:0.47, droneDash:10.5, droneCool:1.8},
+  /* v0.4.56 难度递进奖励手感：scoreMul 净得分倍率随难度递进（easy 1.0 → extreme 1.5），越难打出的分越有分量 */
+  easy:  {label:'diffEasy', time:100, carMul:0.85, drones:1, orbHigh:2, thunderMin:15, thunderMax:32, droneWindup:0.62, droneDash:8.4, droneCool:2.6, scoreMul:1.0},
+  normal:{label:'diffNormal', time:80,  carMul:1.0,  drones:2, orbHigh:4, thunderMin:10, thunderMax:24, droneWindup:0.55, droneDash:9.2, droneCool:2.2, scoreMul:1.15},
+  hard:  {label:'diffHard', time:64,  carMul:1.25, drones:3, orbHigh:6, thunderMin:6,  thunderMax:16, droneWindup:0.50, droneDash:9.9, droneCool:2.0, scoreMul:1.3},
+  extreme:{label:'diffExtreme', time:60,  carMul:1.45, drones:4, orbHigh:8, thunderMin:5,  thunderMax:12, droneWindup:0.47, droneDash:10.5, droneCool:1.8, scoreMul:1.5},
 };
 let diffKey='normal';
 try{ const d=localStorage.getItem('ww-diff'); if(DIFFS[d]) diffKey=d; }catch(_){}
@@ -3110,7 +3111,8 @@ function rmBarsHtml(){ return '<div class="rm-bars">'
   +(fragTotal>0?rmBar(T('fragShort'),fragCount,fragTotal):'')
   +'</div>'; }
 const challenge={active:false, timeLeft:0, combo:0, lastPick:-99,
-  invuln:0, done:false, failed:false, flashT:0, best:null, startTime:0, danger:false, ready:0, recentLoss:0};
+  invuln:0, done:false, failed:false, flashT:0, best:null, startTime:0, danger:false, ready:0, recentLoss:0,
+  bonusScore:0};   // v0.4.56 金币/穿环计入净得分（随难度递进加权）
 /* v0.3.50 最佳成绩按难度分开记录（ww-best-v3）；旧 ww-best-v2 自动迁移到当前难度 */
 let BEST={};
 try{
@@ -3413,6 +3415,12 @@ function applyPowerUp(type){
   AudioFX.pickup();
 }
 function fmtT(s){ return s.toFixed(1)+' 秒'; }
+/* v0.4.56 难度递进奖励手感：净得分 =（光点+连击+时间奖励+金币/穿环）× 难度倍率 scoreMul
+ * 星级判定（starsFor）只看 timeLeft 不受影响；排行榜按难度分表，同难度内倍率一致公平 */
+function netScore(){
+  const raw=score+(challenge.comboBonus||0)+(challenge.timeLeft||0)+(challenge.bonusScore||0);
+  return Math.round(raw*diff().scoreMul);
+}
 /* v0.4.46 星级改为「预算比例 + 绝对完成时间上限」双约束：
  * 旧规则 tl>=t*0.42（即完成 ≤0.58t）在预算被 clamp 后使高关卡 3★ 数学不可达；
  * 现改为「完成时间 ≤ max(比例×预算, 固定上限)」，高关卡由固定上限兜底，保证可达成 */
@@ -3604,7 +3612,7 @@ function finishChallenge(win){
     rmRank.style.display='block';
     { const rw=document.getElementById('rmRankWhy'); if(rw) rw.style.display=(rank==='S')?'block':'none'; }   // v0.3.75
     /* v0.3.89 排行榜：本关净得分入榜；v0.4.33 返回名次（提示在下方 rmBest 赋值处合并，避免被覆盖） */
-    const lbRank=lbAdd(T(diff().label), level, score+Math.round((challenge.comboBonus||0)+challenge.timeLeft), stars);
+    const lbRank=lbAdd(T(diff().label), level, netScore(), stars);   // v0.4.56 净得分随难度递进
     runTotalUsed+=levelTimeUsed; runCoins+=coinCount; runRings+=ringCount;
     /* v0.3.25 星星逐个弹出 */
     rmStars.innerHTML='★★★☆☆☆'.slice(0,stars*2).split('').map((s,i)=>
@@ -3660,7 +3668,8 @@ function finishChallenge(win){
         +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
         +'<br>📅 每日任务 · 光点 '+DQ.orb+'/'+DQ_KEYS.orb+' · 通关 '+DQ.clear+'/'+DQ_KEYS.clear+' · 碎片 '+DQ.frag+'/'+DQ_KEYS.frag   // v0.4.40 每日任务进度
         +'<br>本局净得分 <b id="rmNetScore">0</b> 分'
-        +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)+'）'   // v0.3.89
+        +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)
+        +' + 额外收集 '+Math.round(challenge.bonusScore||0)+'，难度倍率 ×'+diff().scoreMul+'）'   // v0.3.89 / v0.4.56
         +rmBarsHtml()   // v0.4.28 结算收集率可视化进度条
         +(stars<3?'<br>下次快 '+fmtT(Math.max(0,(levelCfg().time-challenge.timeLeft)-star3Need(levelCfg().time)))+' 即可 3★':'')
         +(level<8?'<br>下一关：'+(level+1)+' '+T(LEVEL_NAMES[level])+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
@@ -3728,7 +3737,7 @@ function finishChallenge(win){
   {
     const ns=document.getElementById('rmNetScore');
     if(ns&&challenge.done&&!challenge.failed){
-      const target=score+Math.round((challenge.comboBonus||0)+challenge.timeLeft);
+      const target=netScore();   // v0.4.56 净得分随难度递进（scoreMul）
       let cur=0; const step=Math.max(1,Math.ceil(target/40));
       const iv=setInterval(()=>{ cur=Math.min(target,cur+step); ns.textContent=cur;
         if(cur>=target) clearInterval(iv); },28);
@@ -4241,7 +4250,7 @@ function update(dt){
           }
           if(challenge.combo>=8) award('combo8');   // v0.3.8 连击大师
           if(challenge.combo>=3){
-            const cb=(diffKey==='extreme')?COMBO_BONUS*1.25:COMBO_BONUS;   // v0.3.86 极限难度连击加成 1.25×
+            const cb=COMBO_BONUS;   // v0.4.56 净得分统一乘 scoreMul 递进，连击加时保持固定（避免双重加权）
             challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+cb);
             challenge.comboBonus=(challenge.comboBonus||0)+cb;   // v0.3.89 净得分累计
             toast(TF('comboN',{n:challenge.combo,s:cb.toFixed(1)}));
@@ -4501,6 +4510,7 @@ function update(dt){
         /* v0.3.30：combo≥3 时鲸币奖励翻倍；v0.3.86 双倍鲸币道具再 ×2 */
         const coinBonus=(powerState.double>0?2:1)*((challenge.combo>=3)?6:3);
         challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+coinBonus);
+        challenge.bonusScore=(challenge.bonusScore||0)+3;   // v0.4.56 金币计入净得分（随难度 scoreMul 递进）
         blinkT=1; burst(c.position);
         AudioFX.coin(); buzz(30);
         toast(coinCount===coinTotal
@@ -4549,6 +4559,7 @@ function update(dt){
         u.alive=false; ringGroup.remove(r); rings.splice(i,1);
         ringCount++;
         challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2);
+        challenge.bonusScore=(challenge.bonusScore||0)+2;   // v0.4.56 穿环计入净得分（随难度 scoreMul 递进）
         blinkT=1; burst(r.position);
         AudioFX.ring(); buzz(18);
         toast(T('ring2'));
@@ -5218,6 +5229,12 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
       ringColor:am?am.color.getHexString():''}; }),
   /* v0.4.55 音效分层探针：拾取/金币/穿环独立音量（验收断言 setVolXxx 生效 + 持久化） */
   sfxVols:()=>({pick:AudioFX.volPick, coin:AudioFX.volCoin, ring:AudioFX.volRing}),
+  /* v0.4.56 难度递进奖励手感探针：净得分倍率 + 金币/穿环额外分 + 当前净得分（验收断言 scoreMul 表 + bonusScore 累加） */
+  reward:()=>({scoreMul:diff().scoreMul, bonusScore:challenge.bonusScore||0, net:netScore()}),
+  /* v0.4.56 验收辅助：净得分纯函数（注入四分量验公式）+ 金币/穿环实时坐标 */
+  netScoreFor:(s,cb,tl,bs)=>{ const raw=s+(cb||0)+(tl||0)+(bs||0); return Math.round(raw*diff().scoreMul); },
+  coinLive:()=>coins.map(c=>({x:+c.position.x.toFixed(3), y:+c.position.y.toFixed(3), z:+c.position.z.toFixed(3), alive:!!c.userData.alive})),
+  ringLive:()=>rings.map(r=>({x:+r.position.x.toFixed(3), y:+r.position.y.toFixed(3), z:+r.position.z.toFixed(3), alive:!!r.userData.alive})),
   /* v0.4.50 加速带金币链钩子：带链 id + 各链金币坐标（供验收探针，确定性） */
   boostChainInfo:()=>boostChainIds.map(id=>({
     id,
