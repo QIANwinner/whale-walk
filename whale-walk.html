@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.0</title>
+<title>鲸步 WHALE WALK · v0.9.1</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3130,7 +3130,7 @@ function openPause(){ if(mode!=='play')return; paused=true; pauseMenuEl.classLis
     `难度 ${T(diff().label)}(得分×${diff().scoreMul}) · 第 ${level}/${MAX_LEVEL} 关 ${levelName()} · 剩余 ${Math.ceil(challenge.timeLeft)} 秒 · 收集 ${score}/${TOTAL} · 鲸币 ${coinCount}/${coinTotal}${(()=>{let f=0;for(let i=1;i<=MAX_LEVEL;i++)if((STARS[i]||0)>=3)f++;return ' · 全星 '+f+'/'+MAX_LEVEL;})()}${bestOf()?' · 本难度最佳 '+fmtT(bestOf().time):''}${LVLBEST[level]?' · 本关最佳 '+fmtT(LVLBEST[level]):''}${challenge.comboMax>0?' · 最高连击 x'+challenge.comboMax:''} · 🏆 ${achGot.length}/${ACHS.length} · 布局 #${daySeed()}${mirrorOn?' · 🪞镜像日':''}`;   // v0.4.93 本关最佳；v0.6.2 最高连击；v0.8.4 得分倍率透明化
   /* v0.4.37 暂停也见每日挑战进度 */
   document.getElementById('pmDaily').textContent=
-    `📅 每日 ${DQ.orb}/${DQ_KEYS.orb} 光点 · ${DQ.clear}/${DQ_KEYS.clear} 通关 · ${DQ.frag}/${DQ_KEYS.frag} 碎片${(DQ.bonus?' · 奖励待领':'')}`; }
+    `📅 每日(${Object.keys(DQ_KEYS).filter(k=>(DQ[k]||0)>=DQ_KEYS[k]).length}/3) ${DQ.orb}/${DQ_KEYS.orb} 光点 · ${DQ.clear}/${DQ_KEYS.clear} 通关 · ${DQ.frag}/${DQ_KEYS.frag} 碎片${(DQ.bonus?' · 奖励待领':'')}`; }   // v0.9.1 完成度
 function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); document.body.classList.remove('paused');
   AudioFX.ui('resume'); }   // v0.3.97 继续提示音（含移除暂停色调）
 function togglePause(){ if(mode!=='play')return; paused?closePause():openPause(); }
