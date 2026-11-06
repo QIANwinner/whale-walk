@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.65</title>
+<title>鲸步 WHALE WALK · v0.4.66</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -761,7 +761,7 @@ const I18N={
     last3:'还剩最后 3 个光点！', comboN:'COMBO x{n}！ +{s} 秒', killDrone:'🐙 踏灭{e}无人机！ +{n} 秒', elite:'精英',
     coinAll:'全部金色鲸币收集！+{n} 秒', coinGet:'金色鲸币 +{n} 秒！', coinDouble2:'（双倍鲸币×2）', coinDouble:'（双倍鲸币）',
     coinCombo:'（组合翻倍）', coinComboN:'（连击 x{n} 翻倍）', fragAll:'🐋 鲸语通！碎片齐鸣 +3 秒，全城共鸣！', fragOne:'鲸语碎片 +1 秒（{a}/{b}）',
-    ring2:'穿环 +2 秒！', boostPad:'加速带！⚡', timeTight:'⏱ 时间紧张！跟随金色导航冲刺',
+    ring2:'穿环 +2 秒！', ringPerfect:'🎯 正穿 PERFECT！+3 秒', boostPad:'加速带！⚡', timeTight:'⏱ 时间紧张！跟随金色导航冲刺',
     chainFull:'⚡ 全链收割！金币链吃满 3 枚',
     comboBreak:'💔 连击中断 x{n}！',   // v0.4.51 连击断连提示（en 缺 key 回退中文）
     vibOn:'震动已开启', vibOff:'震动已关闭', quality:'画质：{q}', qLow:'低', qHigh:'高', qMid:'中',
@@ -2894,6 +2894,7 @@ joyEl.addEventListener('touchend',e=>{ joyState.active=false; joyState.x=joyStat
    spaceHeld 边沿检测防按住连发 */
 let spinT=0, spaceHeld=false;
 let girlPulseT=0;   // v0.4.61 拾取弹性脉冲计时
+let lastRingPerfect=false;   // v0.4.66 最近一次穿环是否正穿（探针用）
 function doJump(){ const st=girl.userData.state;
   if(mode!=='play')return;
   if(st.grounded){ st.vy=4.9; st.grounded=false; st.airJumps=1; AudioFX.jump(); }
@@ -4635,11 +4636,15 @@ function update(dt){
       if(dd<0.85 && Math.abs(girl.position.y+0.9-r.position.y)<0.62 && st.vy>0.5){
         u.alive=false; ringGroup.remove(r); rings.splice(i,1);
         ringCount++;
-        challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2);
-        challenge.bonusScore=(challenge.bonusScore||0)+2;   // v0.4.56 穿环计入净得分（随难度 scoreMul 递进）
+        /* v0.4.66 正穿 PERFECT：环心正穿（dd<0.28）额外 +1 秒 +1 分 */
+        const perfect=dd<0.28;
+        lastRingPerfect=perfect;
+        challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+2+(perfect?1:0));
+        challenge.bonusScore=(challenge.bonusScore||0)+2+(perfect?1:0);   // v0.4.56 穿环计入净得分（随难度 scoreMul 递进）
         blinkT=1; burst(r.position);
         AudioFX.ring(); buzzP([18,40,18,40,18]);   // v0.4.57 穿环三连脉冲
-        toast(T('ring2'));
+        toast(T(perfect?'ringPerfect':'ring2'));
+        if(perfect) burst(r.position);   // v0.4.66 完美额外金色连闪
       }
     }
     /* 加速带（v0.3.86 时间 2.2→2.6s，极限难度保持 2.2）：踏上 ×2.2 冲刺 */
@@ -5428,6 +5433,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   mm:()=>drawMinimap(),
   girlPulse:()=>girlPulseT,   // v0.4.61
   girlScale:()=>[girl.scale.x,girl.scale.y,girl.scale.z],   // v0.4.61
+  /* v0.4.66 穿环 PERFECT 探针：最近一次穿环是否正穿（验收断言 +3 秒/PERFECT toast） */
+  lastRingPerfect:()=>lastRingPerfect,
   /* v0.4.34 每日挑战钩子 */
   DQ:()=>DQ, dqBump, renderDQ};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
