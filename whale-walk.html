@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.5.9</title>
+<title>鲸步 WHALE WALK · v0.6.0</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -645,6 +645,10 @@
     <div class="tr"><b>道具</b>：🛡护盾 / 🧲磁铁 / ⚡加速 / 🌀子弹时间 / 🧊时间冻结 / 💰双倍鲸币</div>
     <div class="tr"><b>新玩法</b>：🪙金色鲸币 +3 秒 · 💫穿环 +2 秒 · 跳顶无人机可消灭 +2 秒</div>
     <div class="tr"><b>进阶</b>：🎯 环心正穿 PERFECT +3 秒 · 🎢 垫心正中弹跳更高 · 连续正穿有额外分</div>
+  </div>
+  <div id="tutKeys" class="tut-page" style="display:none">
+    <div class="tr"><b>桌面快捷键</b>：P/Esc 暂停 · R 秒重开 · M 静音 · T 藏界面 · C 设置 · 数字键选关</div>
+    <div class="tr"><b>触屏操作</b>：左侧摇杆移动 · 右下 ⤒ 跳跃 · ⏸ 暂停 · 🔊 静音</div>
   </div>
   <div class="ta"><span id="tutPage">1/3</span><button id="tutOk">下一页</button></div>
 </div>
@@ -3442,11 +3446,12 @@ function tutRender(){
   document.getElementById('tutBase').style.display=tutP===1?'':'none';
   document.getElementById('tutCombo').style.display=tutP===2?'':'none';
   document.getElementById('tutItem').style.display=tutP===3?'':'none';
-  document.getElementById('tutPage').textContent=tutP+'/3';
-  tutOkBtn.textContent=tutP===3?T('tutOk'):T('tutNext');   // v0.4.01 双语
+  document.getElementById('tutKeys').style.display=tutP===4?'':'none';
+  document.getElementById('tutPage').textContent=tutP+'/4';   // v0.6.0 新增快捷键页
+  tutOkBtn.textContent=tutP===4?T('tutOk'):T('tutNext');   // v0.4.01 双语
 }
 tutOkBtn.addEventListener('click',()=>{
-  if(tutP<3){ tutP++; tutRender(); AudioFX.tick(); }
+  if(tutP<4){ tutP++; tutRender(); AudioFX.tick(); }
   else document.getElementById('tut').classList.remove('show');
 });
 document.getElementById('tut').addEventListener('pointerdown',()=>AudioFX.tick());
@@ -5553,6 +5558,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   finishWin:()=>{ __dbg.finishChallenge(true); return document.getElementById('rmInfo').innerText; },   // v0.4.73 验收辅助
   bannerSub:()=>document.querySelector('#lvBanner .lv-s').textContent,   // v0.4.74 验收辅助
   tutText:()=>document.getElementById('tutItem').innerText,   // v0.4.81 验收辅助
+  tutKeysText:()=>document.getElementById('tutKeys').innerText,   // v0.6.0 验收辅助
+  tutPageText:()=>document.getElementById('tutPage').textContent,   // v0.6.0 验收辅助
+  tutNext:()=>tutOkBtn.click(),   // v0.6.0 验收辅助
   cardLines:()=>{ const s=shareSnap; return s?[s.pft,s.pp,s.kk,s.cf]:null; },   // v0.4.82/v0.5.3 验收辅助
   shareTextDbg:()=>shareText(),   // v0.5.3 验收辅助
   unlockText:()=>document.getElementById('unlockInfo').textContent,   // v0.5.4 验收辅助
