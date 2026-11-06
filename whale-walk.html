@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.60</title>
+<title>鲸步 WHALE WALK · v0.4.44</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -191,7 +191,8 @@
   #resultModal .rm-bar-tr{flex:1;height:8px;border-radius:4px;background:rgba(120,200,255,.13);
     overflow:hidden;border:1px solid rgba(120,200,255,.25);}
   #resultModal .rm-bar-fi{display:block;height:100%;border-radius:4px;
-    background:linear-gradient(90deg,#1E7FD8,#4BE0FF);box-shadow:0 0 8px rgba(75,224,255,.5);}
+    background:linear-gradient(90deg,#1E7FD8,#4BE0FF);box-shadow:0 0 8px rgba(75,224,255,.5);
+    transition:width .7s cubic-bezier(.25,.7,.3,1);}   /* v0.4.61 从 0 长出动画 */
   #resultModal .rm-bar-num{flex:none;width:66px;text-align:right;font-variant-numeric:tabular-nums;opacity:.9;}
   /* v0.3.89 排行榜 */
   #lbWrap{background:rgba(10,16,34,.6);border:1px solid rgba(127,212,255,.25);border-radius:12px;
@@ -3127,8 +3128,9 @@ const rmBest=document.getElementById('rmBest');
 /* v0.4.28 结算收集率进度条：生成一条迷你进度条 HTML（label 名称 / cur 当前 / total 总数） */
 function rmBar(label,cur,total){ if(!total||total<=0) return '';
   const p=Math.max(0,Math.min(100,cur/total*100));
+  /* v0.4.41→43 双写 width:初始 0 + data-w 目标值,rAF 后赋值触发 transition 长出动画 */
   return '<div class="rm-bar"><span class="rm-bar-lab">'+label+'</span>'
-    +'<span class="rm-bar-tr"><i class="rm-bar-fi" style="width:'+p.toFixed(1)+'%"></i></span>'
+    +'<span class="rm-bar-tr"><i class="rm-bar-fi" data-w="'+p.toFixed(1)+'" style="width:0%"></i></span>'
     +'<span class="rm-bar-num">'+cur+'/'+total+' · '+Math.round(p)+'%</span></div>'; }
 function rmBarsHtml(){ return '<div class="rm-bars">'
   +rmBar(T('orbShort'),score,TOTAL)
@@ -3692,6 +3694,7 @@ function finishChallenge(win){
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 道具 ×'+lvPU+' · 最高连击 x'+(challenge.comboMax||0)
         +(comboRecShown?' · 🔥 生涯新高 x'+bestComboOf():' · 生涯 x'+bestComboOf())   // v0.4.53 生涯最高连击
         +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
+        +'<br>布局 #'+daySeed()+(mirrorOn?' · 🪞镜像日':'')   // v0.4.44 结算布局编号
         +'<br>📅 每日任务 · 光点 '+DQ.orb+'/'+DQ_KEYS.orb+' · 通关 '+DQ.clear+'/'+DQ_KEYS.clear+' · 碎片 '+DQ.frag+'/'+DQ_KEYS.frag   // v0.4.40 每日任务进度
         +'<br>本局净得分 <b id="rmNetScore">0</b> 分'
         +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)
@@ -3760,6 +3763,11 @@ function finishChallenge(win){
     btnNext.style.display='none';
   }
   rmEl.classList.add('show');
+  /* v0.4.43→61 收集率条长出动画：rAF 后赋目标宽度触发 transition */
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    document.querySelectorAll('#resultModal .rm-bar-fi[data-w]').forEach(fi=>{
+      fi.style.width=fi.dataset.w+'%'; });
+  }));
   /* v0.3.94 结算净得分数字滚动动画 */
   {
     const ns=document.getElementById('rmNetScore');
