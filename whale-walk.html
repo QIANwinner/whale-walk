@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.6.3</title>
+<title>鲸步 WHALE WALK · v0.6.4</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2342,6 +2342,11 @@ const landPred=new THREE.Mesh(new THREE.RingGeometry(0.32,0.42,24),
   new THREE.MeshBasicMaterial({color:0x7FE4FF,transparent:true,opacity:0,side:THREE.DoubleSide,
     depthWrite:false,blending:THREE.AdditiveBlending}));
 landPred.rotation.x=-Math.PI/2; landPred.visible=false; scene.add(landPred);
+/* v0.6.4 磁铁磁吸范围圈：磁铁生效时脚下显示金色呼吸圆环（半径=磁吸 4.6） */
+const magnetRing=new THREE.Mesh(new THREE.RingGeometry(4.42,4.62,48),
+  new THREE.MeshBasicMaterial({color:0xFFD25A,transparent:true,opacity:0,side:THREE.DoubleSide,
+    depthWrite:false,blending:THREE.AdditiveBlending}));
+magnetRing.rotation.x=-Math.PI/2; magnetRing.visible=false; scene.add(magnetRing);
 let coinCount=0, coinTotal=3, boostT=0, ringCount=0, ringTotal=0;
 const coinNumEl=document.getElementById('coinNum');
 const coinGeo=new THREE.CylinderGeometry(0.22,0.22,0.06,24);
@@ -4652,7 +4657,12 @@ function update(dt){
   /* 道具持续时间倒计时；v0.4.29 剩余秒数填进 chip；v0.4.63 底部剩余时间条（.pw-fi 宽度随比例收缩） */
   const pwT=(el,v,max)=>{ const s=el.querySelector('.pw-t'); if(s) s.textContent=v>0?Math.ceil(v)+'s':'';
     const fi=el.querySelector('.pw-fi'); if(fi) fi.style.width=(v>0&&max>0?Math.min(100,v/max*100):0)+'%'; };
-  if(powerState.magnet>0){ powerState.magnet-=dt; if(powerState.magnet<=0){ powerState.magnet=0; pwMagnetEl.classList.remove('on'); } pwT(pwMagnetEl,powerState.magnet,PU_TYPES.magnet.dur); }
+  if(powerState.magnet>0){ powerState.magnet-=dt; if(powerState.magnet<=0){ powerState.magnet=0; pwMagnetEl.classList.remove('on'); } pwT(pwMagnetEl,powerState.magnet,PU_TYPES.magnet.dur);
+    /* v0.6.4 磁吸范围圈：跟随角色 + 呼吸 */
+    magnetRing.visible=true;
+    magnetRing.position.set(girl.position.x, terrainH(girl.position.x,girl.position.z)+0.06, girl.position.z);
+    magnetRing.material.opacity=0.22+0.10*Math.sin(t*5);
+  } else if(magnetRing.visible) magnetRing.visible=false;
   if(powerState.speed>0){ powerState.speed-=dt; if(powerState.speed<=0){ powerState.speed=0; pwSpeedEl.classList.remove('on'); } pwT(pwSpeedEl,powerState.speed,PU_TYPES.speed.dur); }
   if(powerState.slow>0){ powerState.slow-=dt; if(powerState.slow<=0){ powerState.slow=0; pwSlowEl.classList.remove('on'); } pwT(pwSlowEl,powerState.slow,PU_TYPES.slow.dur); }
   if(powerState.freeze>0){ powerState.freeze-=dt; if(powerState.freeze<=0){ powerState.freeze=0; pwFreezeEl.classList.remove('on'); } pwT(pwFreezeEl,powerState.freeze,PU_TYPES.freeze.dur); }
@@ -5584,6 +5594,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   setComboMax:(n)=>{ challenge.comboMax=n; return n; },   // v0.6.2 验收辅助
   forceFragsFull:()=>{ if(fragTotal>0) fragCount=fragTotal; return fragCount; },   // v0.6.3 验收辅助
   fragState:()=>({c:fragCount,t:fragTotal}),   // v0.6.3 验收辅助
+  magnetRingOn:()=>magnetRing.visible,   // v0.6.4 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
   lvlBest:()=>({b:LVLBEST[level]||0, isNew:lvlBestNew, level}),   // v0.4.92 验收辅助
