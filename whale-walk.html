@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.57</title>
+<title>鲸步 WHALE WALK · v0.4.58</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -166,6 +166,13 @@
   #resultModal .rm-t{font-size:30px;font-weight:900;color:#FFD25A;letter-spacing:2px;
     text-shadow:0 0 18px rgba(255,210,90,.8);}
   #resultModal .rm-stars{font-size:30px;margin:10px 0 4px;color:#FFD25A;letter-spacing:6px;}
+  /* v0.4.58 收束动效：光点飞入净得分 */
+  #resultModal .fly-orb{position:absolute;width:11px;height:11px;border-radius:50%;
+    background:radial-gradient(circle,#BFEFFF 20%,#1E7FD8 75%);
+    box-shadow:0 0 9px rgba(127,212,255,.95);
+    animation:flyIn .8s cubic-bezier(.25,.7,.35,1) both;pointer-events:none;}
+  @keyframes flyIn{0%{transform:translate(var(--dx),var(--dy)) scale(1.5);opacity:0}
+    55%{opacity:1} 100%{transform:translate(0,0) scale(.35);opacity:0}}
   #rmRank{font-size:32px;font-weight:900;margin:2px 0 4px;color:#7FE4FF;letter-spacing:4px;
     text-shadow:0 0 17px rgba(127,228,255,.9);display:none;}
   #rmRankWhy{display:none;font-size:11px;color:#9FC6E8;letter-spacing:1px;margin:0 0 10px;opacity:.85;}
@@ -3757,6 +3764,21 @@ function finishChallenge(win){
       let cur=0; const step=Math.max(1,Math.ceil(target/40));
       const iv=setInterval(()=>{ cur=Math.min(target,cur+step); ns.textContent=cur;
         if(cur>=target) clearInterval(iv); },28);
+      /* v0.4.58 收束动效：8 个光点从四周飞入净得分数字 */
+      if(target>0){
+        const holder=ns.parentElement;
+        holder.style.position='relative';
+        for(let i=0;i<8;i++){
+          const orb=document.createElement('span');
+          orb.className='fly-orb';
+          const ang=(i/8)*Math.PI*2, dist=110+((i*37)%90);
+          orb.style.setProperty('--dx',Math.round(Math.cos(ang)*dist)+'px');
+          orb.style.setProperty('--dy',Math.round(Math.sin(ang)*dist)+'px');
+          orb.style.animationDelay=(i*0.05)+'s';
+          holder.appendChild(orb);
+          setTimeout(()=>orb.remove(),1400);
+        }
+      }
     }
   }
 }
@@ -5307,6 +5329,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   vendingMachines,
   /* v0.4.33 连击显示钩子 */
   comboEl:()=>comboEl,
+  /* v0.4.58 收束动效钩子 */
+  flyOrbs:()=>document.querySelectorAll('#resultModal .fly-orb').length,
   /* v0.4.24 弹跳垫冷却可视化钩子 */
   padVisual:(i)=>{ const bp=bouncePads[i]; if(!bp)return null;
     const u=bp.userData, pm=bp.children[0].material;
