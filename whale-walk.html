@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.5.3</title>
+<title>鲸步 WHALE WALK · v0.5.4</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3272,7 +3272,7 @@ function renderLevelPick(){
   if(!levelPickEl)return;
   const ui=document.getElementById('unlockInfo');
   let full=0; for(let i=1;i<=MAX_LEVEL;i++) if((STARS[i]||0)>=3) full++;
-  if(ui) ui.textContent='已解锁 '+unlockMax+' / '+MAX_LEVEL+' 关 · 全星 '+full+' / '+MAX_LEVEL;
+  if(ui) ui.textContent='已解锁 '+unlockMax+' / '+MAX_LEVEL+' 关 · 全星 '+full+' / '+MAX_LEVEL+(hiddenUnlocked()?' · 🐋 鲸落之地已解锁':'');   // v0.5.4 隐藏关解锁标记
   levelPickEl.innerHTML='';
   for(let i=1;i<=MAX_LEVEL;i++){
     const b=document.createElement('button');
@@ -5545,6 +5545,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   tutText:()=>document.getElementById('tutItem').innerText,   // v0.4.81 验收辅助
   cardLines:()=>{ const s=shareSnap; return s?[s.pft,s.pp,s.kk,s.cf]:null; },   // v0.4.82/v0.5.3 验收辅助
   shareTextDbg:()=>shareText(),   // v0.5.3 验收辅助
+  unlockText:()=>document.getElementById('unlockInfo').textContent,   // v0.5.4 验收辅助
+  forceHiddenUnlock:()=>{ CLEARED.extreme=true; renderLevelPick(); return CLEARED.extreme; },   // v0.5.4 验收辅助
   escProbe:()=>({rm:rmEl.classList.contains('show'), paused:paused,
     set:settingsOpen, ach:document.getElementById('achModal').classList.contains('show')}),   // v0.4.86/87 验收辅助
   openSet:()=>openSettings(), closeSet:()=>closeSettings(), openAch:()=>renderAch(),   // v0.4.87 验收辅助
