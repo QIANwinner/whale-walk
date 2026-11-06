@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.80</title>
+<title>鲸步 WHALE WALK · v0.4.81</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -636,6 +636,7 @@
   <div id="tutItem" class="tut-page" style="display:none">
     <div class="tr"><b>道具</b>：🛡护盾 / 🧲磁铁 / ⚡加速 / 🌀子弹时间 / 🧊时间冻结 / 💰双倍鲸币</div>
     <div class="tr"><b>新玩法</b>：🪙金色鲸币 +3 秒 · 💫穿环 +2 秒 · 跳顶无人机可消灭 +2 秒</div>
+    <div class="tr"><b>进阶</b>：🎯 环心正穿 PERFECT +3 秒 · 🎢 垫心正中弹跳更高 · 连续正穿有额外分</div>
   </div>
   <div class="ta"><span id="tutPage">1/3</span><button id="tutOk">下一页</button></div>
 </div>
@@ -5487,6 +5488,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   padPerfectCount:()=>padPerfectCount,   // v0.4.72
   finishWin:()=>{ __dbg.finishChallenge(true); return document.getElementById('rmInfo').innerText; },   // v0.4.73 验收辅助
   bannerSub:()=>document.querySelector('#lvBanner .lv-s').textContent,   // v0.4.74 验收辅助
+  tutText:()=>document.getElementById('tutItem').innerText,   // v0.4.81 验收辅助
   finishFail:()=>{ __dbg.finishChallenge(false); return document.getElementById('rmInfo').innerText; },   // v0.4.75 验收辅助
   droneKills:()=>droneKills,   // v0.4.76
   ringPftTotal:()=>ringPftTotal,   // v0.4.78
