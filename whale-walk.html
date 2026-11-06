@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.7.0</title>
+<title>鲸步 WHALE WALK · v0.7.1</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -776,6 +776,7 @@ const I18N={
     ach_ringPerfect10:'精准鲸灵 · 累计正穿 10 次',   // v0.4.78
     ach_runs100:'百步之约 · 累计散步 100 次',   // v0.5.0 百版里程碑
     ach_walk200:'漫步鲸踪 · 单关漫步 200 米',   // v0.7.0
+    ach_walk1000:'千里鲸行 · 累计漫步 1000 米',   // v0.7.1
     ach_frag15:'鲸语收藏家 · 累计收集 15 片鲸语碎片', ach_endless5:'无尽鲸歌 · 无尽模式连续通关 5 关',
     ach_streak3:'火热连击 · 无尽模式连续通关 3 关',
     /* ---- v0.4.27 文案收拢：动态 toast / 拼接文案 key（含 {占位符}） ---- */
@@ -2953,6 +2954,9 @@ try{ ringPftTotal=parseInt(localStorage.getItem('ww-pft-v1')||'0',10)||0; }catch
 let dodgeStreak=0;   // v0.4.80 连续躲避冲锋计数（被撞清零）
 let dblFxOn=null;   // v0.6.5 双倍鲸币金币变色状态缓存（null=未初始化）
 let walkDist=0;   // v0.6.8 本局漫步距离（米）
+/* v0.7.1 生涯累计漫步（ww-walktotal-v1） */
+let walkTotal=0;
+try{ walkTotal=parseFloat(localStorage.getItem('ww-walktotal-v1')||'0')||0; }catch(_){}
 /* v0.4.98 成就解锁日期（ww-achdate-v1） */
 let ACHDATE={}; try{ ACHDATE=JSON.parse(localStorage.getItem('ww-achdate-v1')||'{}')||{}; }catch(_){ ACHDATE={}; }
 function doJump(){ const st=girl.userData.state;
@@ -3386,7 +3390,8 @@ const ACHS=[
   {id:'droneKill3', icon:'🛰', label:'ach_droneKill3'},
   {id:'ringPerfect10', icon:'🌟', label:'ach_ringPerfect10'},
   {id:'runs100', icon:'💯', label:'ach_runs100'},
-  {id:'walk200', icon:'👣', label:'ach_walk200'}
+  {id:'walk200', icon:'👣', label:'ach_walk200'},
+  {id:'walk1000', icon:'🌏', label:'ach_walk1000'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -4227,6 +4232,8 @@ function update(dt){
   const sp=st.speed;
   const stepx=mx*sp*dt, stepz=mz*sp*dt;
   walkDist+=Math.hypot(stepx,stepz);   // v0.6.8 漫步距离累计
+  walkTotal+=Math.hypot(stepx,stepz);
+  if(walkTotal>=1000){ try{ localStorage.setItem('ww-walktotal-v1',String(Math.round(walkTotal))); }catch(_){} award('walk1000'); }   // v0.7.1 千里鲸行（达标才落盘）
   if(walkDist>=200) award('walk200');   // v0.7.0 漫步鲸踪成就
   const nx=girl.position.x+stepx, nz=girl.position.z+stepz;
   let px=nx,pz=nz;
@@ -5625,6 +5632,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   freezeFxOn:()=>{ const f=document.getElementById('freezeFx'); return f?f.classList.contains('on'):false; },   // v0.6.7 验收辅助
   walkDistM:()=>+walkDist.toFixed(1),   // v0.6.8 验收辅助
   forceWalk:(m)=>{ walkDist=m; return walkDist; },   // v0.6.8 验收辅助
+  walkTotalM:()=>Math.round(walkTotal),   // v0.7.1 验收辅助
+  forceWalkTotal:(m)=>{ walkTotal=m; return walkTotal; },   // v0.7.1 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
   lvlBest:()=>({b:LVLBEST[level]||0, isNew:lvlBestNew, level}),   // v0.4.92 验收辅助
