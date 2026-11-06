@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.78</title>
+<title>鲸步 WHALE WALK · v0.4.79</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2949,6 +2949,9 @@ try{
   DQ=(raw&&raw.date===today)?raw:{date:today, orb:0, clear:0, frag:0};
 }catch(_){ DQ={date:new Date().toISOString().slice(0,10), orb:0, clear:0, frag:0}; }
 function dqSave(){ try{ localStorage.setItem('ww-daily-quest-v1',JSON.stringify(DQ)); }catch(_){} }
+/* v0.4.79 结算每日任务行：达标项后缀 ✓（统一单一来源，胜/败分支共用） */
+function dqLine(){ const f=(v,k)=>v+'/'+k+(v>=k?'✓':'');
+  return '📅 每日任务 · 光点 '+f(DQ.orb,DQ_KEYS.orb)+' · 通关 '+f(DQ.clear,DQ_KEYS.clear)+' · 碎片 '+f(DQ.frag,DQ_KEYS.frag); }
 function dqBump(key, n){
   DQ[key]=Math.min((DQ[key]||0)+n, DQ_KEYS[key]);
   /* v0.4.35 三任务全达标 → 一次性奖励标记（下一局开局 +5 秒） */
@@ -3732,7 +3735,7 @@ function finishChallenge(win){
         +(comboRecShown?' · 🔥 生涯新高 x'+bestComboOf():' · 生涯 x'+bestComboOf())   // v0.4.53 生涯最高连击
         +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
         +'<br>布局 #'+daySeed()+(mirrorOn?' · 🪞镜像日':'')   // v0.4.44 结算布局编号
-        +'<br>📅 每日任务 · 光点 '+DQ.orb+'/'+DQ_KEYS.orb+' · 通关 '+DQ.clear+'/'+DQ_KEYS.clear+' · 碎片 '+DQ.frag+'/'+DQ_KEYS.frag   // v0.4.40 每日任务进度
+        +'<br>'+dqLine()   // v0.4.40 每日任务进度；v0.4.79 达成勾选
         +'<br>本局净得分 <b id="rmNetScore">0</b> 分'
         +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)
         +' + 额外收集 '+Math.round(challenge.bonusScore||0)+'，难度倍率 ×'+diff().scoreMul+'）'   // v0.3.89 / v0.4.56
@@ -3796,7 +3799,7 @@ function finishChallenge(win){
       +(padPerfectCount>0?' · 🎢 正中弹 ×'+padPerfectCount:'')   // v0.4.75 失败也见正中弹
       +(droneKills>0?' · 🐙 踏灭 '+droneKills:'')   // v0.4.76 失败也见踏灭
       +(fragTotal?' · 鲸语碎片 '+fragCount+'/'+fragTotal:'')+' · 道具 ×'+lvPU
-      +'<br>📅 每日任务 · 光点 '+DQ.orb+'/'+DQ_KEYS.orb+' · 通关 '+DQ.clear+'/'+DQ_KEYS.clear+' · 碎片 '+DQ.frag+'/'+DQ_KEYS.frag   // v0.4.60 失败也显示每日任务
+      +'<br>'+dqLine()   // v0.4.60 失败也显示每日任务；v0.4.79 达成勾选
       +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次'
         :'<br>'+nextCheer())   // v0.4.64 差得多也鼓励：轮换鼓励语
       +rmBarsHtml();   // v0.4.28 结算收集率可视化进度条（失败也显示，看还差多少）
@@ -5485,7 +5488,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   ringPftTotal:()=>ringPftTotal,   // v0.4.78
   dronesLive:()=>patrolDrones.map(d=>d.grp.position.clone()),   // v0.4.76 实时坐标(踏灭验收)
   /* v0.4.34 每日挑战钩子 */
-  DQ:()=>DQ, dqBump, renderDQ};
+  DQ:()=>DQ, dqBump, renderDQ, dqLine:()=>dqLine()};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
