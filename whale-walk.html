@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.6.9</title>
+<title>鲸步 WHALE WALK · v0.7.0</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -775,6 +775,7 @@ const I18N={
     ach_droneKill3:'空中猎手 · 单关踏灭 3 架无人机',   // v0.4.77
     ach_ringPerfect10:'精准鲸灵 · 累计正穿 10 次',   // v0.4.78
     ach_runs100:'百步之约 · 累计散步 100 次',   // v0.5.0 百版里程碑
+    ach_walk200:'漫步鲸踪 · 单关漫步 200 米',   // v0.7.0
     ach_frag15:'鲸语收藏家 · 累计收集 15 片鲸语碎片', ach_endless5:'无尽鲸歌 · 无尽模式连续通关 5 关',
     ach_streak3:'火热连击 · 无尽模式连续通关 3 关',
     /* ---- v0.4.27 文案收拢：动态 toast / 拼接文案 key（含 {占位符}） ---- */
@@ -3384,7 +3385,8 @@ const ACHS=[
   {id:'padPerfect3', icon:'🎢', label:'ach_padPerfect3'},
   {id:'droneKill3', icon:'🛰', label:'ach_droneKill3'},
   {id:'ringPerfect10', icon:'🌟', label:'ach_ringPerfect10'},
-  {id:'runs100', icon:'💯', label:'ach_runs100'}
+  {id:'runs100', icon:'💯', label:'ach_runs100'},
+  {id:'walk200', icon:'👣', label:'ach_walk200'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -4225,6 +4227,7 @@ function update(dt){
   const sp=st.speed;
   const stepx=mx*sp*dt, stepz=mz*sp*dt;
   walkDist+=Math.hypot(stepx,stepz);   // v0.6.8 漫步距离累计
+  if(walkDist>=200) award('walk200');   // v0.7.0 漫步鲸踪成就
   const nx=girl.position.x+stepx, nz=girl.position.z+stepz;
   let px=nx,pz=nz;
   for(const o of obstacles){
