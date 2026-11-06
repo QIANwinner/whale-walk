@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.6.8</title>
+<title>鲸步 WHALE WALK · v0.6.9</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3880,7 +3880,7 @@ function finishChallenge(win){
       rmInfo.innerHTML='♾ 连续通关 <b>'+endlessStreak+'</b> 关 · 最佳 '+EBEST+' 关<br>收集 '+score+' / '+TOTAL+' 光点 · 第 '+level+' 关 · 最高连击 x'+(challenge.comboMax||0);
       endless=false;   // 潮落回到常规模式
     } else {
-    rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关<br>最高连击 x'+(challenge.comboMax||0)
+    rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关 · 漫步 '+walkDist.toFixed(0)+' m<br>最高连击 x'+(challenge.comboMax||0)
       +(statBadges()?'<br>'+statBadges():'')   // v0.4.75/76/84 精度统计徽章行
       +(fragTotal?' · 鲸语碎片 '+fragCount+'/'+fragTotal:'')+' · 道具 ×'+lvPU
       +'<br>'+dqLine()   // v0.4.60 失败也显示每日任务；v0.4.79 达成勾选
