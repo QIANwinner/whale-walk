@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.61</title>
+<title>鲸步 WHALE WALK · v0.4.62</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3706,7 +3706,8 @@ function finishChallenge(win){
         +'（光点 '+score+' + 连击 '+Math.round(challenge.comboBonus||0)+' + 时间奖励 '+Math.round(challenge.timeLeft)
         +' + 额外收集 '+Math.round(challenge.bonusScore||0)+'，难度倍率 ×'+diff().scoreMul+'）'   // v0.3.89 / v0.4.56
         +rmBarsHtml()   // v0.4.28 结算收集率可视化进度条
-        +(stars<3?'<br>下次快 '+fmtT(Math.max(0,(levelCfg().time-challenge.timeLeft)-star3Need(levelCfg().time)))+' 即可 3★':'')
+        +(stars<3?'<br>下次快 '+fmtT(Math.max(0,(levelCfg().time-challenge.timeLeft)-star3Need(levelCfg().time)))+' 即可 3★'
+          :(rank==='A'?'<br>下次快 '+fmtT(Math.max(0,(levelCfg().time-srankNeed(levelCfg().time))-challenge.timeLeft))+' 即达 S 评级':''))   // v0.4.62 A 评级距 S 提示
         +(level<8?'<br>下一关：'+(level+1)+' '+T(LEVEL_NAMES[level])+' · '+levelOrbs()+'+4 光点 · 时间 -8 秒'
           :(hiddenUnlocked()?'<br>隐藏关解锁：第 9 关 · '+T(LEVEL_NAMES[8]):'<br>故事全通！隐藏关需极限难度通关第 8 关解锁'))
         +(newAch.length?'<br>🏆 '+newAch.map(a=>a.icon+T(a.label)).join(' · '):'');
