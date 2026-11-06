@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.6.4</title>
+<title>鲸步 WHALE WALK · v0.6.5</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2940,6 +2940,7 @@ let droneKills=0;   // v0.4.76 本关踏灭无人机数（结算统计）
 let ringPftTotal=0;
 try{ ringPftTotal=parseInt(localStorage.getItem('ww-pft-v1')||'0',10)||0; }catch(_){}
 let dodgeStreak=0;   // v0.4.80 连续躲避冲锋计数（被撞清零）
+let dblFxOn=null;   // v0.6.5 双倍鲸币金币变色状态缓存（null=未初始化）
 /* v0.4.98 成就解锁日期（ww-achdate-v1） */
 let ACHDATE={}; try{ ACHDATE=JSON.parse(localStorage.getItem('ww-achdate-v1')||'{}')||{}; }catch(_){ ACHDATE={}; }
 function doJump(){ const st=girl.userData.state;
@@ -4672,6 +4673,11 @@ function update(dt){
     powerState.echo-=dt;
     pwT(pwEchoEl,powerState.echo,PU_TYPES.echo.dur);
     if(powerState.echo<=0){ powerState.echo=0; pwEchoEl.classList.remove('on'); echoOff(); } }
+  /* v0.6.5 双倍鲸币：生效期间金币光晕变亮金色（状态切换时一次性刷新） */
+  { const dc=powerState.double>0;
+    if(dc!==dblFxOn){ dblFxOn=dc;
+      const col=dc?0xFFE9A0:0xFFD25A;
+      for(const c of coins){ if(c.userData.halo) c.userData.halo.material.color.setHex(col); } } }
 
   /* ---- v0.3.4 新玩法物件：金币 / 穿环 / 加速带 ---- */
   if(mode==='play' && challenge.active){
@@ -5595,6 +5601,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   forceFragsFull:()=>{ if(fragTotal>0) fragCount=fragTotal; return fragCount; },   // v0.6.3 验收辅助
   fragState:()=>({c:fragCount,t:fragTotal}),   // v0.6.3 验收辅助
   magnetRingOn:()=>magnetRing.visible,   // v0.6.4 验收辅助
+  coinHaloColor:()=>coins[0]&&coins[0].userData.halo?coins[0].userData.halo.material.color.getHexString():'',   // v0.6.5 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
   lvlBest:()=>({b:LVLBEST[level]||0, isNew:lvlBestNew, level}),   // v0.4.92 验收辅助
