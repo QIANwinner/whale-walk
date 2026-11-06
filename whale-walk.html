@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.44</title>
+<title>鲸步 WHALE WALK · v0.4.45</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -722,6 +722,7 @@ const I18N={
     coinAll:'全部金色鲸币收集！+{n} 秒', coinGet:'金色鲸币 +{n} 秒！', coinDouble2:'（双倍鲸币×2）', coinDouble:'（双倍鲸币）',
     coinCombo:'（组合翻倍）', coinComboN:'（连击 x{n} 翻倍）', fragAll:'🐋 鲸语通！碎片齐鸣 +3 秒，全城共鸣！', fragOne:'鲸语碎片 +1 秒（{a}/{b}）',
     ring2:'穿环 +2 秒！', boostPad:'加速带！⚡', timeTight:'⏱ 时间紧张！跟随金色导航冲刺',
+    chainFull:'⚡ 全链收割！弹跳金币链吃满 3 枚',
     vibOn:'震动已开启', vibOff:'震动已关闭', quality:'画质：{q}', qLow:'低', qHigh:'高', qMid:'中',
     leakWarn:'⚠ 检测到资源持续增长（几何体+纹理 +{n}），建议刷新页面', fontSize:'字体：{f}', fS:'小', fL:'大', fM:'中',
     cbOn:'色弱模式已开启', cbOff:'色弱模式已关闭', shakeStr:'画面震动：{v}', shS:'强', shM:'中', shW:'弱', shOff:'关',
@@ -2236,6 +2237,8 @@ const rings=[], ringGroup=new THREE.Group(); scene.add(ringGroup);
 const bouncePads=[], boostStrips=[];
 /* v0.4.12 鲸语碎片：每关 3 片，拾取 +1s，集齐 +3s 并触发全城共鸣 */
 const frags=[], fragGroup=new THREE.Group(); scene.add(fragGroup);
+/* v0.4.45 弹跳垫金币链「全链收割」：chainEat[链id]=已吃数量，chainFull=本关完成链数 */
+let chainIdSeq=0, chainEat={}, chainFull=0;
 let fragCount=0, fragTotal=3;
 const fragGeo=new THREE.OctahedronGeometry(0.17,0);
 const fragMat=new THREE.MeshStandardMaterial({color:0xC9A8FF,emissive:0x8F6FE8,
@@ -2289,6 +2292,8 @@ function clearNewProps(){
 }
 function spawnNewProps(){
   clearNewProps();
+  /* v0.4.45 每关重置全链收割状态 */
+  chainIdSeq=0; chainEat={}; chainFull=0;
   /* v0.4.13 每日布局：金币/碎片位置用日期种子（mulberry32），同一天全服一致，配合每日任务 */
   const rn=mulberry32(daySeed()+level*7919), rnd6=(a,b)=>a+rn()*(b-a);
   const lane=(rn()<0.5?-1:1)*(2.6+(level%3)*0.9);
@@ -2356,6 +2361,7 @@ function spawnNewProps(){
    * 地面判定中心=+0.9，金币 2.4 时 |0.9-2.4|=1.5>1.15 → 走路吃不到，必须跳垫 */
   for(const bp of bouncePads){
     const bx=bp.position.x, bz=bp.position.z, by=terrainH(bx,bz);
+    const cid=chainIdSeq++;   // v0.4.45 每条垫链唯一 id（全链收割用）
     [2.4,2.7,3.0].forEach((hy)=>{
       const g2=new THREE.Group();
       const c2=new THREE.Mesh(coinGeo,coinMat); c2.rotation.x=Math.PI/2; g2.add(c2);
@@ -2365,7 +2371,7 @@ function spawnNewProps(){
       halo2.rotation.x=-Math.PI/2; halo2.position.y=-0.03; g2.add(halo2);
       const cy=by+hy;
       g2.position.set(bx,cy,bz);
-      g2.userData={alive:true,baseY:cy,ph:(bx*7+bz*3+hy*1.7),halo:halo2};
+      g2.userData={alive:true,baseY:cy,ph:(bx*7+bz*3+hy*1.7),halo:halo2,chain:cid};   // v0.4.45 加 chain
       coinGroup.add(g2); coins.push(g2);
     });
   }
@@ -4314,6 +4320,16 @@ function update(dt){
         coinCount++; coinNumEl.textContent=`${coinCount} / ${coinTotal}`;
         COIN++; try{ localStorage.setItem('ww-cointotal-v1',String(COIN)); }catch(_){}   // v0.3.78 累计鲸币
         if(COIN>=30) award('coin30');
+        /* v0.4.45 弹跳垫金币链「全链收割」：连续吃到同一链满 3 枚 → 金色连闪 + 提示 */
+        if(u.chain!==undefined){
+          chainEat[u.chain]=(chainEat[u.chain]||0)+1;
+          if(chainEat[u.chain]>=3){
+            chainFull++;
+            burst(c.position); burst(c.position);   // 金色连闪×2
+            AudioFX.coin();
+            toast(T('chainFull'));
+          }
+        }
         /* v0.3.30：combo≥3 时鲸币奖励翻倍；v0.3.86 双倍鲸币道具再 ×2 */
         const coinBonus=(powerState.double>0?2:1)*((challenge.combo>=3)?6:3);
         challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+coinBonus);
@@ -5007,6 +5023,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.3.4 新玩法 */
   spawnNewProps, clearNewProps,
   coins:()=>coins, rings:()=>rings, bouncePads:()=>bouncePads, boostStrips:()=>boostStrips,
+  /* v0.4.45 全链收割钩子 */
+  chainFull:()=>chainFull, chainEat:()=>chainEat,
   coinCount:()=>coinCount, coinTotal:()=>coinTotal, boostT:()=>boostT,
   ringCount:()=>ringCount, ringTotal:()=>ringTotal, levelSet:(v)=>{level=v;},   // v0.3.6 测试钩子
   /* v0.3.4 暂停菜单 */
