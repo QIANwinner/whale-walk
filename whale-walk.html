@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.63</title>
+<title>鲸步 WHALE WALK · v0.4.64</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2922,6 +2922,12 @@ document.addEventListener('visibilitychange',()=>{
  *  ww-daily-quest-v1 = {date, orb, clear, frag}，跨天自动重置
  * ===================================================================== */
 const DQ_KEYS={orb:30, clear:3, frag:2};
+/* v0.4.64 失败鼓励语轮换池：差 >5 时按 ww-cheer-v1 计数顺次取句（确定性，验收可断言序列） */
+const CHEERS=['鲸步不停，星光就在前方','雨夜再长，也会有灯塔','下一把，风会顺一些','慢慢走，光点都在等你'];
+function nextCheer(){ let n=0;
+  try{ n=(+localStorage.getItem('ww-cheer-v1')||0); }catch(_){}
+  try{ localStorage.setItem('ww-cheer-v1',String(n+1)); }catch(_){}
+  return CHEERS[n%CHEERS.length]; }
 let DQ={date:'', orb:0, clear:0, frag:0};
 try{
   const today=new Date().toISOString().slice(0,10);
@@ -3764,7 +3770,8 @@ function finishChallenge(win){
     rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关<br>最高连击 x'+(challenge.comboMax||0)
       +(fragTotal?' · 鲸语碎片 '+fragCount+'/'+fragTotal:'')+' · 道具 ×'+lvPU
       +'<br>📅 每日任务 · 光点 '+DQ.orb+'/'+DQ_KEYS.orb+' · 通关 '+DQ.clear+'/'+DQ_KEYS.clear+' · 碎片 '+DQ.frag+'/'+DQ_KEYS.frag   // v0.4.60 失败也显示每日任务
-      +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次':'')
+      +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次'
+        :'<br>'+nextCheer())   // v0.4.64 差得多也鼓励：轮换鼓励语
       +rmBarsHtml();   // v0.4.28 结算收集率可视化进度条（失败也显示，看还差多少）
     }
     rmBest.textContent = bestOf()?('本难度最佳 总用时 '+fmtT(bestOf().time)):'';
