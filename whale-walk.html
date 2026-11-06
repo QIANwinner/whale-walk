@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.77</title>
+<title>鲸步 WHALE WALK · v0.4.78</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -749,6 +749,7 @@ const I18N={
     ach_ringPerfect3:'节奏鲸手 · 单关连续正穿 3 次',   // v0.4.70
     ach_padPerfect3:'弹床高手 · 单关正中弹跳 3 次',   // v0.4.72
     ach_droneKill3:'空中猎手 · 单关踏灭 3 架无人机',   // v0.4.77
+    ach_ringPerfect10:'精准鲸灵 · 累计正穿 10 次',   // v0.4.78
     ach_frag15:'鲸语收藏家 · 累计收集 15 片鲸语碎片', ach_endless5:'无尽鲸歌 · 无尽模式连续通关 5 关',
     ach_streak3:'火热连击 · 无尽模式连续通关 3 关',
     /* ---- v0.4.27 文案收拢：动态 toast / 拼接文案 key（含 {占位符}） ---- */
@@ -2904,6 +2905,9 @@ let ringPerfectStreak=0;   // v0.4.68 连续正穿计数（偏穿清零，≥2 �
 let lastPadPerfect=false;   // v0.4.71 最近一次弹跳垫是否正中（探针用）
 let padPerfectCount=0;   // v0.4.72 本关正中弹跳次数（成就判定）
 let droneKills=0;   // v0.4.76 本关踏灭无人机数（结算统计）
+/* v0.4.78 生涯累计正穿（ww-pft-v1，跨局持久化） */
+let ringPftTotal=0;
+try{ ringPftTotal=parseInt(localStorage.getItem('ww-pft-v1')||'0',10)||0; }catch(_){}
 function doJump(){ const st=girl.userData.state;
   if(mode!=='play')return;
   if(st.grounded){ st.vy=4.9; st.grounded=false; st.airJumps=1; AudioFX.jump(); }
@@ -3305,7 +3309,8 @@ const ACHS=[
   {id:'ringPerfect', icon:'🎯', label:'ach_ringPerfect'},
   {id:'ringPerfect3', icon:'🏹', label:'ach_ringPerfect3'},
   {id:'padPerfect3', icon:'🎢', label:'ach_padPerfect3'},
-  {id:'droneKill3', icon:'🛰', label:'ach_droneKill3'}
+  {id:'droneKill3', icon:'🛰', label:'ach_droneKill3'},
+  {id:'ringPerfect10', icon:'🌟', label:'ach_ringPerfect10'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -4673,8 +4678,11 @@ function update(dt){
         blinkT=1; burst(r.position);
         AudioFX.ring(); buzzP([18,40,18,40,18]);   // v0.4.57 穿环三连脉冲
         toast(T(perfect?'ringPerfect':'ring2')+(ringPerfectStreak>=2?' ×'+ringPerfectStreak:''));
-        if(perfect){ burst(r.position); ringPerfectCount++; award('ringPerfect');
-          if(ringPerfectStreak>=3) award('ringPerfect3'); }   // v0.4.66 金色连闪；v0.4.67 计数；v0.4.69 首穿成就；v0.4.70 三连正穿成就
+        if(perfect){ burst(r.position); ringPerfectCount++;
+          ringPftTotal++; try{ localStorage.setItem('ww-pft-v1',String(ringPftTotal)); }catch(_){}
+          if(ringPftTotal>=10) award('ringPerfect10');
+          award('ringPerfect');
+          if(ringPerfectStreak>=3) award('ringPerfect3'); }   // v0.4.66 金色连闪；v0.4.67 计数；v0.4.69 首穿成就；v0.4.70 三连正穿；v0.4.78 生涯累计成就
       }
     }
     /* 加速带（v0.3.86 时间 2.2→2.6s，极限难度保持 2.2）：踏上 ×2.2 冲刺 */
@@ -5474,6 +5482,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   bannerSub:()=>document.querySelector('#lvBanner .lv-s').textContent,   // v0.4.74 验收辅助
   finishFail:()=>{ __dbg.finishChallenge(false); return document.getElementById('rmInfo').innerText; },   // v0.4.75 验收辅助
   droneKills:()=>droneKills,   // v0.4.76
+  ringPftTotal:()=>ringPftTotal,   // v0.4.78
   dronesLive:()=>patrolDrones.map(d=>d.grp.position.clone()),   // v0.4.76 实时坐标(踏灭验收)
   /* v0.4.34 每日挑战钩子 */
   DQ:()=>DQ, dqBump, renderDQ};
