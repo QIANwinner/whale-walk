@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.7.7</title>
+<title>鲸步 WHALE WALK · v0.7.8</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3417,7 +3417,7 @@ function award(id){
   ACHDATE[id]=Date.now();   // v0.4.98 解锁日期
   try{ localStorage.setItem('ww-ach-v1',JSON.stringify(achGot));
     localStorage.setItem('ww-achdate-v1',JSON.stringify(ACHDATE)); }catch(_){}
-  toast(TF('achGot',{l:T(a.label)})); AudioFX.pickup();
+  toast(TF('achGot',{l:T(a.label)})+' ('+achGot.length+'/'+ACHS.length+')'); AudioFX.pickup();   // v0.7.8 toast 带进度
   /* v0.3.97 全部成就达成「鲸界传说」主题曲 */
   if(achGot.length===ACHS.length){ setTimeout(()=>{ AudioFX.legend(); toast(T('achLegend')); },600); }
 }
@@ -5657,6 +5657,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   scoreCls:()=>document.getElementById('scoreNum').className,   // v0.7.4 验收辅助
   coinCls:()=>document.getElementById('coinNum').className,   // v0.7.5 验收辅助
   scoreLast3:(n)=>{ const e=document.getElementById('scoreNum'); e.classList.toggle('last3', n===3); return e.classList.contains('last3'); },   // v0.7.7 验收辅助
+  lastToast:()=>document.getElementById('toast').textContent,   // v0.7.8 验收辅助
+  forceAward:(id)=>{ award(id); return achGot.length; },   // v0.7.8 验收辅助
+  achLabel:()=>T('achGot'),   // v0.7.8 验收辅助
   forceWalkTotal:(m)=>{ walkTotal=m; return walkTotal; },   // v0.7.1 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
