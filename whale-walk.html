@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.71</title>
+<title>鲸步 WHALE WALK · v0.4.72</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -747,6 +747,7 @@ const I18N={
     ach_mirrored:'镜中鲸 · 在镜面回响下通关第 9 关', ach_frag3:'鲸语通 · 单关集齐全部鲸语碎片', ach_hunter:'猎鲸者 · 踏灭精英无人机',
     ach_ringPerfect:'正穿首秀 · 首次正穿 PERFECT（环心穿过光环）',   // v0.4.69
     ach_ringPerfect3:'节奏鲸手 · 单关连续正穿 3 次',   // v0.4.70
+    ach_padPerfect3:'弹床高手 · 单关正中弹跳 3 次',   // v0.4.72
     ach_frag15:'鲸语收藏家 · 累计收集 15 片鲸语碎片', ach_endless5:'无尽鲸歌 · 无尽模式连续通关 5 关',
     ach_streak3:'火热连击 · 无尽模式连续通关 3 关',
     /* ---- v0.4.27 文案收拢：动态 toast / 拼接文案 key（含 {占位符}） ---- */
@@ -2339,7 +2340,7 @@ function clearNewProps(){
   while(fragGroup.children.length) fragGroup.remove(fragGroup.children[0]);
   coins.length=0; rings.length=0; bouncePads.length=0; boostStrips.length=0;
   frags.length=0;
-  coinCount=0; boostT=0; ringCount=0; fragCount=0; ringPerfectCount=0; ringPerfectStreak=0;   // v0.4.67/68 正穿计数随关清零
+  coinCount=0; boostT=0; ringCount=0; fragCount=0; ringPerfectCount=0; ringPerfectStreak=0; padPerfectCount=0;   // v0.4.67/68/72 计数随关清零
   coinNumEl.textContent='0 / '+(coinTotal||3);
   const fragNumEl=document.getElementById('fragNum');
   if(fragNumEl) fragNumEl.textContent='0 / '+(fragTotal||3);
@@ -2900,6 +2901,7 @@ let lastRingPerfect=false;   // v0.4.66 最近一次穿环是否正穿（探针�
 let ringPerfectCount=0;   // v0.4.67 本关正穿 PERFECT 次数（结算统计）
 let ringPerfectStreak=0;   // v0.4.68 连续正穿计数（偏穿清零，≥2 次额外奖励）
 let lastPadPerfect=false;   // v0.4.71 最近一次弹跳垫是否正中（探针用）
+let padPerfectCount=0;   // v0.4.72 本关正中弹跳次数（成就判定）
 function doJump(){ const st=girl.userData.state;
   if(mode!=='play')return;
   if(st.grounded){ st.vy=4.9; st.grounded=false; st.airJumps=1; AudioFX.jump(); }
@@ -3299,7 +3301,8 @@ const ACHS=[
   {id:'endless5',    icon:'♾', label:'ach_endless5'},
   {id:'streak3',     icon:'🔥', label:'ach_streak3'},
   {id:'ringPerfect', icon:'🎯', label:'ach_ringPerfect'},
-  {id:'ringPerfect3', icon:'🏹', label:'ach_ringPerfect3'}
+  {id:'ringPerfect3', icon:'🏹', label:'ach_ringPerfect3'},
+  {id:'padPerfect3', icon:'🎢', label:'ach_padPerfect3'}
 ];
 let achGot=[]; try{ achGot=JSON.parse(localStorage.getItem('ww-ach-v1')||'[]'); }catch(_){}
 let newAch=[];
@@ -4155,7 +4158,8 @@ function update(dt){
         onPad.userData.cool=0.8;
         onPad.scale.y=0.6;                     // 压缩反馈
         AudioFX.bounce(); buzz(22);
-        if(perfectPad){ AudioFX.coin(); buzzP([10,30,22]); toast(T('padPerfect')); }
+        if(perfectPad){ AudioFX.coin(); buzzP([10,30,22]); toast(T('padPerfect'));
+          padPerfectCount++; if(padPerfectCount>=3) award('padPerfect3'); }   // v0.4.72 弹床高手成就
       }
     } else {
       girl.position.y=absY;
@@ -5454,6 +5458,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   ringPerfectStreak:()=>ringPerfectStreak,   // v0.4.68
   lastPadPerfect:()=>lastPadPerfect,   // v0.4.71
   girlVy:()=>girl.userData.state.vy,   // v0.4.71
+  padPerfectCount:()=>padPerfectCount,   // v0.4.72
   /* v0.4.34 每日挑战钩子 */
   DQ:()=>DQ, dqBump, renderDQ};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
