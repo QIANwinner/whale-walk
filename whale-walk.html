@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.47</title>
+<title>鲸步 WHALE WALK · v0.4.48</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -103,6 +103,13 @@
   #combo.on{opacity:1;transform:translateX(-50%) translateY(0);}
   #combo i{display:block;height:3px;margin-top:5px;border-radius:2px;background:rgba(255,255,255,.16);overflow:hidden;}
   #combo i b{display:block;height:100%;width:100%;background:linear-gradient(90deg,#FFD25A,#FF7A3A);transition:width .1s linear;}
+  /* v0.4.48 连击和声阶梯：连击条分档配色（金→橙→红→紫）+ 档位光效，与和声层次同步 */
+  #combo.t1 #comboBar b{background:linear-gradient(90deg,#FFD25A,#FF9A3A);}
+  #combo.t2 #comboBar b{background:linear-gradient(90deg,#FF9A3A,#FF5A4A);}
+  #combo.t3 #comboBar b{background:linear-gradient(90deg,#FF5A7A,#C74AFF);}
+  #combo.t1{text-shadow:0 0 12px rgba(255,210,90,.85),0 1px 8px rgba(10,20,60,.8);}
+  #combo.t2{text-shadow:0 0 14px rgba(255,122,58,.9),0 1px 8px rgba(10,20,60,.8);}
+  #combo.t3{text-shadow:0 0 18px rgba(199,74,255,.95),0 1px 8px rgba(10,20,60,.8);}
   /* v0.4.07 鲸歌共鸣：连击档位指示（≥8 金色） */
   #resHud{position:fixed;top:88px;left:50%;transform:translateX(-50%);z-index:11;pointer-events:none;
     font-size:13px;font-weight:800;color:#7FE4FF;letter-spacing:1px;text-shadow:0 0 10px rgba(127,228,255,.8);
@@ -2411,6 +2418,7 @@ function spawnNewProps(){
  * ===================================================================== */
 const AudioFX=(()=>{
   let ctx=null,bus=null,muted=false,nSteps=0,nPick=0,vol=0.8;
+  let lastPickTier=0,lastPickLayer=2;   // v0.4.48 连击和声阶梯：最近一次拾取音景档位/音数（供钩子）
   function ac(){
     const AC=window.AudioContext||window.webkitAudioContext;
     if(!AC)return null;
@@ -2489,6 +2497,8 @@ const AudioFX=(()=>{
     rainGain.gain.setTargetAtTime(muted?0:rainLevel, ctx.currentTime, 1.5);
   }
   function setRain(v){ if(rainGain) rainGain.gain.setTargetAtTime(v, ctx.currentTime, 0.3); }
+  /* v0.4.48 连击和声阶梯：连击 → 和声档位（0 基础单音 / 1 三度 / 2 五度 / 3 高八度），边界 4/8/16 */
+  function comboTier(c){ const k=Math.max(0,c||0); return k>=16?3:k>=8?2:k>=4?1:0; }
   return {
     /* v0.3.96 背景雨声随进度渐强：0-1 进度映射到雨量（0.04→0.11 基础 → 渐强） */
     rain(p){ if(rainGain) rainGain.gain.setTargetAtTime(Math.min(0.14, 0.05+p*0.09), ctx.currentTime, 0.4); },
@@ -2497,10 +2507,21 @@ const AudioFX=(()=>{
     jump(){ tone(300,660,0.15,0.16); },
     land(v){ thump(Math.max(55,90-v*4),0.13,Math.min(0.5,0.22+v*0.05),true); },
     /* v0.3.19 五声音阶拾取音：连击沿宫商角徵羽爬音，10 连升八度；v0.3.96 统一用 PENTA 表 */
+    /* v0.4.48 连击和声阶梯：comboTier 按连击分档（0基础/1三度/2五度/3高八度），tier 越高和声越丰满 */
     pickup(cb){ nPick++; const k=Math.max(0,cb||0);
       const f=PENTA[k%5]*(k>=10?2:1);
+      const tier=comboTier(k);   // v0.4.48 和声档位 0-3
       tone(f,f,0.12,0.14,'sine');
-      tone(f*1.33,f*1.33,0.14,0.12,'sine',0.06); },
+      tone(f*1.33,f*1.33,0.14,0.12,'sine',0.06);
+      if(tier>=1) tone(f*1.25,f*1.25,0.13,0.11,'sine',0.02);   // v0.4.48 大三度
+      if(tier>=2) tone(f*1.5,f*1.5,0.15,0.10,'sine',0.04);      // v0.4.48 纯五度和声
+      if(tier>=3) tone(f*2,f*2,0.16,0.09,'sine',0.08);          // v0.4.48 高八度闪光
+      lastPickTier=tier; lastPickLayer=2+tier;   // v0.4.48 钩子：本档音数（基础+五度泛音+叠加）
+      return tier; },
+    comboTier,
+    /* v0.4.48 钩子：最近一次拾取音景档位/音数（IIFE 闭包内变量，经 getter 桥接） */
+    getPickTier:()=>lastPickTier,
+    getPickLayer:()=>lastPickLayer,
     /* 全收集庆祝：上行琶音 + 亮和弦 */
     celebrate(){ if(muted||!ac())return;
       const seq=[523,659,784,1047,1319];
@@ -3812,6 +3833,14 @@ const _vTgt=new THREE.Vector3(), _vCam=new THREE.Vector3();
 let smSpd=0;
 /* v0.3.16 打击感：相机震动 + 受击慢动作；v0.3.22 过关庆祝环视 */
 let shakeT=0, hitStop=0, orbitT=0;
+/* v0.4.48 连击和声阶梯：comboTier → 连击条分档 class 应用（HUD 分支与 __dbg 钩子共用，保证一致） */
+function applyComboTierClass(n){
+  const ct=AudioFX.comboTier(n);
+  comboEl.classList.toggle('t1',ct>=1);
+  comboEl.classList.toggle('t2',ct>=2);
+  comboEl.classList.toggle('t3',ct>=3);
+  return ct;
+}
 function update(dt){
   if(hitStop>0){ hitStop-=dt; dt*=0.25; }   // 受击瞬间时间放慢到 1/4
   elapsed+=dt;
@@ -4082,7 +4111,6 @@ function update(dt){
         blinkT=1;   // 收集时眨一下眼
         burst(o.position);
         floatNote(o.position);   // v0.4.19 音符飘出
-        AudioFX.pickup(challenge.combo+1);   // v0.3.8 连击音高递进
         AudioFX.rain(score/(TOTAL||1));   // v0.3.96 背景雨声随收集进度渐强
         buzz(12);   // v0.3.3 收集光点轻振动
         if(score===TOTAL){
@@ -4106,6 +4134,8 @@ function update(dt){
             toast(TF('comboN',{n:challenge.combo,s:cb.toFixed(1)}));
           }
         }
+        /* v0.4.48 连击和声阶梯：拾取音在连击递增后触发（断连重置音景档位），音景档位与视觉同步 */
+        AudioFX.pickup(challenge.combo+1);
       }
     }
   }
@@ -4506,11 +4536,14 @@ function update(dt){
     if(challenge.combo>=2 && elapsed-challenge.lastPick<comboWindow()){
       comboEl.classList.add('on');
       comboTxtEl.textContent='COMBO x'+challenge.combo;
+      /* v0.4.48 连击和声阶梯：连击条分档配色（t1/t2/t3 与音景档位同步，经共用 helper） */
+      applyComboTierClass(challenge.combo);
       /* v0.4.33 连击越高字越大（2.0 缩放封顶，断连归位） */
       comboEl.style.transform='translateX(-50%) scale('+(1+Math.min(challenge.combo,16)*0.03).toFixed(3)+')';
       const left=Math.max(0,1-(elapsed-challenge.lastPick)/comboWindow());
       comboBarEl.style.width=(left*100).toFixed(1)+'%';   // v0.3.49 连击剩余时间条
-    } else { comboEl.classList.remove('on'); comboEl.style.transform=''; }
+    } else { comboEl.classList.remove('on'); comboEl.style.transform='';
+      comboEl.classList.remove('t1','t2','t3'); }
     /* v0.4.07 鲸歌共鸣：收集点亮城市霓虹（主/侧广告牌 + 门环），连击≥8 呼吸脉动 */
     if(resPulse>0) resPulse=Math.max(0,resPulse-dt*1.8);
     const resHot=challenge.active&&challenge.combo>=8;
@@ -5127,6 +5160,17 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.4.47 无人机手感钩子：返回当前难度的 windup/dash/cool 曲线值 + 精英冲刺 */
   droneCfg:()=>{ const d=diff(); return {windup:d.droneWindup, dash:d.droneDash, cool:d.droneCool,
     eliteDash:+(d.droneDash+1.6).toFixed(2)}; },
+  /* v0.4.48 连击和声阶梯钩子：comboTier 纯函数 + 最近拾取音景档位/音数 + 连击条分档 class */
+  comboTier:(c)=>AudioFX.comboTier(c),
+  pickupTier:()=>AudioFX.getPickTier(),
+  pickupLayer:()=>AudioFX.getPickLayer(),
+  comboCls:()=>comboEl.className,
+  /* v0.4.48 验收探针：pickProbe 确定性验证 pickup 层数数学；forceCombo 状态注入验证 HUD 分档联动 */
+  pickProbe:(cb)=>{ AudioFX.pickup(cb);
+    return {tier:AudioFX.getPickTier(), layer:AudioFX.getPickLayer()}; },
+  forceCombo:(n)=>{ challenge.combo=n; challenge.lastPick=elapsed; return challenge.combo; },
+  /* v0.4.48 HUD 分档共用 helper：直接验证 comboTier → 连击条 class 集成（确定性，不依赖启动游玩） */
+  applyComboTier:(n)=>applyComboTierClass(n),
   /* v0.4.29 小地图视图与成就筛选钩子 */
   mmView:()=>({mmScale,mmPanX,mmPanZ}),
   setMMView:(s,x,z)=>{ mmScale=s; mmPanX=x; mmPanZ=z; saveMM(); },
