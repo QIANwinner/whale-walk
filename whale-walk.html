@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.7.4</title>
+<title>鲸步 WHALE WALK · v0.7.5</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -29,6 +29,7 @@
   #scoreNum.pop{animation:scorePop .28s cubic-bezier(.2,1.6,.4,1);}
   @keyframes scorePop{50%{transform:scale(1.35);color:#FFD25A;}}
   #scoreNum.full{color:#FFD25A;text-shadow:0 0 14px rgba(255,210,90,.85);}
+  #coinNum.gold{color:#FFD25A;text-shadow:0 0 14px rgba(255,210,90,.85);}
   /* ---------- 小地图 ---------- */
   #minimap{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));width:160px;height:160px;z-index:11;
     border:1px solid rgba(127,212,255,.5);border-radius:14px;
@@ -4758,7 +4759,7 @@ function update(dt){
         toast(coinCount===coinTotal
           ?(TF('coinAll',{n:coinBonus})+(powerState.double>0?T('coinDouble2'):'')+(challenge.combo>=3?T('coinCombo'):''))
           :(TF('coinGet',{n:coinBonus})+(powerState.double>0?T('coinDouble'):'')+(coinBonus>6?TF('coinComboN',{n:challenge.combo}):'')));
-        if(coinCount===coinTotal) award('coins');   // v0.3.8 满贯鲸币
+        if(coinCount===coinTotal){ award('coins'); coinNumEl.classList.add('gold'); }   // v0.3.8 满贯鲸币；v0.7.5 HUD 金色
       }
     }
     /* v0.4.12 鲸语碎片：浮动 + 拾取 +1s，集齐 3 片 +3s 触发全城共鸣 */
@@ -5650,6 +5651,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   forcePlayTime:(s)=>{ playTime=s; return playTime; },   // v0.7.2 验收辅助
   time60N:()=>achGot.includes('time60'),   // v0.7.3 验收辅助
   scoreCls:()=>document.getElementById('scoreNum').className,   // v0.7.4 验收辅助
+  coinCls:()=>document.getElementById('coinNum').className,   // v0.7.5 验收辅助
   forceWalkTotal:(m)=>{ walkTotal=m; return walkTotal; },   // v0.7.1 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
