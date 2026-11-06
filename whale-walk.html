@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.7.8</title>
+<title>鲸步 WHALE WALK · v0.7.9</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -479,6 +479,7 @@
     border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;
     backdrop-filter:blur(3px);font-family:inherit;-webkit-tap-highlight-color:transparent;}
   body:not(.playing) #btnAch{display:block;}
+  #btnAch.all{background:rgba(255,210,90,.18);border-color:#FFD25A;box-shadow:0 0 16px rgba(255,210,90,.5);}   /* v0.7.9 全收集金色 */
   #achModal{position:fixed;inset:0;z-index:42;display:none;align-items:center;justify-content:center;
     background:rgba(6,10,26,.78);backdrop-filter:blur(6px);}
   #achModal.show{display:flex;}
@@ -3451,6 +3452,7 @@ function renderAch(){
     return `<div class="ach-row ${got?'got':'lock'}" ${got&&ACHDATE[a.id]?`title="${new Date(ACHDATE[a.id]).toLocaleDateString('zh-CN')} 解锁"`:''}><span class="ic">${a.icon}</span><span>${T(a.label)}${fresh?' 🆕':''}${got?'':'（'+T('achLock')+(prog?' · '+prog:'')+'）'}</span></div>`;
   }).join('') || '<div style="opacity:.6;text-align:center;padding:8px">'+T('achNoMatch')+'</div>';
   document.getElementById('achCount').textContent=achGot.length+'/'+ACHS.length;
+  document.getElementById('btnAch').classList.toggle('all', achGot.length>=ACHS.length);   // v0.7.9 全收集金色
   const fill=document.getElementById('achBarFill');   // v0.3.58 成就进度条
   if(fill) fill.style.width=(achGot.length/ACHS.length*100).toFixed(1)+'%';
   const lg=document.getElementById('achLegend');   // v0.3.62 全部成就金色徽章
@@ -5660,6 +5662,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   lastToast:()=>document.getElementById('toast').textContent,   // v0.7.8 验收辅助
   forceAward:(id)=>{ award(id); return achGot.length; },   // v0.7.8 验收辅助
   achLabel:()=>T('achGot'),   // v0.7.8 验收辅助
+  achBtnAll:()=>document.getElementById('btnAch').classList.contains('all'),   // v0.7.9 验收辅助
+  forceAchCount:(n)=>{ /* 仅供探针模拟：直接 toggle 判定 */ document.getElementById('btnAch').classList.toggle('all', n>=__dbg.ACHS.length); return document.getElementById('btnAch').classList.contains('all'); },   // v0.7.9 验收辅助
   forceWalkTotal:(m)=>{ walkTotal=m; return walkTotal; },   // v0.7.1 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
