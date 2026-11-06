@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.50</title>
+<title>鲸步 WHALE WALK · v0.4.52</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -110,6 +110,9 @@
   #combo.t1{text-shadow:0 0 12px rgba(255,210,90,.85),0 1px 8px rgba(10,20,60,.8);}
   #combo.t2{text-shadow:0 0 14px rgba(255,122,58,.9),0 1px 8px rgba(10,20,60,.8);}
   #combo.t3{text-shadow:0 0 18px rgba(199,74,255,.95),0 1px 8px rgba(10,20,60,.8);}
+  /* v0.4.51 连击断连反馈：红色断裂闪（高连击断连时短暂放大 + 红闪 ×2） */
+  #combo.bk{opacity:1;transform:translateX(-50%) scale(1.25);color:#FF5A5A;text-shadow:0 0 18px rgba(255,60,60,.95),0 1px 8px rgba(10,20,60,.8);animation:comboBreakFlash .32s ease-out 2;}
+  @keyframes comboBreakFlash{0%,100%{opacity:1}50%{opacity:.15}}
   /* v0.4.49 和声档位徽章：连击条下方左侧，显示 ♪ 和声×音数 · 层次名，分档配色随 t1/t2/t3 同步 */
   #harmonyBadge{position:fixed;top:88px;left:50%;transform:translateX(-50%) translateX(-150px);z-index:11;pointer-events:none;
     font-size:13px;font-weight:800;letter-spacing:2px;color:#FFD25A;opacity:0;transition:opacity .2s,color .2s;
@@ -740,6 +743,7 @@ const I18N={
     coinCombo:'（组合翻倍）', coinComboN:'（连击 x{n} 翻倍）', fragAll:'🐋 鲸语通！碎片齐鸣 +3 秒，全城共鸣！', fragOne:'鲸语碎片 +1 秒（{a}/{b}）',
     ring2:'穿环 +2 秒！', boostPad:'加速带！⚡', timeTight:'⏱ 时间紧张！跟随金色导航冲刺',
     chainFull:'⚡ 全链收割！金币链吃满 3 枚',
+    comboBreak:'💔 连击中断 x{n}！',   // v0.4.51 连击断连提示（en 缺 key 回退中文）
     vibOn:'震动已开启', vibOff:'震动已关闭', quality:'画质：{q}', qLow:'低', qHigh:'高', qMid:'中',
     leakWarn:'⚠ 检测到资源持续增长（几何体+纹理 +{n}），建议刷新页面', fontSize:'字体：{f}', fS:'小', fL:'大', fM:'中',
     cbOn:'色弱模式已开启', cbOff:'色弱模式已关闭', shakeStr:'画面震动：{v}', shS:'强', shM:'中', shW:'弱', shOff:'关',
@@ -2258,6 +2262,8 @@ const frags=[], fragGroup=new THREE.Group(); scene.add(fragGroup);
 let chainIdSeq=0, chainEat={}, chainFull=0;
 /* v0.4.50 加速带金币链：记录带链 id 供验收探针（区分弹跳垫链/加速带链） */
 const boostChainIds=[];
+/* v0.4.51 连击断连反馈：断连计数 + 已触发标记（保证每次断连只触发一次） */
+let comboBreakN=0, comboBreakShown=false;
 let fragCount=0, fragTotal=3;
 const fragGeo=new THREE.OctahedronGeometry(0.17,0);
 const fragMat=new THREE.MeshStandardMaterial({color:0xC9A8FF,emissive:0x8F6FE8,
@@ -2555,6 +2561,9 @@ const AudioFX=(()=>{
       lastPickTier=tier; lastPickLayer=2+tier;   // v0.4.48 钩子：本档音数（基础+五度泛音+叠加）
       return tier; },
     comboTier,
+    /* v0.4.51 连击断连反馈：断连音效——连击越高下行音越低沉（tier 越高 base 越低），返回档位供钩子 */
+    comboBreakSfx(cb){ const k=Math.max(0,cb||0); const tier=comboTier(k); const base=420-tier*60;
+      tone(base,base*0.5,0.32,0.15,'sine'); tone(base*1.5,base*0.6,0.20,0.10,'sine',0.08); return tier; },
     /* v0.4.48 钩子：最近一次拾取音景档位/音数（IIFE 闭包内变量，经 getter 桥接） */
     getPickTier:()=>lastPickTier,
     getPickLayer:()=>lastPickLayer,
@@ -3443,6 +3452,7 @@ function startChallenge(){
   challenge.invuln=0; challenge.flashT=0; challenge.danger=false; rmEl.classList.remove('show');
   challenge.ready=1.2;   // v0.3.17 开局缓冲：1.2s 内不计时且免伤
   challenge.tookHit=false; challenge.comboMax=0; newAch=[];   // v0.3.8 成就判定状态
+  comboBreakN=0; comboBreakShown=false;   // v0.4.51 连击断连反馈状态随关卡重置
   echoPick=0;   // v0.4.06 回声定位计数重置
   lvDodge=0; lvDj=0;   // v0.3.12 单关操作统计
   lvPU=0;   // v0.4.19 道具拾取计数
@@ -3450,7 +3460,7 @@ function startChallenge(){
   /* v0.4.20 镜面回响日轮换：每周三/周五全部关卡镜像 */
   mirrorOn=(level===9)||mirrorDay();  const mirrorHudEl=document.getElementById('mirrorHud');
   if(mirrorHudEl) mirrorHudEl.classList.toggle('on',mirrorOn);
-  showLevelBanner('第 '+level+' 关 · '+levelName(), T(diff().label)+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点'+(mirrorOn?' · ⚠ 左右反转':'')+' · 今日布局');   // v0.3.23 开局章节横幅；v0.4.13 每日布局标注
+  showLevelBanner('第 '+level+' 关 · '+levelName(), T(diff().label)+' · 限时 '+levelTime()+' 秒 · 收集 '+levelOrbs()+' 光点'+(mirrorOn?' · 🪞 镜像':'')+' · 今日布局');   // v0.3.23 开局章节横幅；v0.4.13 每日布局标注
   timerEl.style.display='block'; timerEl.classList.remove('danger'); comboEl.classList.remove('on');
   timerNum.textContent=Math.ceil(challenge.timeLeft);
   levelTimeUsed=0;
@@ -3891,6 +3901,21 @@ function applyComboTierClass(n){
   applyHarmonyBadge(ct);
   return ct;
 }
+/* v0.4.51 连击断连反馈：高连击（≥4）断连时触发一次——红色断裂闪 + 低沉断连音 + 💔toast + 震动，返回断连前连击数（<4 或已触发返回 0） */
+function comboBreakTick(n){
+  const c=Math.max(0,n||0);
+  if(c<4 || comboBreakShown) return 0;
+  comboBreakShown=true; comboBreakN++;
+  comboEl.classList.remove('on'); comboEl.style.transform='';
+  comboEl.classList.remove('t1','t2','t3');
+  harmonyBadgeEl.classList.remove('on','t1','t2','t3');
+  comboEl.classList.add('bk');
+  setTimeout(()=>comboEl.classList.remove('bk'),650);
+  AudioFX.comboBreakSfx(c);
+  toast(TF('comboBreak',{n:c}));
+  buzz(60);
+  return c;
+}
 function update(dt){
   if(hitStop>0){ hitStop-=dt; dt*=0.25; }   // 受击瞬间时间放慢到 1/4
   elapsed+=dt;
@@ -3942,7 +3967,8 @@ function update(dt){
     if(keys.KeyA||keys.ArrowLeft)ix+=1; if(keys.KeyD||keys.ArrowRight)ix-=1;
     ix+=joyState.x; iz+=-joyState.y;
     if(gp){ ix+=gp.x; iz+=-gp.y; }
-    if(mirrorOn) ix=-ix;   // v0.4.09 镜面回响：左右反转（横移轴统一反转，摇杆/手柄/键盘一致）
+    /* v0.4.52 方向键不反转：移除镜面回响的输入反转。镜面关仅保留视觉布局/横幅/成就，
+       方向键/摇杆/手柄始终按屏幕方向（按左往左、按右往右），不再因镜像日或第9关反转。 */
   }
   const run=keys.ShiftLeft||keys.ShiftRight;
   let mx=0,mz=0;
@@ -4592,9 +4618,7 @@ function update(dt){
       comboEl.style.transform='translateX(-50%) scale('+(1+Math.min(challenge.combo,16)*0.03).toFixed(3)+')';
       const left=Math.max(0,1-(elapsed-challenge.lastPick)/comboWindow());
       comboBarEl.style.width=(left*100).toFixed(1)+'%';   // v0.3.49 连击剩余时间条
-    } else { comboEl.classList.remove('on'); comboEl.style.transform='';
-      comboEl.classList.remove('t1','t2','t3');
-      harmonyBadgeEl.classList.remove('on','t1','t2','t3'); }
+    } else { comboBreakTick(challenge.combo); }   // v0.4.51 连击断连反馈：高连击断连触发（类移除集中到纯函数）
     /* v0.4.07 鲸歌共鸣：收集点亮城市霓虹（主/侧广告牌 + 门环），连击≥8 呼吸脉动 */
     if(resPulse>0) resPulse=Math.max(0,resPulse-dt*1.8);
     const resHot=challenge.active&&challenge.combo>=8;
@@ -5125,6 +5149,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   coins:()=>coins, rings:()=>rings, bouncePads:()=>bouncePads, boostStrips:()=>boostStrips,
   /* v0.4.45 全链收割钩子 */
   chainFull:()=>chainFull, chainEat:()=>chainEat,
+  /* v0.4.51 连击断连反馈钩子：断连计数 + 纯函数探针 + 确定性强制断连 */
+  comboBreakN:()=>comboBreakN, comboBreakTick, forceComboBreak:(n)=>comboBreakTick(n),
   /* v0.4.50 加速带金币链钩子：带链 id + 各链金币坐标（供验收探针，确定性） */
   boostChainInfo:()=>boostChainIds.map(id=>({
     id,
