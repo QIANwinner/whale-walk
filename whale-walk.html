@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.79</title>
+<title>鲸步 WHALE WALK · v0.4.80</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2908,6 +2908,7 @@ let droneKills=0;   // v0.4.76 本关踏灭无人机数（结算统计）
 /* v0.4.78 生涯累计正穿（ww-pft-v1，跨局持久化） */
 let ringPftTotal=0;
 try{ ringPftTotal=parseInt(localStorage.getItem('ww-pft-v1')||'0',10)||0; }catch(_){}
+let dodgeStreak=0;   // v0.4.80 连续躲避冲锋计数（被撞清零）
 function doJump(){ const st=girl.userData.state;
   if(mode!=='play')return;
   if(st.grounded){ st.vy=4.9; st.grounded=false; st.airJumps=1; AudioFX.jump(); }
@@ -3590,6 +3591,7 @@ function hitCar(){
 function hitDrone(d){
   if(challenge.invuln>0) return;
   if(powerState.shield){ consumeShield(); return; }
+  dodgeStreak=0;   // v0.4.80 被撞清零连续躲避
   challenge.invuln=INVULN; challenge.flashT=0.4;
   shakeT=0.35; hitStop=0.12;   // v0.3.16 打击感
   challenge.timeLeft=Math.max(0,challenge.timeLeft-DRONE_PENALTY);
@@ -4477,7 +4479,9 @@ function update(dt){
         const L=Math.hypot(dxp,dzp)||1; const dsp=dp.droneDash+(d.elite?1.6:0);   // v0.4.47 精英=基础+1.6
         d.vx=dxp/L*dsp; d.vz=dzp/L*dsp; } }
     else if(d.mode==='dash'){ d.t+=dt; if(d.t>0.45){ d.mode='cool'; d.t=0;
-      if(dist>3) lvDodge++; } }   // v0.3.12 冲锋结束仍距 3m 以上算成功躲避
+      if(dist>3){ lvDodge++; dodgeStreak++;   // v0.3.12 冲锋结束仍距 3m 以上算成功躲避
+        if(dodgeStreak===3) toast('🌀 三连闪避！');   // v0.4.80 连续躲避里程碑
+      } } }
     else if(d.mode==='cool'){ d.t+=dt;
       if(d.t>dp.droneCool) d.mode = dist<9 ? 'chase' : 'return'; }
     else if(d.mode==='return' && Math.hypot(d.home.x-g.position.x,d.home.z-g.position.z)<1.5) d.mode='patrol';
@@ -5486,6 +5490,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   finishFail:()=>{ __dbg.finishChallenge(false); return document.getElementById('rmInfo').innerText; },   // v0.4.75 验收辅助
   droneKills:()=>droneKills,   // v0.4.76
   ringPftTotal:()=>ringPftTotal,   // v0.4.78
+  dodgeStreak:()=>dodgeStreak,   // v0.4.80
+  forceDash:()=>{ const d=patrolDrones[0]; if(d&&d.mode!=='dash'){ d.mode='windup'; d.t=0; } return d?d.mode:'none'; },   // v0.4.80 验收辅助：强制进入冲锋前摇
   dronesLive:()=>patrolDrones.map(d=>d.grp.position.clone()),   // v0.4.76 实时坐标(踏灭验收)
   /* v0.4.34 每日挑战钩子 */
   DQ:()=>DQ, dqBump, renderDQ, dqLine:()=>dqLine()};
