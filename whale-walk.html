@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.5.8</title>
+<title>鲸步 WHALE WALK · v0.5.9</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3264,6 +3264,8 @@ function renderDiffBest(){
     const k=btn.dataset.diff;
     if(k) btn.title=names[k]+(CLEARED[k]?' · 🏁 已通关':'');
   });
+  { const be=document.getElementById('btnEndless');   // v0.5.9 无尽按钮悬浮显示最佳
+    if(be) be.title='♾ 无尽鲸潮 · 连续通关挑战'+(EBEST>0?' · 最佳 '+EBEST+' 关':''); }
 }
 /* v0.3.56 起始关卡解锁：通关第 N 关解锁 N+1 关，主界面可选起步关 */
 let startLevel=1;
@@ -5567,6 +5569,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   forceScoreFull:()=>{ score=TOTAL; scoreEl.textContent=score+' / '+TOTAL; return score; },   // v0.5.7 验收辅助
   scoreState:()=>({s:score,T:TOTAL}),   // v0.5.7 验收辅助
   diffBtnTitle:(k)=>{ const b=document.querySelector('#diffPick .dbtn[data-diff="'+k+'"]'); return b?b.title:''; },   // v0.5.8 验收辅助
+  endlessBtnTitle:()=>document.getElementById('btnEndless').title,   // v0.5.9 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
   lvlBest:()=>({b:LVLBEST[level]||0, isNew:lvlBestNew, level}),   // v0.4.92 验收辅助
