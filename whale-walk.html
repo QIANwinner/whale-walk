@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.83</title>
+<title>鲸步 WHALE WALK · v0.4.84</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -186,6 +186,8 @@
     70%{transform:scale(1.5) rotate(8deg);opacity:1}
     100%{transform:scale(1) rotate(0);opacity:1}}
   #resultModal .rm-info{font-size:14px;color:#BFE4FF;line-height:1.7;margin-bottom:14px;}
+  /* v0.4.84 结算精度统计徽章：正穿/正中弹/踏灭胶囊高亮 */
+  #resultModal .rm-badge{display:inline-block;padding:1px 8px;margin:2px 3px 0 0;border:1px solid rgba(127,212,255,.45);border-radius:999px;font-size:12px;color:#BFE4FF;background:rgba(53,224,255,.08);white-space:nowrap;}
   #resultModal .rm-best{font-size:12px;color:#8FC8FF;opacity:.85;margin-bottom:12px;}
   /* v0.4.28 结算收集率可视化：三条迷你进度条（光点/鲸币/穿环，+碎片条件性） */
   #resultModal .rm-bars{margin:10px 0 2px;padding:8px 10px;background:rgba(10,20,44,.5);
@@ -2954,6 +2956,13 @@ function dqSave(){ try{ localStorage.setItem('ww-daily-quest-v1',JSON.stringify(
 /* v0.4.79 结算每日任务行：达标项后缀 ✓（统一单一来源，胜/败分支共用） */
 function dqLine(){ const f=(v,k)=>v+'/'+k+(v>=k?'✓':'');
   return '📅 每日任务 · 光点 '+f(DQ.orb,DQ_KEYS.orb)+' · 通关 '+f(DQ.clear,DQ_KEYS.clear)+' · 碎片 '+f(DQ.frag,DQ_KEYS.frag); }
+/* v0.4.84 结算精度统计徽章段（单一来源，胜/败分支共用；无统计返回空） */
+function statBadges(){
+  let h='';
+  if(ringPerfectCount>0) h+='<span class="rm-badge">🎯 正穿 '+ringPerfectCount+'</span>';
+  if(padPerfectCount>0) h+='<span class="rm-badge">🎢 正中弹 ×'+padPerfectCount+'</span>';
+  if(droneKills>0) h+='<span class="rm-badge">🐙 踏灭 '+droneKills+'</span>';
+  return h; }
 function dqBump(key, n){
   DQ[key]=Math.min((DQ[key]||0)+n, DQ_KEYS[key]);
   /* v0.4.35 三任务全达标 → 一次性奖励标记（下一局开局 +5 秒） */
@@ -3731,10 +3740,8 @@ function finishChallenge(win){
       rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
-        +(ringPerfectCount>0?'（🎯 正穿 '+ringPerfectCount+'）':'')   // v0.4.67 正穿统计
-        +(padPerfectCount>0?' · 🎢 正中弹 ×'+padPerfectCount:'')   // v0.4.73 正中弹统计
-        +(droneKills>0?' · 🐙 踏灭 '+droneKills:'')   // v0.4.76 踏灭统计
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 道具 ×'+lvPU+' · 最高连击 x'+(challenge.comboMax||0)
+        +(statBadges()?'<br>'+statBadges():'')   // v0.4.67/73/76/84 精度统计徽章行
         +(comboRecShown?' · 🔥 生涯新高 x'+bestComboOf():' · 生涯 x'+bestComboOf())   // v0.4.53 生涯最高连击
         +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
         +'<br>布局 #'+daySeed()+(mirrorOn?' · 🪞镜像日':'')   // v0.4.44 结算布局编号
@@ -3798,9 +3805,7 @@ function finishChallenge(win){
       endless=false;   // 潮落回到常规模式
     } else {
     rmInfo.innerHTML='收集 '+score+' / '+TOTAL+' 光点 · 还差 <b>'+Math.max(0,TOTAL-score)+'</b> 个 · 第 '+level+' 关<br>最高连击 x'+(challenge.comboMax||0)
-      +(ringPerfectCount>0?' · 🎯 正穿 '+ringPerfectCount:'')   // v0.4.75 失败也见正穿
-      +(padPerfectCount>0?' · 🎢 正中弹 ×'+padPerfectCount:'')   // v0.4.75 失败也见正中弹
-      +(droneKills>0?' · 🐙 踏灭 '+droneKills:'')   // v0.4.76 失败也见踏灭
+      +(statBadges()?'<br>'+statBadges():'')   // v0.4.75/76/84 精度统计徽章行
       +(fragTotal?' · 鲸语碎片 '+fragCount+'/'+fragTotal:'')+' · 道具 ×'+lvPU
       +'<br>'+dqLine()   // v0.4.60 失败也显示每日任务；v0.4.79 达成勾选
       +(TOTAL-score<=5&&TOTAL-score>0?'<br>就差一点！再来一次'
@@ -5501,7 +5506,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   forceDash:()=>{ const d=patrolDrones[0]; if(d&&d.mode!=='dash'){ d.mode='windup'; d.t=0; } return d?d.mode:'none'; },   // v0.4.80 验收辅助：强制进入冲锋前摇
   dronesLive:()=>patrolDrones.map(d=>d.grp.position.clone()),   // v0.4.76 实时坐标(踏灭验收)
   /* v0.4.34 每日挑战钩子 */
-  DQ:()=>DQ, dqBump, renderDQ, dqLine:()=>dqLine()};
+  DQ:()=>DQ, dqBump, renderDQ, dqLine:()=>dqLine(), statBadges:()=>statBadges()};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
 window.__dbg.leakCheck=()=>window.__wwLeakCheck?window.__wwLeakCheck():null;
 window.__dbg.migrateLS=migrateLS;
