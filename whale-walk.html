@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.8.0</title>
+<title>鲸步 WHALE WALK · v0.8.1</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3832,7 +3832,7 @@ function finishChallenge(win){
       renderLevelPick();
       if(unlockMax>beforeUnlock) toast(TF('unlock',{n:Math.min(MAX_LEVEL,unlockMax),l:T(LEVEL_NAMES[Math.min(MAX_LEVEL,unlockMax)-1])||TF('lvFallback',{n:Math.min(MAX_LEVEL,unlockMax)})}));   // v0.3.57 解锁提示
       rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！'+(rank==='S'?' 👑':'');   // v0.5.5 S 评级标题徽记
-      rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)+' · 漫步 '+walkDist.toFixed(0)+' m'   // v0.6.8 漫步距离
+      rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)+' · 漫步 '+walkDist.toFixed(0)+' m'+(oldStars===0?' · 🌟 首次通关！':'')   // v0.6.8 漫步距离；v0.8.1 首次通关
         +(LVLBEST[level]?(lvlBestNew?' · 🏅 本关最佳！':' · 本关最佳 '+fmtT(LVLBEST[level])):'')   // v0.4.92 本关最佳
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 道具 ×'+lvPU+' · 最高连击 x'+(challenge.comboMax||0)
@@ -5654,6 +5654,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   forceWalk:(m)=>{ walkDist=m; return walkDist; },   // v0.6.8 验收辅助
   walkTotalM:()=>Math.round(walkTotal),   // v0.7.1 验收辅助
   playTimeS:()=>Math.round(playTime),   // v0.7.2 验收辅助
+  clearSTARS:()=>{ STARS={}; try{ localStorage.removeItem('ww-stars-v1'); }catch(_){} },   // v0.8.1 验收辅助
   forcePlayTime:(s)=>{ playTime=s; return playTime; },   // v0.7.2 验收辅助
   time60N:()=>achGot.includes('time60'),   // v0.7.3 验收辅助
   scoreCls:()=>document.getElementById('scoreNum').className,   // v0.7.4 验收辅助
