@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.53</title>
+<title>鲸步 WHALE WALK · v0.4.54</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2129,6 +2129,13 @@ function buildPatrolDrone(elite){
     new THREE.MeshBasicMaterial({color:0xFF4FD8,transparent:true,opacity:0.8,
       blending:THREE.AdditiveBlending,depthWrite:false}));
   crown.rotation.x=Math.PI/2; crown.position.y=0.1; crown.visible=false; g.add(crown);
+  /* v0.4.54 无人机威胁圈预警：地面警觉环随状态变色，半径≈chase 距离 9——
+   * 玩家看见圈即知已进入追击/蓄力威胁范围，可提前走位（patrol 淡蓝弱示 / chase 橙 / windup 红闪 / dash 亮红）
+   * 放 Group 局部 y=-2.4（贴近地面，无人机悬停 +2.4 高度时环贴地，±0.25 浮沉可接受） */
+  const alertRing=new THREE.Mesh(new THREE.RingGeometry(8.2,8.7,48),
+    new THREE.MeshBasicMaterial({color:0x3FB6FF,transparent:true,opacity:0.05,
+      blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+  alertRing.rotation.x=-Math.PI/2; alertRing.position.y=-2.4; g.add(alertRing);
   /* v0.3.85 冲锋红区：地面红色指示条，windup 显示并锁定朝向玩家（蓄力红光） */
   const aimGrp=new THREE.Group();
   const aimPlane=new THREE.Mesh(new THREE.PlaneGeometry(elite?1.9:1.5,elite?4.2:3.4),
@@ -2136,7 +2143,7 @@ function buildPatrolDrone(elite){
       blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
   aimPlane.rotation.x=-Math.PI/2; aimPlane.position.z=elite?2.1:1.7;
   aimGrp.add(aimPlane); aimGrp.visible=false; g.add(aimGrp);
-  g.userData={beacon,scan,body,aimGrp,aimPlane,elite:!!elite,crown};
+  g.userData={beacon,scan,body,aimGrp,aimPlane,elite:!!elite,crown,alertRing};
   scene.add(g);
   return g;
 }
@@ -4381,6 +4388,15 @@ function update(dt){
       else bodyMat.emissive.setHex(Math.sin(d.t*30)>0?0x4A0A08:0x16323C);
       aimGrp.visible=false;
     } else { bodyMat.emissive.setHex(0x000000); aimGrp.visible=false; }
+    /* v0.4.54 威胁圈状态更新：随 mode 变色（patrol 淡蓝弱示 / chase 橙 / windup 红闪 / dash 亮红 / cool 暗蓝灰无害） */
+    { const aRing=d.grp.userData.alertRing;
+      if(aRing){ const am=aRing.material;
+        if(d.mode==='windup'){ am.color.setHex(0xFF3B30); am.opacity=0.20+0.12*Math.sin(d.t*20); }
+        else if(d.mode==='dash'){ am.color.setHex(0xFF2015); am.opacity=0.30; }
+        else if(d.mode==='chase'){ am.color.setHex(0xFF9A3B); am.opacity=0.10; }
+        else if(d.mode==='cool'){ am.color.setHex(0x16323C); am.opacity=0.05; }
+        else { am.color.setHex(0x3FB6FF); am.opacity=0.05; } }
+    }
     /* 扫描环旋转 + 信标闪（windup 急闪 + 扫描环脉冲放大；v0.3.93 机灯闪烁随接近玩家加快） */
     d.grp.userData.scan.rotation.z+=dt*(d.mode==='windup'?6:1.5);
     const closeRate=d.mode==='windup'?34:8+Math.min(14,26/(1+dist*0.5));   // 距玩家越近闪烁越快
@@ -5173,6 +5189,11 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   comboBreakN:()=>comboBreakN, comboBreakTick, forceComboBreak:(n)=>comboBreakTick(n),
   /* v0.4.53 生涯最高连击钩子：历史最佳读取 + 纯函数探针 + 破纪录标记 */
   bestCombo:()=>bestComboOf(), bestComboTick, comboRec:()=>comboRecShown, bcBest:()=>BCBEST,
+  /* v0.4.54 无人机威胁圈探针：每架 mode + 威胁圈色/透明度（验收断言状态变色） */
+  droneAlert:()=>patrolDrones.map(d=>{ const am=d.grp.userData.alertRing&&d.grp.userData.alertRing.material;
+    return {mode:d.mode, x:+d.grp.position.x.toFixed(3), z:+d.grp.position.z.toFixed(3),
+      ringOpacity:am?+am.opacity.toFixed(3):-1,
+      ringColor:am?am.color.getHexString():''}; }),
   /* v0.4.50 加速带金币链钩子：带链 id + 各链金币坐标（供验收探针，确定性） */
   boostChainInfo:()=>boostChainIds.map(id=>({
     id,
