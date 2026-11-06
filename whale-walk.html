@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.94</title>
+<title>鲸步 WHALE WALK · v0.4.95</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3506,7 +3506,7 @@ function applyPowerUp(type){
   if(type!=='rewind') toast(TF('puGet',{icon:info.icon,label:T(info.label)}));   // v0.4.08 回溯有专属文案
   AudioFX.pickup();
 }
-function fmtT(s){ return s.toFixed(1)+' 秒'; }
+function fmtT(s){ return (+s||0).toFixed(1)+' 秒'; }   // v0.4.95 数字防御：存档导入脏字符串不再崩溃
 /* v0.4.56 难度递进奖励手感：净得分 =（光点+连击+时间奖励+金币/穿环）× 难度倍率 scoreMul
  * 星级判定（starsFor）只看 timeLeft 不受影响；排行榜按难度分表，同难度内倍率一致公平 */
 function netScore(){
@@ -5537,6 +5537,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   pmText:()=>document.getElementById('pmStats').textContent,   // v0.4.93 验收辅助
   openPauseDbg:()=>openPause(),   // v0.4.93 验收辅助
   lvTitle:(i)=>{ const b=document.querySelectorAll('#levelPick button')[i-1]; return b?b.title:''; },   // v0.4.94 验收辅助
+  diffBestText:()=>document.getElementById('diffBest').textContent,   // v0.4.95 验收辅助
   finishFail:()=>{ __dbg.finishChallenge(false); return document.getElementById('rmInfo').innerText; },   // v0.4.75 验收辅助
   droneKills:()=>droneKills,   // v0.4.76
   ringPftTotal:()=>ringPftTotal,   // v0.4.78
