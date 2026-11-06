@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.8.2</title>
+<title>鲸步 WHALE WALK · v0.8.3</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3132,7 +3132,8 @@ function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); docum
 function togglePause(){ if(mode!=='play')return; paused?closePause():openPause(); }
 document.getElementById('pmResume').addEventListener('click',()=>closePause());
 document.getElementById('pmRestart').addEventListener('click',()=>{ closePause(); resetChallenge(); });
-document.getElementById('pmExit').addEventListener('click',()=>{ endless=false; endlessStreak=0; closePause(); setMode('preview'); });
+document.getElementById('pmExit').addEventListener('click',()=>{ if(!confirm('退出当前关卡？本关进度将丢失。')) return;   // v0.8.3 二次确认
+  endless=false; endlessStreak=0; closePause(); setMode('preview'); });
 
 /* toast */
 const toastEl=document.getElementById('toast'); let toastT=0;
