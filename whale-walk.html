@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.45</title>
+<title>鲸步 WHALE WALK · v0.4.61</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2892,6 +2892,7 @@ joyEl.addEventListener('touchend',e=>{ joyState.active=false; joyState.x=joyStat
    v0.3.5 二段跳：空中可再跳一次（360° 旋体），落地/弹跳垫重置次数；
    spaceHeld 边沿检测防按住连发 */
 let spinT=0, spaceHeld=false;
+let girlPulseT=0;   // v0.4.61 拾取弹性脉冲计时
 function doJump(){ const st=girl.userData.state;
   if(mode!=='play')return;
   if(st.grounded){ st.vy=4.9; st.grounded=false; st.airJumps=1; AudioFX.jump(); }
@@ -4084,6 +4085,11 @@ function update(dt){
   const dirYaw=(mLen>0.01)?Math.atan2(mx,mz):st.yaw;
   st.yaw=lerpAngle(st.yaw,dirYaw,1-Math.pow(0.00005,dt));
   girl.rotation.y=st.yaw;
+  /* v0.4.61 拾取弹性脉冲：衰减阻尼振动 */
+  if(girlPulseT>0){ girlPulseT-=dt; const gp=clamp(1-Math.max(0,girlPulseT)/0.5,0,1);
+    const gs=Math.sin(gp*Math.PI*2)*(1-gp)*0.06;
+    girl.scale.set(1-gs,1+gs,1-gs); }
+  else if(girl.scale.x!==1) girl.scale.set(1,1,1);
   /* v0.3.5 二段跳旋体：平滑 360° 自转 */
   if(spinT>0){ spinT-=dt; const p=clamp(1-Math.max(0,spinT)/0.42,0,1);
     girl.rotation.y=st.yaw+Math.PI*2*p*p*(3-2*p); }
@@ -4288,6 +4294,7 @@ function update(dt){
         floatNote(o.position);   // v0.4.19 音符飘出
         AudioFX.rain(score/(TOTAL||1));   // v0.3.96 背景雨声随收集进度渐强
         buzzP([12,50,12]);   // v0.4.57 拾取双轻脉冲
+        girlPulseT=0.5;   // v0.4.61 拾取弹性脉冲
         if(score===TOTAL){
           if(challenge.active) finishChallenge(true);
           else { toast(T('allOrbs')); P.tailJ.rotation.y=0.5;
@@ -5407,6 +5414,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   setMMView:(s,x,z)=>{ mmScale=s; mmPanX=x; mmPanZ=z; saveMM(); },
   achFilter:()=>achFilter,
   mm:()=>drawMinimap(),
+  girlPulse:()=>girlPulseT,   // v0.4.61
+  girlScale:()=>[girl.scale.x,girl.scale.y,girl.scale.z],   // v0.4.61
   /* v0.4.34 每日挑战钩子 */
   DQ:()=>DQ, dqBump, renderDQ};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
