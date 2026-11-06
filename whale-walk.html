@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.5.4</title>
+<title>鲸步 WHALE WALK · v0.5.5</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3779,7 +3779,7 @@ function finishChallenge(win){
       try{ localStorage.setItem('ww-unlock-v1',String(unlockMax)); }catch(_){}
       renderLevelPick();
       if(unlockMax>beforeUnlock) toast(TF('unlock',{n:Math.min(MAX_LEVEL,unlockMax),l:T(LEVEL_NAMES[Math.min(MAX_LEVEL,unlockMax)-1])||TF('lvFallback',{n:Math.min(MAX_LEVEL,unlockMax)})}));   // v0.3.57 解锁提示
-      rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
+      rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！'+(rank==='S'?' 👑':'');   // v0.5.5 S 评级标题徽记
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +(LVLBEST[level]?(lvlBestNew?' · 🏅 本关最佳！':' · 本关最佳 '+fmtT(LVLBEST[level])):'')   // v0.4.92 本关最佳
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
@@ -5546,6 +5546,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   cardLines:()=>{ const s=shareSnap; return s?[s.pft,s.pp,s.kk,s.cf]:null; },   // v0.4.82/v0.5.3 验收辅助
   shareTextDbg:()=>shareText(),   // v0.5.3 验收辅助
   unlockText:()=>document.getElementById('unlockInfo').textContent,   // v0.5.4 验收辅助
+  rmTitleText:()=>document.getElementById('rmTitle').textContent,   // v0.5.5 验收辅助
   forceHiddenUnlock:()=>{ CLEARED.extreme=true; renderLevelPick(); return CLEARED.extreme; },   // v0.5.4 验收辅助
   escProbe:()=>({rm:rmEl.classList.contains('show'), paused:paused,
     set:settingsOpen, ach:document.getElementById('achModal').classList.contains('show')}),   // v0.4.86/87 验收辅助
