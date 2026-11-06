@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.4.66</title>
+<title>鲸步 WHALE WALK · v0.4.67</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -2337,7 +2337,7 @@ function clearNewProps(){
   while(fragGroup.children.length) fragGroup.remove(fragGroup.children[0]);
   coins.length=0; rings.length=0; bouncePads.length=0; boostStrips.length=0;
   frags.length=0;
-  coinCount=0; boostT=0; ringCount=0; fragCount=0;
+  coinCount=0; boostT=0; ringCount=0; fragCount=0; ringPerfectCount=0;   // v0.4.67 正穿计数随关清零
   coinNumEl.textContent='0 / '+(coinTotal||3);
   const fragNumEl=document.getElementById('fragNum');
   if(fragNumEl) fragNumEl.textContent='0 / '+(fragTotal||3);
@@ -2895,6 +2895,7 @@ joyEl.addEventListener('touchend',e=>{ joyState.active=false; joyState.x=joyStat
 let spinT=0, spaceHeld=false;
 let girlPulseT=0;   // v0.4.61 拾取弹性脉冲计时
 let lastRingPerfect=false;   // v0.4.66 最近一次穿环是否正穿（探针用）
+let ringPerfectCount=0;   // v0.4.67 本关正穿 PERFECT 次数（结算统计）
 function doJump(){ const st=girl.userData.state;
   if(mode!=='play')return;
   if(st.grounded){ st.vy=4.9; st.grounded=false; st.airJumps=1; AudioFX.jump(); }
@@ -3706,6 +3707,7 @@ function finishChallenge(win){
       rmTitle.textContent='第 '+level+' 关 · '+levelName()+' 完成！';
       rmInfo.innerHTML='用时 <b>'+fmtT(levelTimeUsed)+'</b> · 剩余 '+fmtT(challenge.timeLeft)
         +'<br>本关：鲸币 '+coinCount+'/'+coinTotal+' · 穿环 '+ringCount+'/'+ringTotal
+        +(ringPerfectCount>0?'（🎯 正穿 '+ringPerfectCount+'）':'')   // v0.4.67 正穿统计
         +' · 躲冲锋 '+lvDodge+' · 二段跳 '+lvDj+' · 道具 ×'+lvPU+' · 最高连击 x'+(challenge.comboMax||0)
         +(comboRecShown?' · 🔥 生涯新高 x'+bestComboOf():' · 生涯 x'+bestComboOf())   // v0.4.53 生涯最高连击
         +(fragTotal?'<br>鲸语碎片 '+fragCount+'/'+fragTotal:'')
@@ -4644,7 +4646,7 @@ function update(dt){
         blinkT=1; burst(r.position);
         AudioFX.ring(); buzzP([18,40,18,40,18]);   // v0.4.57 穿环三连脉冲
         toast(T(perfect?'ringPerfect':'ring2'));
-        if(perfect) burst(r.position);   // v0.4.66 完美额外金色连闪
+        if(perfect){ burst(r.position); ringPerfectCount++; }   // v0.4.66 完美额外金色连闪；v0.4.67 正穿计数
       }
     }
     /* 加速带（v0.3.86 时间 2.2→2.6s，极限难度保持 2.2）：踏上 ×2.2 冲刺 */
@@ -5435,6 +5437,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   girlScale:()=>[girl.scale.x,girl.scale.y,girl.scale.z],   // v0.4.61
   /* v0.4.66 穿环 PERFECT 探针：最近一次穿环是否正穿（验收断言 +3 秒/PERFECT toast） */
   lastRingPerfect:()=>lastRingPerfect,
+  ringPerfectCount:()=>ringPerfectCount,   // v0.4.67
   /* v0.4.34 每日挑战钩子 */
   DQ:()=>DQ, dqBump, renderDQ};
 /* v0.4.04 钩子：内存泄漏检测 + localStorage 迁移 + URL 安全校验 */
