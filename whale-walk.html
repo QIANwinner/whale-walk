@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.8.9</title>
+<title>鲸步 WHALE WALK · v0.9.0</title>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
     font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
@@ -3041,6 +3041,9 @@ function renderDQ(){
   const el=document.getElementById('dqDate');
   if(!el) return;
   el.textContent=DQ.date||'';
+  { const dt=el.parentElement;   // v0.9.0 面板标题完成度 (N/3)
+    if(dt){ const done=Object.keys(DQ_KEYS).filter(k=>(DQ[k]||0)>=DQ_KEYS[k]).length;
+      dt.childNodes[0].textContent='📅 每日挑战('+done+'/3) '; } }
   const rows=[['dqOrb','orb'],['dqClear','clear'],['dqFrag','frag']];
   let all=true;
   rows.forEach(([id,key])=>{
@@ -5677,6 +5680,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   dodgeRate:()=>(lvDodge+(challenge.hitCount||0))>0?Math.round(lvDodge/(lvDodge+(challenge.hitCount||0))*100):null,   // v0.8.7 验收辅助
   orbPerMin:()=>levelTimeUsed>0?Math.round(score/(levelTimeUsed/60)):null,   // v0.8.8 验收辅助
   dqDoneN:()=>Object.keys(DQ_KEYS).filter(k=>(DQ[k]||0)>=DQ_KEYS[k]).length,   // v0.8.9 验收辅助
+  dqTitleText:()=>document.querySelector('#dailyQuest .dq-t').textContent,   // v0.9.0 验收辅助
   forceWalkTotal:(m)=>{ walkTotal=m; return walkTotal; },   // v0.7.1 验收辅助
   dqStyle:()=>{ const p=document.getElementById('dailyQuest'); const cs=getComputedStyle(p); return {cls:p.className, anim:cs.animationName, tick:cs.content!==''&&getComputedStyle(p,'.dq-t::after')?getComputedStyle(p,'::after').content:''}; },   // v0.4.88 验收辅助
   metaText:()=>document.getElementById('metaLine').textContent,   // v0.4.90 验收辅助
