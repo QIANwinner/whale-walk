@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.18</title>
+<title>鲸步 WHALE WALK · v0.9.19</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -459,6 +459,13 @@
     0%{opacity:1;transform:translateY(-50%) scale(1);filter:none;}
     35%{opacity:.4;transform:translateY(calc(-50% + 5px)) scale(.92);filter:grayscale(1) brightness(.8);}
     100%{opacity:0;transform:translateY(calc(-50% + 12px)) scale(.85);filter:grayscale(1) brightness(.7);}
+  }
+  /* ---------- v0.9.19 鲸币连击 HUD 点亮弹跳入场：连击从无到有（首次点亮）时轻微弹跳放大（对称 v0.9.18 中断淡出） ---------- */
+  #coinStreakHud.pop{animation:csPop .34s cubic-bezier(.2,1.45,.3,1) both;}
+  @keyframes csPop{
+    0%{opacity:0;transform:translateY(-50%) scale(.6);}
+    62%{opacity:1;transform:translateY(-50%) scale(1.16);}
+    100%{opacity:1;transform:translateY(-50%) scale(1);}
   }
   /* ---------- v0.4.12 鲸语碎片 chip ---------- */
   #fragbar{position:fixed;top:186px;left:50%;transform:translateX(-50%);z-index:11;pointer-events:none;}
@@ -4923,6 +4930,8 @@ function update(dt){
         coinStreakT=COIN_STREAK_WINDOW;
         /* v0.9.14 连击 HUD：立即显示徽标 + 剩余条重置满 */
         coinStreakHudEl.classList.add('on');
+        /* v0.9.19 连击 HUD 点亮弹跳入场：仅连击刚启动（coinStreak===1）时触发，延续不重放；先清 break 双保险 */
+        if(coinStreak===1){ coinStreakHudEl.classList.remove('break'); coinStreakHudEl.classList.add('pop'); setTimeout(()=>coinStreakHudEl.classList.remove('pop'),350); }
         csNEl.textContent=coinStreak;
         csBarEl.style.width='100%';
         const streakBonus=(coinStreak>=2)?Math.min(coinStreak-1,3):0;
@@ -5683,6 +5692,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.9.18 鲸币连击中断反馈探针：中断触发函数 + HUD break 状态（验收用） */
   coinStreakBreakProbe:(was)=>coinStreakBreak(was),
   coinStreakHudBreak:()=>coinStreakHudEl.classList.contains('break'),
+  /* v0.9.19 连击 HUD 点亮弹跳入场探针：pop 状态（验收用） */
+  coinStreakHudPop:()=>coinStreakHudEl.classList.contains('pop'),
   ringLive:()=>rings.map(r=>({x:+r.position.x.toFixed(3), y:+r.position.y.toFixed(3), z:+r.position.z.toFixed(3), alive:!!r.userData.alive})),
   /* v0.4.50 加速带金币链钩子：带链 id + 各链金币坐标（供验收探针，确定性） */
   boostChainInfo:()=>boostChainIds.map(id=>({
