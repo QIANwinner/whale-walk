@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.10</title>
+<title>鲸步 WHALE WALK · v0.9.11</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -2809,6 +2809,11 @@ const AudioFX=(()=>{
       const seq=[1568,1976,2349,2637,3136];
       seq.forEach((f,i)=>tone(f,f,0.16,0.12,'sine',i*0.05));
       tone(4186,4186,0.4,0.10,'sine',seq.length*0.05); },
+    /* v0.9.11 星级点亮节拍：星星逐个弹出(starPop animation-delay i*0.16s)时同步短促清脆声，音高随序号微升(i 越大越亮) */
+    starTick(i){ if(muted||!ac())return;
+      const f=1320+Math.min(i,2)*240;   // 3 星音高 1320/1560/1800，逐级点亮
+      tone(f,f,0.08,0.09,'sine',0);
+      tone(f*2,f*2,0.06,0.04,'sine',0.01); },
     /* v0.3.97 新纪录结算专属号角：上行三音长号角 + 高亮泛音 */
     horn(){ if(muted||!ac())return;
       const seq=[[196,0.28],[262,0.30],[349,0.34]];
@@ -3867,6 +3872,8 @@ function finishChallenge(win){
     rmStars.innerHTML='★★★☆☆☆'.slice(0,stars*2).split('').map((s,i)=>
       s==='★'?`<span class="star-on" style="animation-delay:${i*0.16}s">★</span>`:''
     ).join('')+'☆'.repeat(3-stars);
+    /* v0.9.11 星级点亮节拍：每颗星弹出瞬间(0.16s 错峰对齐 starPop)同步短促清脆声 */
+    rmStars.querySelectorAll('.star-on').forEach((el,i)=>setTimeout(()=>AudioFX.starTick(i), i*160));
     shareSnap = (level>=MAX_LEVEL)
       ? {kind:'final',diff:T(diff().label),time:fmtT(runTotalUsed),coins:runCoins,rings:runRings}
       : {kind:'win',diff:T(diff().label),level,stars,time:fmtT(levelTimeUsed)};
