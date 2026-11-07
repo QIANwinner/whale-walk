@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.16</title>
+<title>鲸步 WHALE WALK · v0.9.17</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -4084,6 +4084,18 @@ function resetChallenge(){
 }
 /* v0.3.9 成绩分享：结算时快照，一键复制文本（clipboard 不可用时降级 execCommand） */
 let shareSnap=null;
+/* v0.9.17 成绩卡文本行：纯函数供 makeScoreCard 与验收探针复用（最高鲸币连击 ≥2 才显示，final 无 sm 不显） */
+function cardLines(snap){
+  const lines=[];
+  if(snap.coins!=null) lines.push('🪙 鲸币 '+snap.coins);
+  if(snap.rings!=null) lines.push('⭕ 穿环 '+snap.rings);
+  if(snap.pft) lines.push('🎯 正穿 '+snap.pft);
+  if(snap.pp) lines.push('🎢 正中弹 ×'+snap.pp);
+  if(snap.kk) lines.push('🐙 踏灭 '+snap.kk);
+  if(snap.sm>=2) lines.push('🐋 最高连击 ×'+snap.sm);
+  if(snap.kind==='final') lines.push('🏆 全部 '+MAX_LEVEL+' 关通关');
+  return lines;
+}
 /* v0.4.11 成绩卡片：canvas 绘制精美成绩图（640×360），一键保存 PNG */
 function makeScoreCard(){
   if(!shareSnap) return '';
@@ -4114,13 +4126,7 @@ function makeScoreCard(){
     g.fillText(shareSnap.rank, W-134, 36);
     g.font='600 13px sans-serif'; g.fillStyle='#8FC8FF'; g.fillText('评级', W-130, 16); }
   g.fillStyle='#BFE4FF'; g.font='600 15px sans-serif';
-  const lines=[];
-  if(shareSnap.coins!=null) lines.push('🪙 鲸币 '+shareSnap.coins);
-  if(shareSnap.rings!=null) lines.push('⭕ 穿环 '+shareSnap.rings);
-  if(shareSnap.pft) lines.push('🎯 正穿 '+shareSnap.pft);   // v0.4.82 成绩卡精度统计
-  if(shareSnap.pp) lines.push('🎢 正中弹 ×'+shareSnap.pp);
-  if(shareSnap.kk) lines.push('🐙 踏灭 '+shareSnap.kk);
-  if(shareSnap.kind==='final') lines.push('🏆 全部 '+MAX_LEVEL+' 关通关');
+  const lines=cardLines(shareSnap);   // v0.9.17 提取纯函数
   lines.forEach((s,i)=>g.fillText(s, 36, 246+i*26));
   g.fillStyle='rgba(191,228,255,.6)'; g.font='600 12px sans-serif';
   g.fillText(new Date().toLocaleDateString('zh-CN')+' · 布局 #'+daySeed()+' · QIAN', 36, H-32);
@@ -5805,6 +5811,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   cardLines:()=>{ const s=shareSnap; return s?[s.pft,s.pp,s.kk,s.cf,s.oo,s.fo,s.ff]:null; },   // v0.4.82~v0.7.6 验收辅助
   shareTextDbg:()=>shareText(),   // v0.5.3 验收辅助
   shareTextInj:(s)=>{ shareSnap=s; return shareText(); },   // v0.9.16 验收辅助：注入合成快照读分享文本
+  cardLinesFor:(s)=>cardLines(s),   // v0.9.17 验收辅助：读成绩卡文本行（纯函数，≥2 才含最高连击）
   unlockText:()=>document.getElementById('unlockInfo').textContent,   // v0.5.4 验收辅助
   rmTitleText:()=>document.getElementById('rmTitle').textContent,   // v0.5.5 验收辅助
   forceHiddenUnlock:()=>{ CLEARED.extreme=true; renderLevelPick(); return CLEARED.extreme; },   // v0.5.4 验收辅助
