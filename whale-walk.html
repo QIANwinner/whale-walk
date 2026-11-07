@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.9</title>
+<title>鲸步 WHALE WALK · v0.9.10</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -220,6 +220,20 @@
   #resultModal .rm-badge:nth-child(8){animation-delay:.35s}
   /* v0.9.8 结算徽章浮现：从下方透明淡入 + 轻微缩放回弹 */
   @keyframes badgeIn{from{opacity:0;transform:translateY(6px) scale(.85)}to{opacity:1;transform:none}}
+  /* v0.9.10 结算关闭动效：子元素反向收束淡出（与打开序列闭环；.closing 立即禁交互） */
+  #resultModal.closing{pointer-events:none;}
+  #resultModal.closing .rm-t,
+  #resultModal.closing #rmRank,
+  #resultModal.closing .rm-stars .star-on,
+  #resultModal.closing .rm-badge,
+  #resultModal.closing .rm-info,
+  #resultModal.closing .rm-best,
+  #resultModal.closing #lbWrap,
+  #resultModal.closing #btnRetry,
+  #resultModal.closing #btnShare,
+  #resultModal.closing #btnCard,
+  #resultModal.closing #btnNext{animation:fadeUpOut .22s ease both;}
+  @keyframes fadeUpOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(8px) scale(.92)}}
   #resultModal .rm-best{font-size:12px;color:#8FC8FF;opacity:.85;margin-bottom:12px;}
   /* v0.4.28 结算收集率可视化：三条迷你进度条（光点/鲸币/穿环，+碎片条件性） */
   #resultModal .rm-bars{margin:10px 0 2px;padding:8px 10px;background:rgba(10,20,44,.5);
@@ -3267,6 +3281,16 @@ const resHudEl=document.getElementById('resHud'), resTxtEl=document.getElementBy
 const rmEl=document.getElementById('resultModal'), rmTitle=document.getElementById('rmTitle');
 const rmStars=document.getElementById('rmStars'), rmInfo=document.getElementById('rmInfo');
 const rmBest=document.getElementById('rmBest');
+/* v0.9.10 结算关闭动效：先加 .closing 触发子元素反向收束淡出（fadeUpOut），
+ * 再移除 .show 让面板 .25s 过渡淡出（两者同步），最后清 .closing。 */
+let _closingT=0;
+function closeResult(){
+  if(rmEl.classList.contains('closing')) return;
+  rmEl.classList.add('closing');          // 子元素反向动画 + pointer-events:none 立即禁交互
+  rmEl.classList.remove('show');          // 父容器 .25s 过渡淡出（与子元素反向同步）
+  clearTimeout(_closingT);
+  _closingT=setTimeout(()=>rmEl.classList.remove('closing'),300);   // 动画结束清理
+}
 /* v0.4.28 结算收集率进度条：生成一条迷你进度条 HTML（label 名称 / cur 当前 / total 总数） */
 function rmBar(label,cur,total){ if(!total||total<=0) return '';
   const p=Math.max(0,Math.min(100,cur/total*100));
@@ -3685,7 +3709,7 @@ function startChallenge(){
     challenge.startTime=levelCfg().time+5;
     challenge.timeLeft=challenge.startTime;
     toast('📅 每日挑战奖励！本局 +5 秒'); }
-  challenge.invuln=0; challenge.flashT=0; challenge.danger=false; challenge.hitCount=0; rmEl.classList.remove('show');   // v0.8.7 hitCount 随关清零
+  challenge.invuln=0; challenge.flashT=0; challenge.danger=false; challenge.hitCount=0; closeResult();   // v0.8.7 hitCount 随关清零；v0.9.10 结算关闭动效
   challenge.ready=1.2;   // v0.3.17 开局缓冲：1.2s 内不计时且免伤
   challenge.tookHit=false; challenge.comboMax=0; newAch=[];   // v0.3.8 成就判定状态
   comboBreakN=0; comboBreakShown=false;   // v0.4.51 连击断连反馈状态随关卡重置
@@ -3796,7 +3820,7 @@ function finishChallenge(win){
     if(_prevBest>0 && endlessStreak>_prevBest){   // v0.4.85 无尽新纪录：延迟覆盖 toast + 双 burst
       setTimeout(()=>{ toast('🏆 无尽新纪录！连续 '+EBEST+' 关');
         burst(girl.position); burst(girl.position); },420); }
-    rmEl.classList.remove('show');
+    closeResult();   // v0.9.10 结算关闭动效
     challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+5);   // 连关补给
     setTimeout(()=>{ if(endless && mode==='play') endlessNext(); },1200);
     return;
@@ -5685,6 +5709,13 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   lastNoteColor:()=> lastNoteRef ? lastNoteRef.m.material.color.getHex() : null,   // v0.9.6 最后 spawn 音符实际色（精确探针，同帧多音符无歧义）
   floatNote:(pos,c)=>{ floatNote(pos,c); },   // v0.9.6 确定性音符生成（验收用）
   spawnSettleSparks:(id)=>{ spawnSettleSparks(document.getElementById(id)); },   // v0.9.7 结算光点注入（验收用）
+  closeResultProbe:()=>{ closeResult(); },   // v0.9.10 结算关闭动效触发（验收用）
+  closingState:()=>({   // v0.9.10 关闭动效探针：面板/子元素反向动画 + 交互禁用（验收用）
+    closing:document.getElementById('resultModal').classList.contains('closing'),
+    show:document.getElementById('resultModal').classList.contains('show'),
+    pointer:getComputedStyle(document.getElementById('resultModal')).pointerEvents,
+    anim:getComputedStyle(document.getElementById('btnRetry')).animationName,
+  }),
   btnInProbe:()=>({   // v0.9.9 结算按钮入场动画探针（验收用）
     retry:getComputedStyle(document.getElementById('btnRetry')).animationName,
     next:getComputedStyle(document.getElementById('btnNext')).animationName,
