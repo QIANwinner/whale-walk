@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.8</title>
+<title>鲸步 WHALE WALK · v0.9.9</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -246,7 +246,7 @@
     border-radius:999px;padding:2px 12px;font-size:10px;margin-top:6px;cursor:pointer;font-family:inherit;}
   #btnRetry{background:linear-gradient(90deg,#002FA7,#1E5FD8);color:#fff;border:none;border-radius:999px;
     padding:11px 30px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;
-    box-shadow:0 6px 20px rgba(0,47,167,.5);}
+    box-shadow:0 6px 20px rgba(0,47,167,.5);animation:btnIn .4s cubic-bezier(.2,1.4,.4,1) backwards;}
   #btnRetry:hover{transform:translateY(-1px);box-shadow:0 8px 26px rgba(0,47,167,.65);}
   /* ---------- toast ---------- */
   #toast{position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-8px);z-index:20;
@@ -392,7 +392,9 @@
   /* ---------- 下一关按钮 ---------- */
   #btnNext{background:linear-gradient(90deg,#1E5FD8,#35E0FF);color:#fff;border:none;border-radius:999px;
     padding:11px 30px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;
-    box-shadow:0 6px 20px rgba(30,95,216,.5);margin-left:10px;}
+    box-shadow:0 6px 20px rgba(30,95,216,.5);margin-left:10px;animation:btnIn .4s cubic-bezier(.2,1.4,.4,1) .08s backwards;}
+  /* v0.9.9 结算按钮入场浮现：从下方淡入回弹，btnNext 稍延迟形成序列（评级→星级→光点→徽章→按钮） */
+  @keyframes btnIn{from{opacity:0;transform:translateY(10px) scale(.95)}to{opacity:1;transform:none}}
   #btnNext:hover{transform:translateY(-1px);box-shadow:0 8px 26px rgba(30,95,216,.65);}
   /* v0.3.95 按钮按下 3D 下压反馈：主按钮 active 下压缩 */
   #btnPlay:active,#btnRetry:active,#btnNext:active,#btnShare:active,#btnJump:active{
@@ -3968,6 +3970,9 @@ function finishChallenge(win){
     btnNext.style.display='none';
   }
   rmEl.classList.add('show');
+  /* v0.9.9 结算按钮入场浮现：btnRetry 为静态元素其 btnIn 动画已在页面加载播完，打开结算时强制重播入场序列（btnNext 首次显示亦统一重播保证时序） */
+  ['btnRetry','btnNext'].forEach(bid=>{ const b=document.getElementById(bid); if(!b) return;
+    b.style.animation='none'; void b.offsetWidth; b.style.animation=''; });
   /* v0.9.7 结算光点飞入收束：面板显示后注入金色光点粒子 */
   spawnSettleSparks(rmEl);
   /* v0.4.43→61 收集率条长出动画：rAF 后赋目标宽度触发 transition */
@@ -5680,6 +5685,13 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   lastNoteColor:()=> lastNoteRef ? lastNoteRef.m.material.color.getHex() : null,   // v0.9.6 最后 spawn 音符实际色（精确探针，同帧多音符无歧义）
   floatNote:(pos,c)=>{ floatNote(pos,c); },   // v0.9.6 确定性音符生成（验收用）
   spawnSettleSparks:(id)=>{ spawnSettleSparks(document.getElementById(id)); },   // v0.9.7 结算光点注入（验收用）
+  btnInProbe:()=>({   // v0.9.9 结算按钮入场动画探针（验收用）
+    retry:getComputedStyle(document.getElementById('btnRetry')).animationName,
+    next:getComputedStyle(document.getElementById('btnNext')).animationName,
+    retryDelay:getComputedStyle(document.getElementById('btnRetry')).animationDelay,
+    nextDelay:getComputedStyle(document.getElementById('btnNext')).animationDelay,
+    retryAnim:document.getElementById('btnRetry').style.animation,
+  }),
   /* v0.4.66 穿环 PERFECT 探针：最近一次穿环是否正穿（验收断言 +3 秒/PERFECT toast） */
   lastRingPerfect:()=>lastRingPerfect,
   ringPerfectCount:()=>ringPerfectCount,   // v0.4.67
