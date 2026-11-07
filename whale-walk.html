@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.6</title>
+<title>鲸步 WHALE WALK · v0.9.7</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -201,6 +201,13 @@
   @keyframes starPop{0%{transform:scale(0) rotate(-40deg);opacity:0}
     70%{transform:scale(1.5) rotate(8deg);opacity:1}
     100%{transform:scale(1) rotate(0);opacity:1}}
+  /* v0.9.7 结算光点飞入收束：金色光点从面板外缘飞向中心汇聚（--sx/--sy 每粒起点偏移） */
+  #resultModal .rm-spark{position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:50%;
+    background:#ffd25a;box-shadow:0 0 10px #ffd25a,0 0 3px rgba(255,255,255,.9);opacity:0;pointer-events:none;
+    animation:sparkFly .9s cubic-bezier(.2,.75,.3,1) both;}
+  @keyframes sparkFly{0%{transform:translate(var(--sx),var(--sy)) scale(.5);opacity:0}
+    12%{opacity:.95}
+    100%{transform:translate(0,0) scale(1);opacity:0}}
   #resultModal .rm-info{font-size:14px;color:#BFE4FF;line-height:1.7;margin-bottom:14px;}
   /* v0.4.84 结算精度统计徽章：正穿/正中弹/踏灭胶囊高亮 */
   #resultModal .rm-badge{display:inline-block;padding:1px 8px;margin:2px 3px 0 0;border:1px solid rgba(127,212,255,.45);border-radius:999px;font-size:12px;color:#BFE4FF;background:rgba(53,224,255,.08);white-space:nowrap;}
@@ -3750,6 +3757,19 @@ function updateDroneWarn(){
   droneWarnEl.style.opacity=String((0.42+0.5*pulse)*danger);
   droneWarnEl.classList.add('on');
 }
+/* v0.9.7 结算光点飞入收束：注入 12 个金色光点，从面板外缘随机方向飞向中心，动画结束自清理 */
+function spawnSettleSparks(el){
+  const old=el.querySelectorAll('.rm-spark'); old.forEach(s=>s.remove());
+  for(let i=0;i<12;i++){
+    const s=document.createElement('span'); s.className='rm-spark';
+    const ang=Math.random()*Math.PI*2, r=180+Math.random()*170;
+    s.style.setProperty('--sx',(Math.cos(ang)*r).toFixed(0)+'px');
+    s.style.setProperty('--sy',(Math.sin(ang)*r*0.8).toFixed(0)+'px');
+    s.style.animationDelay=(Math.random()*0.18).toFixed(2)+'s';
+    s.addEventListener('animationend',()=>s.remove(),{once:true});
+    el.appendChild(s);
+  }
+}
 function finishChallenge(win){
   challenge.active=false; challenge.done=win; challenge.failed=!win;
   /* v0.4.10 无尽鲸潮：胜利不停表，1.2s 后自动卷入下一关（全通后回第 1 关） */
@@ -3939,6 +3959,8 @@ function finishChallenge(win){
     btnNext.style.display='none';
   }
   rmEl.classList.add('show');
+  /* v0.9.7 结算光点飞入收束：面板显示后注入金色光点粒子 */
+  spawnSettleSparks(rmEl);
   /* v0.4.43→61 收集率条长出动画：rAF 后赋目标宽度触发 transition */
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     document.querySelectorAll('#resultModal .rm-bar-fi[data-w]').forEach(fi=>{
@@ -5648,6 +5670,7 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   noteLastColor:()=>{ let best=null,bl=-1; for(const n of notePool){ if(n.life>bl){ bl=n.life; best=n; } } return best?best.m.material.color.getHex():null; },
   lastNoteColor:()=> lastNoteRef ? lastNoteRef.m.material.color.getHex() : null,   // v0.9.6 最后 spawn 音符实际色（精确探针，同帧多音符无歧义）
   floatNote:(pos,c)=>{ floatNote(pos,c); },   // v0.9.6 确定性音符生成（验收用）
+  spawnSettleSparks:(id)=>{ spawnSettleSparks(document.getElementById(id)); },   // v0.9.7 结算光点注入（验收用）
   /* v0.4.66 穿环 PERFECT 探针：最近一次穿环是否正穿（验收断言 +3 秒/PERFECT toast） */
   lastRingPerfect:()=>lastRingPerfect,
   ringPerfectCount:()=>ringPerfectCount,   // v0.4.67
