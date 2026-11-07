@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.12</title>
+<title>鲸步 WHALE WALK · v0.9.13</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -847,7 +847,7 @@ const I18N={
     cbOn:'色弱模式已开启', cbOff:'色弱模式已关闭', shakeStr:'画面震动：{v}', shS:'强', shM:'中', shW:'弱', shOff:'关',
     gyroOn:'陀螺仪已开启', gyroOff:'陀螺仪已关闭', exportOk:'💾 存档已导出（{n} 项）', exportFail:'导出失败',
     importOk:'💾 存档已导入，即将刷新', importFail:'导入失败：{m}', importBad:'文件无效', autoLow:'已自动降低画质保帧率 ⚙', switchLow:'已切换低画质档 ⚙',
-    achLock:'未达成', achNoMatch:'无匹配成就', achPer:'单关达成'
+    achLock:'未达成', achNoMatch:'无匹配成就', achPer:'单关达成', coinStreak:'鲸币连击 ×{n} · +{s}秒'
   },
   en:{
     t2:'Whale Walk · Blue Whale Maid Strolling', modeBadge:'Preview', scoreLabel:'Orbs', hint:'Drag to rotate · Scroll to zoom',
@@ -858,7 +858,7 @@ const I18N={
     rain:'Rain', vol:'SFX', vib:'Vibration', volPick:'Pickup Vol', volCoin:'Coin Vol', volRing:'Ring Vol', quality:'Quality', fps:'FPS', font:'Font Size', cb:'Colorblind', shake:'Screen Shake',
     gyro:'Gyroscope', vibStr:'Vibration Strength', save:'Save & Close', tutTitle:'Walk Guide', tutNext:'Next', tutOk:'Got it',
     langTitle:'🌐 Select Language · 选择语言', langSub:'Preference saved locally · 语言偏好仅本地保存',
-    langZh:'中文', langEn:'English', langSaved:'Language switched'
+    langZh:'中文', langEn:'English', langSaved:'Language switched', coinStreak:'Coin Streak x{n} · +{s}s'
   }
 };
 function T(k){ return (I18N[LANG]&&I18N[LANG][k])||I18N.zh[k]||k; }
@@ -2413,6 +2413,9 @@ const magnetRing=new THREE.Mesh(new THREE.RingGeometry(4.42,4.62,48),
     depthWrite:false,blending:THREE.AdditiveBlending}));
 magnetRing.rotation.x=-Math.PI/2; magnetRing.visible=false; scene.add(magnetRing);
 let coinCount=0, coinTotal=3, boostT=0, ringCount=0, ringTotal=0;
+/* v0.9.13 鲸币连击：3.5s 窗口内连吃金币，第 2/3/4 枚起递增 +1/+2/+3 秒（封顶 +3），与 combo 翻倍/双倍道具叠加 */
+let coinStreak=0, coinStreakT=0;
+const COIN_STREAK_WINDOW=3.5;
 const coinNumEl=document.getElementById('coinNum');
 const coinGeo=new THREE.CylinderGeometry(0.22,0.22,0.06,24);
 const coinMat=new THREE.MeshStandardMaterial({color:0xFFD25A,emissive:0xFFAA00,
@@ -2428,6 +2431,7 @@ function clearNewProps(){
   coins.length=0; rings.length=0; bouncePads.length=0; boostStrips.length=0;
   frags.length=0;
   coinCount=0; boostT=0; ringCount=0; fragCount=0; ringPerfectCount=0; ringPerfectStreak=0; padPerfectCount=0; walkDist=0;   // v0.4.67/68/72/6.8 计数随关清零
+  coinStreak=0; coinStreakT=0;   // v0.9.13 鲸币连击随关清零
   coinNumEl.textContent='0 / '+(coinTotal||3);
   const fragNumEl=document.getElementById('fragNum');
   if(fragNumEl) fragNumEl.textContent='0 / '+(fragTotal||3);
@@ -2771,6 +2775,11 @@ const AudioFX=(()=>{
     coin(){ if(muted||!ac())return;
       tone(988,988,0.09,0.13*volCoin,'sine');
       tone(1319,1319,0.22,0.15*volCoin,'sine',0.07); },
+    /* v0.9.13 鲸币连击音：随连击数音高爬升（第2枚起，比单枚 coin 更亮更上扬） */
+    coinStreak(n){ if(muted||!ac())return;
+      const b=Math.min(Math.max(n-2,0),3);   // 第2枚起 0/1/2/3 级爬升
+      tone(1175+b*110,1175+b*110,0.08,0.13*volCoin,'sine');
+      tone(1568+b*150,1568+b*150,0.20,0.14*volCoin,'sine',0.06); },
     /* v0.3.4 穿环：三连琶音；v0.3.96 上行 5 度（523→784→1174） */
     ring(){ if(muted||!ac())return;
       tone(523,523,0.10,0.12*volRing,'triangle');
@@ -4861,14 +4870,21 @@ function update(dt){
           }
         }
         /* v0.3.30：combo≥3 时鲸币奖励翻倍；v0.3.86 双倍鲸币道具再 ×2 */
-        const coinBonus=(powerState.double>0?2:1)*((challenge.combo>=3)?6:3);
+        /* v0.9.13 鲸币连击：3.5s 窗口连吃金币，第 2/3/4 枚起递增 +1/+2/+3 秒（封顶 +3） */
+        if(coinStreakT>0){ coinStreak++; } else { coinStreak=1; }
+        coinStreakT=COIN_STREAK_WINDOW;
+        const streakBonus=(coinStreak>=2)?Math.min(coinStreak-1,3):0;
+        const coinBonus=(powerState.double>0?2:1)*((challenge.combo>=3)?6:3)+streakBonus;
         challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+coinBonus);
         challenge.bonusScore=(challenge.bonusScore||0)+3;   // v0.4.56 金币计入净得分（随难度 scoreMul 递进）
         blinkT=1; burst(c.position);
-        AudioFX.coin(); buzzP([30,50,30]);   // v0.4.57 金币双脉冲
-        toast(coinCount===coinTotal
+        if(coinStreak>=2){ burst(c.position); AudioFX.coinStreak(coinStreak); }
+        else { AudioFX.coin(); }
+        buzzP(coinStreak>=2?[35,45,35,45,35]:[30,50,30]);   // v0.4.57 金币双脉冲；v0.9.13 连击加长脉冲
+        toast((coinCount===coinTotal
           ?(TF('coinAll',{n:coinBonus})+(powerState.double>0?T('coinDouble2'):'')+(challenge.combo>=3?T('coinCombo'):''))
-          :(TF('coinGet',{n:coinBonus})+(powerState.double>0?T('coinDouble'):'')+(coinBonus>6?TF('coinComboN',{n:challenge.combo}):'')));
+          :(TF('coinGet',{n:coinBonus})+(powerState.double>0?T('coinDouble'):'')+(coinBonus>6?TF('coinComboN',{n:challenge.combo}):'')))
+          +(coinStreak>=2?' · '+TF('coinStreak',{n:coinStreak,s:streakBonus}):''));
         if(coinCount===coinTotal){ award('coins'); coinNumEl.classList.add('gold'); }   // v0.3.8 满贯鲸币；v0.7.5 HUD 金色
       }
     }
@@ -4942,6 +4958,8 @@ function update(dt){
   /* 加速带冲刺倒计时 */
   boostglowEl.classList.toggle('on', boostT>0);
   if(boostT>0){ boostT-=dt; if(boostT<=0) boostT=0; }
+  /* v0.9.13 鲸币连击窗口递减：窗口过期连击归零 */
+  if(coinStreakT>0){ coinStreakT-=dt; if(coinStreakT<=0){ coinStreakT=0; coinStreak=0; } }
   /* 弹跳垫冷却 + 回弹 + 光环脉冲 + v0.4.24 冷却再武装反馈 */
   for(const bp of bouncePads){
     const u=bp.userData;
@@ -5598,6 +5616,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.4.56 验收辅助：净得分纯函数（注入四分量验公式）+ 金币/穿环实时坐标 */
   netScoreFor:(s,cb,tl,bs)=>{ const raw=s+(cb||0)+(tl||0)+(bs||0); return Math.round(raw*diff().scoreMul); },
   coinLive:()=>coins.map(c=>({x:+c.position.x.toFixed(3), y:+c.position.y.toFixed(3), z:+c.position.z.toFixed(3), alive:!!c.userData.alive})),
+  /* v0.9.13 鲸币连击探针：连击数 + 窗口剩余秒（验收用） */
+  coinStreak:()=>({n:coinStreak, t:+coinStreakT.toFixed(3), window:COIN_STREAK_WINDOW}),
   ringLive:()=>rings.map(r=>({x:+r.position.x.toFixed(3), y:+r.position.y.toFixed(3), z:+r.position.z.toFixed(3), alive:!!r.userData.alive})),
   /* v0.4.50 加速带金币链钩子：带链 id + 各链金币坐标（供验收探针，确定性） */
   boostChainInfo:()=>boostChainIds.map(id=>({
