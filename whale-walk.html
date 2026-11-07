@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.11</title>
+<title>鲸步 WHALE WALK · v0.9.12</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -2827,6 +2827,10 @@ const AudioFX=(()=>{
     /* v0.3.97 菜单 hover 细微滴答：极短高频 */
     tick(){ if(muted||!ac())return;
       tone(1800,1400,0.03,0.05,'sine'); },
+    /* v0.9.12 按钮点击确认音：比 hover 滴答稍厚稍低的圆润点击（结算/暂停按钮统一） */
+    uiTap(){ if(muted||!ac())return;
+      tone(880,660,0.07,0.12,'sine');
+      tone(1320,990,0.05,0.06,'sine',0.01); },
     /* v0.3.97 全部成就达成「鲸界传说」主题曲：8 秒长鲸歌（低音序列 + 琶音循环） */
     legend(){ if(muted||!ac())return;
       const t0=ctx.currentTime;
@@ -3188,9 +3192,9 @@ function openPause(){ if(mode!=='play')return; paused=true; pauseMenuEl.classLis
 function closePause(){ paused=false; pauseMenuEl.classList.remove('show'); document.body.classList.remove('paused');
   AudioFX.ui('resume'); }   // v0.3.97 继续提示音（含移除暂停色调）
 function togglePause(){ if(mode!=='play')return; paused?closePause():openPause(); }
-document.getElementById('pmResume').addEventListener('click',()=>closePause());
-document.getElementById('pmRestart').addEventListener('click',()=>{ closePause(); resetChallenge(); });
-document.getElementById('pmExit').addEventListener('click',()=>{ if(!confirm('退出当前关卡？本关进度将丢失。')) return;   // v0.8.3 二次确认
+document.getElementById('pmResume').addEventListener('click',()=>{ AudioFX.uiTap(); closePause(); });
+document.getElementById('pmRestart').addEventListener('click',()=>{ AudioFX.uiTap(); closePause(); resetChallenge(); });
+document.getElementById('pmExit').addEventListener('click',()=>{ AudioFX.uiTap(); if(!confirm('退出当前关卡？本关进度将丢失。')) return;   // v0.8.3 二次确认
   endless=false; endlessStreak=0; closePause(); setMode('preview'); });
 
 /* toast */
@@ -4038,7 +4042,7 @@ function finishChallenge(win){
   }
 }
 function nextLevel(){ level++; retainPending=null; startChallenge(); }   // v0.3.89 胜利进下一关清保留
-btnNext.addEventListener('click',nextLevel);
+btnNext.addEventListener('click',()=>{ AudioFX.uiTap(); nextLevel(); });
 /* v0.3.89 失败重试保留：记录失败时本关已收集光点/币/环，重试同关恢复 */
 let retainPending=null;
 function resetChallenge(){
@@ -4095,6 +4099,7 @@ function makeScoreCard(){
   return cv.toDataURL('image/png');
 }
 document.getElementById('btnCard').addEventListener('click',()=>{
+  AudioFX.uiTap();
   const url=makeScoreCard();
   if(!url){ toast(T('noCard')); return; }
   try{
@@ -4121,6 +4126,7 @@ function shareText(){ if(!shareSnap)return '';
   if(shareSnap.kind==='final') return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · ${MAX_LEVEL}关全通！总用时：${shareSnap.time} · 鲸币：${shareSnap.coins} · 穿环：${shareSnap.rings} · 四难度通关：${c4()}/4${lb}\n${safe}`;
   return `🐳 鲸步 WHALE WALK · 难度：${shareSnap.diff} · 第${shareSnap.level}关 时间到 · 收集：${shareSnap.score}/${shareSnap.total}${lb}\n${safe}`; }
 document.getElementById('btnShare').addEventListener('click',()=>{
+  AudioFX.uiTap();
   const t=shareText(); if(!t)return;
   const fallback=()=>{ const ta=document.createElement('textarea');
     ta.value=t; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta);
@@ -4131,7 +4137,7 @@ document.getElementById('btnShare').addEventListener('click',()=>{
   try{ navigator.clipboard.writeText(t).then(()=>toast(T('copied')),fallback); }
   catch(_){ fallback(); }
 });
-document.getElementById('btnRetry').addEventListener('click',()=>resetChallenge());
+document.getElementById('btnRetry').addEventListener('click',()=>{ AudioFX.uiTap(); resetChallenge(); });
 
 /* v0.3.89 排行榜：本机历史前十成绩（ww-lb-v1，可清空） */
 const LB_MAX=10;
