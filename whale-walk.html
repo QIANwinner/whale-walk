@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.5</title>
+<title>鲸步 WHALE WALK · v0.9.6</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -2343,25 +2343,32 @@ const fragMat=new THREE.MeshStandardMaterial({color:0xC9A8FF,emissive:0x8F6FE8,
   emissiveIntensity:1.8,roughness:.3,metalness:.3});
 /* v0.4.19 拾取音符 ♪ 粒子池：收集时从头顶上浮淡出 */
 const notePool=[];
+let lastNoteRef=null;   // v0.9.6 最后 spawn 的音符引用（精确探针，避免同帧多音符 life 歧义）
+/* v0.9.6 音画联动增强：音符颜色随五声音阶音高同步——纹理烘焙改白，实际显示色由材质 color 控制（默认金 0xFFD25A，与 v0.4.19 视觉等价零回归） */
+const NOTE_COLORS=[0x35E0FF,0x4D9FFF,0xC74AFF,0xFFB04A,0xFFD25A];   // v0.9.6 五声五色：宫青→商蓝→角紫→徵橙→羽金（音高升序，冷→暖）
+function noteColorForCombo(k){ return NOTE_COLORS[Math.max(0,k||0)%5]; }   // v0.9.6 拾取音阶索引→音符色（与 AudioFX.pickup 的 PENTA[k%5] 同一 k，音画同步）
 {
   const nc=document.createElement('canvas'); nc.width=nc.height=64;
   const ng=nc.getContext('2d');
   ng.font='700 44px sans-serif'; ng.textAlign='center'; ng.textBaseline='middle';
-  ng.fillStyle='#FFD25A'; ng.shadowColor='#FFD25A'; ng.shadowBlur=12;
+  ng.fillStyle='#FFFFFF'; ng.shadowColor='#FFFFFF'; ng.shadowBlur=12;   // v0.9.6 纹理改白，颜色交由材质
   ng.fillText('♪',32,32);
   const noteTex=new THREE.CanvasTexture(nc);
   for(let i=0;i<4;i++){
     const m=new THREE.Sprite(new THREE.SpriteMaterial({map:noteTex,transparent:true,
-      opacity:0,depthWrite:false}));
+      opacity:0,depthWrite:false,color:0xFFD25A}));   // v0.9.6 默认金：白×金=金，等价零回归
     m.scale.setScalar(0.4); m.visible=false; scene.add(m);
     notePool.push({m,life:0,ph:Math.random()*6.28});
   }
 }
-function floatNote(pos){
+function floatNote(pos,noteColor){
   const n=notePool.find(x=>x.life<=0)||notePool[0];
   n.m.position.copy(pos); n.m.position.y+=0.6;
   n.m.position.x+=rand(-0.15,0.15); n.m.position.z+=rand(-0.15,0.15);
+  n.m.material.color.set(noteColor||0xFFD25A);   // v0.9.6 音符色随音阶（默认金）
   n.life=1; n.m.visible=true;
+  lastNoteRef=n;   // v0.9.6 记录最后 spawn 音符（精确探针）
+  return n;   // v0.9.6 返回音符对象供拾取处音画同步
 }
 /* v0.3.94 弹跳落点预测圈：跳跃/弹跳时地面显示预计落点圆圈 */
 const landPred=new THREE.Mesh(new THREE.RingGeometry(0.32,0.42,24),
@@ -4472,7 +4479,7 @@ function update(dt){
         /* v0.4.45 拾取青光:边缘闪光 0.35s */
         { const pf=document.getElementById('pickFlash');
           if(pf){ pf.classList.add('on'); setTimeout(()=>pf.classList.remove('on'),350); } }
-        floatNote(o.position);   // v0.4.19 音符飘出
+        const nf=floatNote(o.position);   // v0.4.19 音符飘出；v0.9.6 返回引用供音画同步
         AudioFX.rain(score/(TOTAL||1));   // v0.3.96 背景雨声随收集进度渐强
         buzzP([12,50,12]);   // v0.4.57 拾取双轻脉冲
         girlPulseT=0.5;   // v0.4.61 拾取弹性脉冲
@@ -4504,6 +4511,8 @@ function update(dt){
         }
         /* v0.4.48 连击和声阶梯：拾取音在连击递增后触发（断连重置音景档位），音景档位与视觉同步 */
         AudioFX.pickup(challenge.combo+1);
+        /* v0.9.6 音画联动增强：音符颜色与拾取音阶索引 (combo+1)%5 同步（同 PENTA[k%5]，音越高色越暖） */
+        nf.m.material.color.set(noteColorForCombo(challenge.combo+1));
       }
     }
   }
@@ -5633,6 +5642,12 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   mm:()=>drawMinimap(),
   girlPulse:()=>girlPulseT,   // v0.4.61
   girlScale:()=>[girl.scale.x,girl.scale.y,girl.scale.z],   // v0.4.61
+  /* v0.9.6 音画联动钩子：音符色随音阶（noteColor/noteColorHex 纯函数；noteLastColor 读最近活跃音符实际色） */
+  noteColor:(k)=>noteColorForCombo(k),
+  noteColorHex:(k)=>'#'+noteColorForCombo(k).toString(16).padStart(6,'0'),
+  noteLastColor:()=>{ let best=null,bl=-1; for(const n of notePool){ if(n.life>bl){ bl=n.life; best=n; } } return best?best.m.material.color.getHex():null; },
+  lastNoteColor:()=> lastNoteRef ? lastNoteRef.m.material.color.getHex() : null,   // v0.9.6 最后 spawn 音符实际色（精确探针，同帧多音符无歧义）
+  floatNote:(pos,c)=>{ floatNote(pos,c); },   // v0.9.6 确定性音符生成（验收用）
   /* v0.4.66 穿环 PERFECT 探针：最近一次穿环是否正穿（验收断言 +3 秒/PERFECT toast） */
   lastRingPerfect:()=>lastRingPerfect,
   ringPerfectCount:()=>ringPerfectCount,   // v0.4.67
