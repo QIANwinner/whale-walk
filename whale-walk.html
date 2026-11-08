@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.31</title>
+<title>鲸步 WHALE WALK · v0.9.32</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
-    font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;}
+    font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;} /* v0.9.32 全局抑制 iOS 长按系统菜单（复制/查询等），游戏为沉浸式场景 */
   #app{position:fixed;inset:0;}
   canvas{display:block;touch-action:none;}
   /* v0.3.95 全屏色调分档：预览/挑战/暂停/结算不同画布色调 */
@@ -3159,6 +3159,15 @@ document.addEventListener('visibilitychange',()=>{
     if(mode==='play'&&!paused) openPause(); }   // v0.3.99 切后台自动暂停
   else { AudioFX.resume(); clock.getDelta(); renderer.setAnimationLoop(renderLoop); }
 });
+/* v0.9.32 抑制右键/长按系统菜单：桌面右键 / 移动端长按会弹系统菜单破坏沉浸式体验（游戏为全屏场景）。
+   capture 阶段拦截；输入框/可编辑区放行（成就搜索/设置输入不干扰）。探针 __wwCtxN 计数 suppress 次数。 */
+window.__wwCtxN=0;
+document.addEventListener('contextmenu',(e)=>{
+  const t=e.target;
+  if(t && (t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable)) return;
+  e.preventDefault();
+  window.__wwCtxN++;
+},{capture:true});
 
 /* =====================================================================
  *  v0.4.34 每日挑战任务：收集 30 光点 / 通关 3 关 / 集齐 2 次碎片
