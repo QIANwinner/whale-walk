@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.26</title>
+<title>鲸步 WHALE WALK · v0.9.27</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -29,6 +29,8 @@
   /* v0.3.16 收集弹跳 */
   #scoreNum.pop{animation:scorePop .28s cubic-bezier(.2,1.6,.4,1);}
   @keyframes scorePop{50%{transform:scale(1.35);color:#FFD25A;}}
+  /* v0.9.27 收集计数弹跳统一：coin/frag 计数递增时复用 scorePop 弹跳，与光点分数反馈一致 */
+  .cc-n.pop{animation:scorePop .28s cubic-bezier(.2,1.6,.4,1);}
   #scoreNum.full{color:#FFD25A;text-shadow:0 0 14px rgba(255,210,90,.85);}
   #coinNum.gold{color:#FFD25A;text-shadow:0 0 14px rgba(255,210,90,.85);}
   #scoreNum.last3{animation:timerBlink 1s infinite;}   /* v0.7.7 最后 3 个冲刺呼吸 */
@@ -3306,6 +3308,8 @@ function toastUrgent(msg){ toastQ.length=0; toastBusy=true; toastShow(msg); }
  *  动画 Update
  * ===================================================================== */
 const scoreEl=document.getElementById('scoreNum');
+/* v0.9.27 HUD 计数弹跳统一：复用 scorePop 关键帧；remove→reflow→add 保证连触重触发 */
+function hudPop(el){ if(!el) return; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
 let score=0; let TOTAL=orbs.length;
 const clock=new THREE.Clock();
 let elapsed=0;
@@ -4966,7 +4970,7 @@ function update(dt){
       }
       if(dd<1.3 && Math.abs(girl.position.y+0.9-c.position.y)<1.15){
         u.alive=false; coinGroup.remove(c); coins.splice(i,1);
-        coinCount++; coinNumEl.textContent=`${coinCount} / ${coinTotal}`;
+        coinCount++; coinNumEl.textContent=`${coinCount} / ${coinTotal}`; hudPop(coinNumEl);   // v0.9.27 收集计数弹跳统一
         COIN++; try{ localStorage.setItem('ww-cointotal-v1',String(COIN)); }catch(_){}   // v0.3.78 累计鲸币
         if(COIN>=30) award('coin30');
         /* v0.4.45 弹跳垫金币链「全链收割」：连续吃到同一链满 3 枚 → 金色连闪 + 提示 */
@@ -5027,7 +5031,7 @@ function update(dt){
         FRAGT++; try{ localStorage.setItem('ww-fragtotal-v1',String(FRAGT)); }catch(_){}
         if(FRAGT>=15) award('frag15');
         const fragNumEl=document.getElementById('fragNum');
-        if(fragNumEl) fragNumEl.textContent=`${fragCount} / ${fragTotal}`;
+        if(fragNumEl){ fragNumEl.textContent=`${fragCount} / ${fragTotal}`; hudPop(fragNumEl); }   // v0.9.27 收集计数弹跳统一
         challenge.timeLeft=Math.min(challenge.startTime,challenge.timeLeft+1);
         blinkT=1; burst(f.position);
         AudioFX.whaleNote(fragCount); buzz(20);
