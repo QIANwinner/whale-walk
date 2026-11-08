@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.24</title>
+<title>鲸步 WHALE WALK · v0.9.25</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -2637,6 +2637,7 @@ const AudioFX=(()=>{
   let ctx=null,bus=null,muted=false,nSteps=0,nPick=0,vol=0.8;
   let volPick=1,volCoin=1,volRing=1;   // v0.4.55 音效分层：拾取/金币/穿环独立音量倍率（0-1）
   let lastPickTier=0,lastPickLayer=2;   // v0.4.48 连击和声阶梯：最近一次拾取音景档位/音数（供钩子）
+  let chMul=1,lastPickFreq=523;   // v0.9.25 拾取音随关卡微移调：章节乘数（深关卡拾取音基频微降）+ 最近一次实际基频（供钩子）
   function ac(){
     const AC=window.AudioContext||window.webkitAudioContext;
     if(!AC)return null;
@@ -2727,7 +2728,8 @@ const AudioFX=(()=>{
     /* v0.3.19 五声音阶拾取音：连击沿宫商角徵羽爬音，10 连升八度；v0.3.96 统一用 PENTA 表 */
     /* v0.4.48 连击和声阶梯：comboTier 按连击分档（0基础/1三度/2五度/3高八度），tier 越高和声越丰满 */
     pickup(cb){ nPick++; const k=Math.max(0,cb||0);
-      const f=PENTA[k%5]*(k>=10?2:1);
+      const f=PENTA[k%5]*(k>=10?2:1)*chMul;   // v0.9.25 拾取音随关卡微移调：基频乘章节乘数（五声音阶比例/和声阶梯保持，整体转调）
+      lastPickFreq=f;   // v0.9.25 钩子：最近一次实际基频（含章节偏移）
       const tier=comboTier(k);   // v0.4.48 和声档位 0-3
       tone(f,f,0.12,0.14*volPick,'sine');
       tone(f*1.33,f*1.33,0.14,0.12*volPick,'sine',0.06);
@@ -2743,6 +2745,10 @@ const AudioFX=(()=>{
     /* v0.4.48 钩子：最近一次拾取音景档位/音数（IIFE 闭包内变量，经 getter 桥接） */
     getPickTier:()=>lastPickTier,
     getPickLayer:()=>lastPickLayer,
+    /* v0.9.25 拾取音随关卡微移调：设置章节乘数（1=标准，<1 深关卡音更低沉；夹在 0.8~1.2 防异常） */
+    setChMul(m){ chMul=Math.max(0.8,Math.min(1.2,Number.isFinite(m)?m:1)); },
+    /* v0.9.25 钩子：最近一次拾取音实际基频 + 当前章节乘数 */
+    pickSfx:()=>({mul:chMul, freq:lastPickFreq}),
     /* 全收集庆祝：上行琶音 + 亮和弦 */
     celebrate(){ if(muted||!ac())return;
       const seq=[523,659,784,1047,1319];
@@ -4677,6 +4683,8 @@ function update(dt){
           }
         }
         /* v0.4.48 连击和声阶梯：拾取音在连击递增后触发（断连重置音景档位），音景档位与视觉同步 */
+        /* v0.9.25 拾取音随关卡微移调：深关卡（level 高）拾取音基频微降（每关 -1.2%，level 9 ≈ -9.6%），呼应「鲸落之地」深渊主题 */
+        AudioFX.setChMul(1-(level-1)*0.012);
         AudioFX.pickup(challenge.combo+1);
         /* v0.9.6 音画联动增强：音符颜色与拾取音阶索引 (combo+1)%5 同步（同 PENTA[k%5]，音越高色越暖） */
         nf.m.material.color.set(noteColorForCombo(challenge.combo+1));
@@ -5752,6 +5760,9 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   toastProbe:()=>({q:[...toastQ], busy:toastBusy, on:toastEl.classList.contains('on'), text:toastEl.textContent}),
   toastPush:(m)=>toast(m),
   toastUrgentProbe:(m)=>toastUrgent(m),
+  /* v0.9.25 拾取音随关卡微移调探针：读取章节乘数/最近实际基频；setChMulProbe 手动设置（验收用） */
+  pickSfxProbe:()=>AudioFX.pickSfx(),
+  setChMulProbe:(m)=>AudioFX.setChMul(m),
   ringLive:()=>rings.map(r=>({x:+r.position.x.toFixed(3), y:+r.position.y.toFixed(3), z:+r.position.z.toFixed(3), alive:!!r.userData.alive})),
   /* v0.4.50 加速带金币链钩子：带链 id + 各链金币坐标（供验收探针，确定性） */
   boostChainInfo:()=>boostChainIds.map(id=>({
