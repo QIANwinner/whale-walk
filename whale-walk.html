@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.27</title>
+<title>鲸步 WHALE WALK · v0.9.28</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -497,6 +497,14 @@
     font-size:12px;font-weight:800;color:#C9A8FF;letter-spacing:1px;
     box-shadow:0 0 14px rgba(201,168,255,.35);backdrop-filter:blur(3px);}
   .frag-chip .cc-n{font-size:14px;color:#E4D4FF;}
+  /* ---------- v0.9.28 穿环计数 chip ---------- */
+  #ringbar{position:fixed;top:222px;left:50%;transform:translateX(-50%);z-index:11;pointer-events:none;}
+  body:not(.playing) #ringbar{display:none;}
+  .ring-chip{display:flex;align-items:center;gap:6px;background:rgba(8,34,46,.72);
+    border:1px solid rgba(53,224,255,.55);border-radius:999px;padding:5px 16px;
+    font-size:12px;font-weight:800;color:#35E0FF;letter-spacing:1px;
+    box-shadow:0 0 14px rgba(53,224,255,.35);backdrop-filter:blur(3px);}
+  .ring-chip .cc-n{font-size:14px;color:#9FF0FF;}
   /* ---------- 暂停菜单 ---------- */
   #pauseMenu{position:fixed;inset:0;z-index:38;display:none;align-items:center;justify-content:center;
     background:rgba(6,10,26,.78);backdrop-filter:blur(6px);}
@@ -559,6 +567,7 @@
   body.hud-hidden #btnAch,body.hud-hidden #btnSet,body.hud-hidden #btnPlay,body.hud-hidden #hudQian,
   body.hud-hidden #coinbar,body.hud-hidden #timer,body.hud-hidden #combo,body.hud-hidden #levelPick,
   body.hud-hidden #powerbar,body.hud-hidden #hudHint,body.hud-hidden #verTag,body.hud-hidden #metaLine,
+  body.hud-hidden #fragbar,body.hud-hidden #ringbar,
   body.hud-hidden #menuLegend{opacity:0!important;pointer-events:none!important;transition:opacity .2s;}
   /* ---------- v0.3.10 成就墙 ---------- */
   #btnAch{position:fixed;top:calc(186px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));z-index:11;
@@ -666,7 +675,8 @@
 <div id="coinbar"><div class="coin-chip">🪙 鲸币 <span class="cc-n" id="coinNum">0 / 3</span></div></div>
 <!-- v0.9.14 鲸币连击 HUD：连击≥2 时在金币 chip 右侧常驻显示，附窗口剩余时间条 -->
 <div id="coinStreakHud"><span>鲸币连击 ×</span><span class="cs-n" id="csN">0</span><span class="cs-bar"><i id="csBar"></i></span></div>
-<div id="fragbar" style="display:none"><div class="frag-chip">🎶 鲸语 <span class="cc-n" id="fragNum">0 / 3</span></div></div>
+<div id="fragbar"><div class="frag-chip">🎶 鲸语 <span class="cc-n" id="fragNum">0 / 3</span></div></div>
+<div id="ringbar"><div class="ring-chip">⭕ 穿环 <span class="cc-n" id="ringNum">0 / 0</span></div></div>
 <div id="lightning"></div>
 <div id="lvBanner"><div class="lv-t" id="lvBannerT">第 2 关</div><div class="lv-s">更多光点 · 更短时间</div></div>
 <div id="combo"><span id="comboTxt"></span><em id="comboBest"></em><i id="comboBar"><b></b></i></div>
@@ -2467,6 +2477,7 @@ let coinStreak=0, coinStreakT=0;
 let coinStreakMax=0;
 const COIN_STREAK_WINDOW=3.5;
 const coinNumEl=document.getElementById('coinNum');
+const ringNumEl=document.getElementById('ringNum');   /* v0.9.28 穿环计数 HUD */
 /* v0.9.14 鲸币连击 HUD DOM 引用 */
 const coinStreakHudEl=document.getElementById('coinStreakHud');
 const csNEl=document.getElementById('csN');
@@ -2597,6 +2608,7 @@ function spawnNewProps(){
     ringGroup.add(g); rings.push(g);
   });
   ringTotal=rings.length;   // v0.3.6 结算统计
+  if(ringNumEl) ringNumEl.textContent='0 / '+(ringTotal||0);   // v0.9.28 穿环 HUD 总数额定
   /* ---- 加速带 ×2：踏上 1.2s×2.2 冲刺 ---- */
   for(let i=0;i<2;i++){
     const bz=38+i*30+rn()*4;
@@ -5055,6 +5067,7 @@ function update(dt){
       if(dd<0.85 && Math.abs(girl.position.y+0.9-r.position.y)<0.62 && st.vy>0.5){
         u.alive=false; ringGroup.remove(r); rings.splice(i,1);
         ringCount++;
+        if(ringNumEl){ ringNumEl.textContent=ringCount+' / '+ringTotal; hudPop(ringNumEl); }   // v0.9.28 穿环实时计数
         /* v0.4.66 正穿 PERFECT：环心正穿（dd<0.28）额外 +1 秒 +1 分；v0.4.68 连续正穿 ≥2 再 +1 分 */
         const perfect=dd<0.28;
         lastRingPerfect=perfect;
@@ -5797,6 +5810,12 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   })),
   coinCount:()=>coinCount, coinTotal:()=>coinTotal, boostT:()=>boostT,
   ringCount:()=>ringCount, ringTotal:()=>ringTotal, levelSet:(v)=>{level=v;},   // v0.3.6 测试钩子
+  /* v0.9.28 穿环 HUD 探针 */
+  ringHud:()=>({ text:ringNumEl?ringNumEl.textContent:null,
+    pop:ringNumEl?ringNumEl.classList.contains('pop'):false,
+    barShown:!!document.getElementById('ringbar')&&getComputedStyle(document.getElementById('ringbar')).display!=='none',
+    fragShown:!!document.getElementById('fragbar')&&getComputedStyle(document.getElementById('fragbar')).display!=='none',
+    fragInline:document.getElementById('fragbar')?document.getElementById('fragbar').getAttribute('style'):null }),
   /* v0.4.46 测试钩子：切换难度（供 CDP 平衡验证） */
   setDiff:(k)=>{ if(DIFFS[k]) diffKey=k; },
   /* v0.4.46 平衡验证钩子：星级阈值函数 */
