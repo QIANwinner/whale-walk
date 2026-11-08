@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.25</title>
+<title>鲸步 WHALE WALK · v0.9.26</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -2970,7 +2970,12 @@ let vibStr=1; try{ vibStr=parseFloat(localStorage.getItem('ww-vibstr')||'1')||1;
 /* v0.4.25 无障碍：画面震动强度开关（ww-shake '1'/'0.55'/'0.25'/'0'=强/中/弱/关） */
 let shakeAmp=1; try{ shakeAmp=parseFloat(localStorage.getItem('ww-shake')||'1'); if(![1,0.55,0.25,0].includes(shakeAmp)) shakeAmp=1; }catch(_){}
 /* qScale 已在模块顶部声明并初始化（v0.4.02），此处不重复声明 */
+/* v0.9.26 触觉日志探针：记录最近 buzz/buzzP 调用（未缩放原始值，供 CDP 验收断言） */
+const __vibLog=[]; const __vibLogCap=48;
+function __vibPush(kind,val){ try{ __vibLog.push({kind,val,at:performance.now()});
+  if(__vibLog.length>__vibLogCap) __vibLog.splice(0,__vibLog.length-__vibLogCap); }catch(_){} }
 function buzz(ms){ try{
+  __vibPush('buzz',ms);
   if(!vibOn) return;
   ms=Math.round(ms*vibStr);   // v0.3.98 触觉强度缩放
   if(navigator.vibrate) navigator.vibrate(ms);
@@ -2982,6 +2987,7 @@ function buzz(ms){ try{
 /* v0.4.57 触觉节奏系统：buzzP 接受 [on,off,on...] 交错毫秒序列（Web Vibration 原生支持），
    手柄逐段 dual-rumble；关键事件配节奏档位，比单脉冲更有辨识度 */
 function buzzP(seq){ try{
+  __vibPush('buzzP',seq.slice());
   if(!vibOn) return;
   const pat=seq.map(v=>Math.round(v*vibStr));
   if(navigator.vibrate) navigator.vibrate(pat);
@@ -2995,6 +3001,15 @@ function buzzP(seq){ try{
     });
   }
 }catch(_){} }
+/* v0.9.26 光点拾取触觉随连击档位递进：连击越高节奏越密、脉冲越强（呼应连击和声阶梯）
+   combo<=0 非挑战/断连 → 基础双轻脉冲；1-2 基础；3-5 三连；6-9 四连；10+ 五连（档位化） */
+function vibPickSeq(combo){
+  const c=Math.max(0,Math.floor(combo||0));
+  if(c>=10) return [20,30,20,30,20,30,20,30,20];
+  if(c>=6)  return [16,36,16,36,16,36,16];
+  if(c>=3)  return [14,42,14,42,14];
+  return [12,50,12];
+}
 function applyMute(){ const m=AudioFX.toggle();
   try{ localStorage.setItem('ww-muted', m?'1':'0'); }catch(_){}
   document.getElementById('btnMute').textContent = m?'🔇':'🔊';
@@ -3728,6 +3743,7 @@ function applyPowerUp(type){
   }
   if(type!=='rewind') toast(TF('puGet',{icon:info.icon,label:T(info.label)}));   // v0.4.08 回溯有专属文案
   AudioFX.pickup();
+  buzzP([15,40,15]);   // v0.9.26 道具拾取触觉补全
 }
 function fmtT(s){ return (+s||0).toFixed(1)+' 秒'; }   // v0.4.95 数字防御：存档导入脏字符串不再崩溃
 /* v0.4.56 难度递进奖励手感：净得分 =（光点+连击+时间奖励+金币/穿环）× 难度倍率 scoreMul
@@ -4654,7 +4670,6 @@ function update(dt){
           if(pf){ pf.classList.add('on'); setTimeout(()=>pf.classList.remove('on'),350); } }
         const nf=floatNote(o.position);   // v0.4.19 音符飘出；v0.9.6 返回引用供音画同步
         AudioFX.rain(score/(TOTAL||1));   // v0.3.96 背景雨声随收集进度渐强
-        buzzP([12,50,12]);   // v0.4.57 拾取双轻脉冲
         girlPulseT=0.5;   // v0.4.61 拾取弹性脉冲
         if(score===TOTAL){
           if(challenge.active) finishChallenge(true);
@@ -4686,6 +4701,8 @@ function update(dt){
         /* v0.9.25 拾取音随关卡微移调：深关卡（level 高）拾取音基频微降（每关 -1.2%，level 9 ≈ -9.6%），呼应「鲸落之地」深渊主题 */
         AudioFX.setChMul(1-(level-1)*0.012);
         AudioFX.pickup(challenge.combo+1);
+        /* v0.9.26 光点拾取触觉随连击档位递进：连击递增后触发，与拾取音同一 combo 档位；非挑战/断连回基础双轻脉冲 */
+        buzzP(vibPickSeq(challenge.active?challenge.combo:0));
         /* v0.9.6 音画联动增强：音符颜色与拾取音阶索引 (combo+1)%5 同步（同 PENTA[k%5]，音越高色越暖） */
         nf.m.material.color.set(noteColorForCombo(challenge.combo+1));
       }
@@ -5763,6 +5780,10 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   /* v0.9.25 拾取音随关卡微移调探针：读取章节乘数/最近实际基频；setChMulProbe 手动设置（验收用） */
   pickSfxProbe:()=>AudioFX.pickSfx(),
   setChMulProbe:(m)=>AudioFX.setChMul(m),
+  /* v0.9.26 触觉探针：__vibLog 最近 buzz/buzzP 记录（未缩放）+ 档位函数直查（验收用） */
+  vibLogProbe:()=>__vibLog.slice(),
+  vibClear:()=>{ __vibLog.length=0; },
+  vibPickSeqProbe:(c)=>vibPickSeq(c),
   ringLive:()=>rings.map(r=>({x:+r.position.x.toFixed(3), y:+r.position.y.toFixed(3), z:+r.position.z.toFixed(3), alive:!!r.userData.alive})),
   /* v0.4.50 加速带金币链钩子：带链 id + 各链金币坐标（供验收探针，确定性） */
   boostChainInfo:()=>boostChainIds.map(id=>({
