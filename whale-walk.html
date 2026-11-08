@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.30</title>
+<title>鲸步 WHALE WALK · v0.9.31</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -845,7 +845,7 @@
   </div>
 </div>
 
-<script type="module">
+<script type="module" id="mainMod">
 import * as THREE from 'three';
 
 /* =====================================================================
@@ -6087,6 +6087,9 @@ function migrateLS(){
 migrateLS();
 /* v0.4.04 崩溃兜底：白屏自动 reload 一次（sessionStorage 标记防死循环；仅当模块未完成引导时触发） */
 window.__wwBooted=true;
+/* v0.9.31 主模块引导完成 → 重置 loadGuard：慢网下超时兜底若已误触发过，清除错误状态，避免残留 __wwLoadErr 干扰验收/视觉 */
+if(window.__wwLoadGuard){ window.__wwLoadGuard.armed=false; }
+window.__wwLoadErr=false;
 try{
   setTimeout(()=>{
     try{
@@ -6126,6 +6129,36 @@ window.__snap = (w=760, angle)=>{
   c.getContext('2d').drawImage(src,0,0,c.width,c.height);
   return c.toDataURL('image/jpeg',0.82);
 };
+</script>
+<!-- v0.9.31 CDN 加载失败/超时兜底：主模块因 three.js CDN 失败/慢网不执行时，loader 不再白屏卡死，给出提示+重试。
+     独立非模块脚本，不依赖主模块执行（v0.4.04 的崩溃兜底在主模块内，无法覆盖「模块整体不执行」这一盲区）。
+     正常路径：__wwBooted=true 或 loader.off 后，showErr 双保险直接返回，不影响游戏。 -->
+<script>
+(function(){
+  'use strict';
+  var LOADTO=12000;
+  try{ var q=new URLSearchParams(location.search).get('loadto'); if(q) LOADTO=Math.max(1200,(+q)||12000); }catch(_){}
+  var guard={armed:true};
+  window.__wwLoadGuard=guard;   /* 验收探针：armed 标记 */
+  function showErr(){
+    if(!guard.armed) return;
+    if(window.__wwBooted) return;                    /* 已 boot，正常加载 */
+    var ld=document.getElementById('loader');
+    if(!ld||ld.classList.contains('off')) return;    /* loader 已关闭，正常加载 */
+    var msg=ld.querySelector('.msg'); if(!msg) return;
+    guard.armed=false;
+    msg.innerHTML='⚠️ 加载超时<br><span style="font-size:11px;opacity:.75;line-height:1.8">网络似乎不给力，请检查网络后重试<br><span style="opacity:.6">（three.js CDN 未加载）</span></span>';
+    var bt=document.createElement('button');
+    bt.id='loadRetry'; bt.textContent='↻ 重新加载'; bt.type='button';
+    bt.style.cssText='margin-top:14px;background:linear-gradient(90deg,#002FA7,#1E5FD8);color:#fff;border:none;border-radius:999px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:2px;font-family:inherit;box-shadow:0 5px 16px rgba(0,47,167,.5);';
+    bt.addEventListener('click',function(){ window.__wwRetryClicked=true; try{ sessionStorage.removeItem('ww-crash'); }catch(_){} location.reload(); });
+    msg.appendChild(bt);
+    window.__wwLoadErr=true;                          /* 验收探针 */
+  }
+  var m=document.getElementById('mainMod');
+  if(m) m.addEventListener('error',function(){ if(!window.__wwBooted) setTimeout(showErr,300); });   /* CDN 依赖失败：立即提示 */
+  setTimeout(showErr,LOADTO);                          /* 慢网未失败：超时兜底 */
+})();
 </script>
 </body>
 </html>
