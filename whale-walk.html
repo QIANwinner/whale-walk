@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.23</title>
+<title>鲸步 WHALE WALK · v0.9.24</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -3267,8 +3267,19 @@ document.getElementById('pmExit').addEventListener('click',()=>{ AudioFX.uiTap()
 
 /* toast */
 const toastEl=document.getElementById('toast'); let toastT=0;
-function toast(msg){ toastEl.textContent=msg; toastEl.classList.add('on');
-  clearTimeout(toastT); toastT=setTimeout(()=>toastEl.classList.remove('on'),2200); }
+/* v0.9.24 toast 消息队列：多事件同时触发（成就/连击/拾取/受击）不再互相覆盖，依次排队显示；
+   队列上限 6 满时丢最旧；toastUrgent 即时打断（受击/告急关键反馈不排队，立即显示） */
+const toastQ=[]; const TOAST_MAX=6; const TOAST_MS=2200; const TOAST_GAP=150;
+let toastBusy=false;
+function toastShow(msg){ toastEl.textContent=msg; toastEl.classList.add('on');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>{ toastEl.classList.remove('on');
+    toastT=setTimeout(()=>{ toastBusy=false;
+      if(toastQ.length) toastShow(toastQ.shift()); },TOAST_GAP);
+  },TOAST_MS); }
+function toast(msg){ if(toastQ.length>=TOAST_MAX) toastQ.shift();
+  toastQ.push(msg); if(!toastBusy){ toastBusy=true; toastShow(toastQ.shift()); } }
+function toastUrgent(msg){ toastQ.length=0; toastBusy=true; toastShow(msg); }
 
 /* =====================================================================
  *  动画 Update
@@ -3806,7 +3817,7 @@ function startChallenge(){
 function stopChallengeUI(){ timerEl.style.display='none'; comboEl.classList.remove('on'); }
 function consumeShield(){
   powerState.shield=false; shieldBubble.visible=false; pwShieldEl.classList.remove('on');
-  toast(T('shieldHit'));
+  toastUrgent(T('shieldHit'));   // v0.9.24 受击即时反馈不排队
 }
 function hitCar(){
   if(challenge.invuln>0) return;
@@ -3819,7 +3830,7 @@ function hitCar(){
   girl.userData.state.speed*=0.4;
   challenge.tookHit=true;   // v0.3.8 无伤成就判定（护盾抵消不算）
   AudioFX.crash(); buzzP([60,50,60]);   // v0.4.57 撞车重双脉冲
-  toast(TF('carHit',{n:HIT_PENALTY}));
+  toastUrgent(TF('carHit',{n:HIT_PENALTY}));   // v0.9.24 受击即时反馈不排队
 }
 function hitDrone(d){
   if(challenge.invuln>0) return;
@@ -3839,7 +3850,7 @@ function hitDrone(d){
   st.speed*=0.3;
   challenge.tookHit=true;   // v0.3.8 无伤成就判定（护盾抵消不算）
   AudioFX.land(0.7); buzzP([60,50,60]);   // v0.4.57 无人机重双脉冲
-  toast(TF('droneHit',{n:DRONE_PENALTY}));
+  toastUrgent(TF('droneHit',{n:DRONE_PENALTY}));   // v0.9.24 受击即时反馈不排队
 }
 /* ---- v0.4.21 无人机威胁方向指示：最近威胁不在视野内时，屏幕边缘红箭头指向袭来方向 ---- */
 const droneWarnEl=document.getElementById('droneWarn');
@@ -5737,6 +5748,10 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
     const cs=(el)=>['s1','s2','s3','s4'].filter(c=>el.classList.contains(c));
     return {num:cs(csNEl), bar:cs(csBarEl)};
   },
+  /* v0.9.24 toast 消息队列探针：队列状态 + 触发函数（验收用） */
+  toastProbe:()=>({q:[...toastQ], busy:toastBusy, on:toastEl.classList.contains('on'), text:toastEl.textContent}),
+  toastPush:(m)=>toast(m),
+  toastUrgentProbe:(m)=>toastUrgent(m),
   ringLive:()=>rings.map(r=>({x:+r.position.x.toFixed(3), y:+r.position.y.toFixed(3), z:+r.position.z.toFixed(3), alive:!!r.userData.alive})),
   /* v0.4.50 加速带金币链钩子：带链 id + 各链金币坐标（供验收探针，确定性） */
   boostChainInfo:()=>boostChainIds.map(id=>({
