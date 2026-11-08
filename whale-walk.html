@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>鲸步 WHALE WALK · v0.9.22</title>
+<title>鲸步 WHALE WALK · v0.9.23</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230E1430'/%3E%3Ccircle cx='8' cy='8' r='5' fill='%232FA7E8'/%3E%3C/svg%3E"> <!-- v0.9.4 favicon 兜底：消除无 favicon 时的 404 噪声 -->
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0E1430;
@@ -482,6 +482,11 @@
   #coinStreakHud .cs-bar i.s2{background:linear-gradient(90deg,#FFD25A,#FFB347);}
   #coinStreakHud .cs-bar i.s3{background:linear-gradient(90deg,#FFB347,#FF8A5C);}
   #coinStreakHud .cs-bar i.s4{background:linear-gradient(90deg,#FF8A5C,#FF5A3C);}
+  /* ---------- v0.9.23 连击窗口告急：剩余时间≤25% 时时间条变红闪烁 + 数字微闪（「点亮-递增-热化-告急-中断」视觉叙事闭环） ---------- */
+  #coinStreakHud .cs-bar i.urgent{background:linear-gradient(90deg,#FF5A3C,#FF2D2D);animation:csUrgent .4s ease-in-out infinite;}
+  #coinStreakHud .cs-n.urgent{color:#FF6A5A;animation:csUrgentN .4s ease-in-out infinite;}
+  @keyframes csUrgent{0%,100%{opacity:1;}50%{opacity:.4;}}
+  @keyframes csUrgentN{0%,100%{opacity:1;}50%{opacity:.55;}}
   /* ---------- v0.4.12 鲸语碎片 chip ---------- */
   #fragbar{position:fixed;top:186px;left:50%;transform:translateX(-50%);z-index:11;pointer-events:none;}
   body:not(.playing) #fragbar{display:none;}
@@ -5045,10 +5050,15 @@ function update(dt){
   if(coinStreakT>0){ coinStreakT-=dt; if(coinStreakT<=0){
     const wasStreak=coinStreak;   // v0.9.18 归零前捕获旧连击（中断反馈判定）
     coinStreakT=0; coinStreak=0; coinStreakHudEl.classList.remove('on');
+    csBarEl.classList.remove('urgent'); csNEl.classList.remove('urgent');   // v0.9.23 告急态随中断清除
     if(wasStreak>=2) coinStreakBreak(wasStreak);   // v0.9.18 本局有效连击(≥2)中断 → HUD 灰化 + 低音下滑
   } }
-  /* v0.9.14 鲸币连击 HUD：窗口剩余时间条每帧宽度更新（参考 comboBar 模式） */
-  if(coinStreak>0) csBarEl.style.width=(Math.max(0,coinStreakT/COIN_STREAK_WINDOW)*100).toFixed(1)+'%';
+  /* v0.9.14 鲸币连击 HUD：窗口剩余时间条每帧宽度更新（参考 comboBar 模式）；v0.9.23 剩余≤25% 时加告急态（时间条变红闪烁+数字微闪，提醒"快断了赶紧再吃"） */
+  if(coinStreak>0){
+    csBarEl.style.width=(Math.max(0,coinStreakT/COIN_STREAK_WINDOW)*100).toFixed(1)+'%';
+    const csUrgent=(coinStreakT/COIN_STREAK_WINDOW)<=0.25;
+    csBarEl.classList.toggle('urgent',csUrgent); csNEl.classList.toggle('urgent',csUrgent);
+  } else { csBarEl.classList.remove('urgent'); csNEl.classList.remove('urgent'); }
   /* 弹跳垫冷却 + 回弹 + 光环脉冲 + v0.4.24 冷却再武装反馈 */
   for(const bp of bouncePads){
     const u=bp.userData;
@@ -5711,6 +5721,8 @@ window.__dbg = {camS, setMode, girl, P, keys, update, scene, camera, renderer, a
   coinStreakHud:()=>({on:coinStreakHudEl.classList.contains('on'), n:coinStreak, t:+coinStreakT.toFixed(3), window:COIN_STREAK_WINDOW, bar:csBarEl.style.width}),
   /* v0.9.15 本局最高连击探针（结算徽章验收用） */
   coinStreakMax:()=>coinStreakMax,
+  /* v0.9.23 连击窗口告急探针：时间条/数字 urgent 类（验收用） */
+  coinStreakHudUrgent:()=>({bar:csBarEl.classList.contains('urgent'), n:csNEl.classList.contains('urgent'), ratio:+(coinStreakT/COIN_STREAK_WINDOW).toFixed(3)}),
   /* v0.9.22 本局最高连击写入探针（暂停面板验收辅助用） */
   setCoinStreakMax:(v)=>{coinStreakMax=v;},
   /* v0.9.18 鲸币连击中断反馈探针：中断触发函数 + HUD break 状态（验收用） */
